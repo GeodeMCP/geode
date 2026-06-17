@@ -6,11 +6,15 @@ import { claudeAgentEngine } from "./engine.js";
 import { CONSTITUTION } from "./constitution.js";
 import { buildMcpServer, buildHttpApp } from "./server.js";
 import type { DelegateDeps } from "./delegate.js";
+import { seedVault } from "./seed.js";
 
 async function main() {
   const config = loadConfig();
   const workspace = createWorkspace(config.workspaceRoot);
   await workspace.init();
+
+  const seeded = await seedVault(config.workspaceRoot);
+  if (seeded.length > 0) await workspace.commitAll(`chore: seed vault scaffolds (${seeded.join(", ")})`);
 
   const delegateDeps: DelegateDeps = {
     workspace,
