@@ -72,7 +72,7 @@ multi-tenancy, accounts, per-user auth, and billing.
 3. **Secret broker** — secure secret storage + injection without ever exposing the value
    to the agent.
 4. **Dashboard** — web UI (chat / file-tree + viewer / event-feed), realtime updates, git
-   history. *(Not yet deeply designed.)*
+   history. *(Core layout + realtime experience validated 2026-06-17; detail spec later.)*
 5. **Connections / repo installer** — install repos/tools needing OAuth/env/keys, with a
    link-back flow to add secrets. Depends on #3.
 6. **Multi-workspace** — multiple workspaces with inheritance, optionally their own MCP
@@ -216,10 +216,28 @@ The agent runtime never hardcodes a provider; it reads a **model-connector** con
 - Security note: avoid LiteLLM PyPI 1.82.7 / 1.82.8 (credential-stealing malware); pin a
   clean release.
 
+### 5.11 Dashboard (core)
+
+Validated as a three-zone web UI:
+- **Top bar:** workspace switcher (left); event-feed (🔔) + account (right).
+- **Left:** chat with the vault agent (door B).
+- **Right:** file tree + file viewer (text / code / pdf / images), side by side.
+
+**Realtime experience** (the signature feature) — three coupled mechanisms:
+- **A — live diff in the viewer:** the touched file auto-opens and shows the change as a git
+  diff (added/removed) as it happens.
+- **C — change-cards in the chat:** each agent action becomes a card ("✏️ file +4 −1 · view
+  diff") that opens that diff in the viewer.
+- **B (badges only) — tree status badges:** realtime "modified / new" badges across the tree.
+  The literal "live typing" animation was dropped as redundant with the live diff.
+
+Git underpins it: changes are uncommitted until committed (by the user or auto by the agent);
+the git timeline is the history. Detailed component/interaction spec is its own sub-project.
+
 ## 6. Deferred / open
 
-- **Dashboard (#4)** not yet deeply designed (layout known from the original vision: top bar
-  with account + event-feed icon; left chat; right file-tree + file viewer).
+- **Dashboard (#4)** core validated (see §5.11); the detailed component/interaction spec is
+  its own sub-project later.
 - Multi-tenancy, accounts, per-user auth, billing — deferred to the hosted layer.
 - Hard isolation / per-workspace endpoints — built when the first client needs it.
 
