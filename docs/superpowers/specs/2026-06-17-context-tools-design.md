@@ -25,16 +25,21 @@ so callers route intent reliably.
 
 The owner (or a caller on their behalf) hands over a learning/note/fact; the agent files it well.
 
-- **MCP tool description:** "Save or update knowledge in your Geode vault — a learning, note, or
-  fact gets integrated where it belongs and committed."
-- **Input:** `{ content: string (required), source?: string, workspace?: string }`
-  (e.g. `source: "Claude chat 2026-06-17"`).
+- **MCP tool description (coaches the caller):** "Save a distilled learning, fact, or note in your
+  Geode vault. Give the *essence* — not a whole conversation; the vault agent integrates, dedups, and
+  files it. Example — content: 'Client X wants invoices on the 1st, net-30.', source: 'call 2026-06-17'."
+- **Input (self-documenting schema — this IS how an AI caller knows what to send):**
+  - `content` (required): "The knowledge to save — a distilled, self-contained learning, fact, or note
+    (not a raw transcript); one idea is fine."
+  - `source` (optional): "Where it came from, for provenance (e.g. 'Claude chat 2026-06-17', a URL, a person)."
+  - `title` (optional): "A short hint of what this is about, to help filing (the agent refines it)."
+  - `workspace` (optional): the workspace seam (single/soft for now).
 - **Implementation:** a thin wrapper over the kernel's `delegate`:
-  - `buildIngestInstruction(content, source): string` — **pure** (unit-tested). Produces an
+  - `buildIngestInstruction(content, source, title): string` — **pure** (unit-tested). Produces an
     ingest-framed instruction, roughly: *"Integrate the following into the vault: find or create the
     right page for it, dedup against existing content, add cross-references, update `index.md` and
     `capabilities.md` if relevant, and keep it tidy. Then summarize what you filed and where.
-    Content:\n<content>\n(Source: <source>)"*.
+    Title hint: <title>. Source: <source>. Content:\n<content>"* (title/source lines omitted when absent).
   - `remember(deps, args, onProgress?)` calls `delegate(deps, buildIngestInstruction(...), onProgress)`
     — reusing the engine, single-flight run manager, git commit-on-success/reset-on-failure, and
     event log. No new run machinery.
@@ -45,6 +50,20 @@ The owner (or a caller on their behalf) hands over a learning/note/fact; the age
 
 `remember` is "delegate with an ingest frame" plus a distinct, recognizable MCP tool so callers
 reliably pick it for "save this".
+
+### 2.1 How the caller gives good input
+
+Input quality is robust through two layers (plus an optional advanced one):
+
+1. **Schema as documentation.** MCP surfaces the tool `description` + the per-field descriptions above
+   to the calling AI — that is literally how it decides what to pass. They coach toward *one distilled
+   idea + provenance*, with a worked example.
+2. **The agent forgives imperfect input.** Unlike a dumb store, the ingest run **re-distills**: given
+   too much (a whole chat) or too little, the agent extracts the essence, dedups against existing
+   pages, and files it. Better input → better filing and lower token cost; bad input doesn't break
+   anything. This is the key advantage of an agent-in-the-middle for ingest.
+3. *(Optional, advanced)* a capable caller can `list_capabilities` or `find AGENTS.md` first to align
+   with the vault's conventions before calling `remember`. Not required.
 
 ## 3. `list_capabilities` — discovery
 
@@ -83,7 +102,7 @@ the agent inherits this for `delegate` and `remember` alike.
 
 | File | Responsibility |
 |---|---|
-| `src/ingest.ts` | `buildIngestInstruction(content, source)` (pure) + `remember(deps, args, onProgress)` (wraps `delegate`) |
+| `src/ingest.ts` | `buildIngestInstruction(content, source, title)` (pure) + `remember(deps, args, onProgress)` (wraps `delegate`) |
 | `src/capabilities.ts` | `listCapabilities(root)` — cheap read of `capabilities.md` + absent-fallback |
 | `src/seed.ts` | `seedVault(root)` + scaffold template constants |
 | `src/constitution.ts` | enriched (edit) |
@@ -113,8 +132,8 @@ the agent inherits this for `delegate` and `remember` alike.
 
 ## 8. Testing
 
-- **Unit:** `buildIngestInstruction` (content+source → instruction shape, including a no-source
-  case); `remember` (asserts it invokes `delegate` with the built instruction and returns its result,
+- **Unit:** `buildIngestInstruction` (content+source+title → instruction shape, incl. no-source and
+  no-title cases); `remember` (asserts it invokes `delegate` with the built instruction and returns its result,
   via fakes); `listCapabilities` (temp dir: returns file content; absent → fallback); `seedVault`
   (temp dir: creates the 3 files + commits; idempotent — a second call doesn't overwrite an edited
   file); the two new server handlers (like the existing `find`/`delegate` handler tests).
