@@ -68,12 +68,40 @@ avoid tool-list bloat).
 
 - **Now:** an open-source, self-hostable kernel. Single-tenant per installation. No accounts,
   multi-tenancy, or billing.
-- **Later:** a hosted service for businesses, with a local model option (data + model stay
-  private). This is the commercial layer.
+- **Later (commercial):** a hosted SaaS — see §3.1.
 
 Design rule: build the single-tenant self-host kernel now, but make choices that do not
-*preclude* the hosted future (HTTP-first transport, externalized config). Explicitly defer
-multi-tenancy, accounts, per-user auth, and billing.
+*preclude* the hosted future (HTTP-first transport, externalized config, **Docker-packaged
+kernel**, **per-instance token auth**). Explicitly defer multi-tenancy, accounts, per-user auth,
+and billing.
+
+### 3.1 SaaS / hosted track (the monetization path)
+
+Subscription accounts where we manage the customer's runtime, with a **local-model option for
+ultimate privacy** as a premium add-on (your context, your model, nothing leaves your
+environment) — a strong wedge for businesses / regulated sectors.
+
+Two principles keep this *additive*, not a rewrite:
+- **Isolated instances × N, not shared multi-tenancy.** Each customer = their own isolated
+  container running the same kernel + own vault + own MCP endpoint + own secrets. This is exactly
+  our "hard isolation = endpoint + token per workspace" model (§5.5) and the secret-broker's
+  container trust boundary (§5.8) — the SaaS isolation model is already designed.
+- **Control plane / data plane split.** The kernel is the **data plane** (per-tenant runtime).
+  The SaaS adds a thin **control plane**: accounts, billing, provisioning of instances, routing
+  to the right tenant. The kernel stays clean; the SaaS is a layer on top.
+
+Local model is already enabled by the model-connector seam (§5.10) — point a tenant runtime at a
+local Ollama/vLLM or private cloud model.
+
+**Honest cost:** the heavy/risky part is hosting arbitrary per-tenant code execution (the agent
+runs bash, installs repos) — needs serious sandboxing, resource limits, egress control, abuse
+prevention (cf. e2b / Daytona / Modal). Price for compute; lean on strong container/sandbox
+isolation.
+
+**Sequencing: kernel-first, NOT platform-first.** Build the kernel, dogfood, then the smallest
+hosted offering = managed isolated kernel instances + a thin control plane. Cheap seams to
+preserve now: Docker-packaged kernel, per-instance token auth, workspace scoping, broker
+boundary.
 
 ## 4. Decomposition & build order
 
