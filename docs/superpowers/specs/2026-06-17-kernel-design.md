@@ -13,9 +13,9 @@ a delegated agent run.**
 
 In scope: the git-backed workspace + two operations — **`find`** (cheap retrieval) and
 **`delegate`** (the agent-in-the-middle) — over HTTP.
-Out of scope (later sub-projects): **`invoke`** (proxied connection calls — needs the secret
-broker #3 + connections #5), the autonomous reorganization and dashboard chat (door B), the
-connection installer, multi-tenancy.
+Out of scope (later sub-projects): **`invoke`** (proxied integration-action calls — needs the
+secret broker #3 + integrations #5), **`remember`** (ingest — #2), the autonomous
+reorganization and dashboard chat (door B), the integration installer, multi-tenancy.
 
 Note: because `delegate` runs a *full* agent, it can already call connections **internally**
 when they are configured — the standalone, caller-orchestrated `invoke` surface is what comes
@@ -86,7 +86,9 @@ Flow of one `delegate`:
 - *During:* progress updates via MCP progress notifications.
 
 No `list_capabilities` tool yet (the curated manifest is a #2 convention; `find` covers raw
-navigation). `invoke` arrives with the broker (#3) / connections (#5).
+navigation). The full operation surface is `find` / `invoke` / `delegate` / `remember` +
+`list_capabilities` (see the architecture doc); the kernel ships `find` + `delegate`. `invoke`
+arrives with the broker (#3) / integrations (#5); `remember` with the ingest workflow (#2).
 
 ## 5. Components
 
@@ -184,4 +186,4 @@ Layered, because agent output is non-deterministic:
 - The `workspace` parameter and workspace-scoping detail (from multi-workspace #6).
 - The system prompt content = the constitution's immutable core (from context tools #2).
 - The permission profile shape (from the secret broker #3, scoped/hard isolation).
-- The standalone `invoke` surface and how connections are exposed (broker #3 / connections #5).
+- The standalone `invoke` surface and how integrations are exposed (broker #3 / integrations #5), plus the `remember`/ingest tool (#2).
