@@ -20,3 +20,17 @@ Prereqs: a model is reachable (e.g. `ollama serve` with a tool-capable model, or
      - `log.md` gained an `## [..] run-… | ok | <hash>` entry
 6. Call `delegate` with an instruction that forces a failing bash command →
    verify the workspace is clean (`git status` empty) and `log.md` gained a `| error` entry.
+
+## Context tools (#2) — manual checks
+
+7. On startup the vault is seeded: verify `AGENTS.md`, `index.md`, `capabilities.md` exist in
+   `$GEODE_WORKSPACE` and were committed (`chore: seed vault scaffolds …`).
+8. Call `list_capabilities` (no args) → expect the seeded `capabilities.md` content (or the
+   fallback note if absent).
+9. Call `remember` with
+   `{ "content": "Client X prefers invoices on the 1st, net-30 terms.", "source": "call 2026-06-17", "title": "Client X billing" }`.
+   - Expect: progress streams, a summary of what was filed where, `isError` is false.
+   - Verify in `$GEODE_WORKSPACE`: a new `delegate run-… : …` commit + a `delegate run-… : log`
+     commit; the content filed into a page (e.g. under `clients/`); `index.md` updated;
+     `capabilities.md` possibly updated; an `ok` entry in `log.md`.
+10. Call `list_capabilities` again → expect it to reflect any capability the agent recorded.
