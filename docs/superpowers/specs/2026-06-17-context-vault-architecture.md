@@ -22,47 +22,57 @@ layer." It is the strongest differentiator and the lens for all positioning.
 
 ## 2. The core insight — agent-in-the-middle
 
-Most MCP integrations expose a fixed list of tools. This product instead exposes **an agent
-that sits next to your context**. A caller (Claude Code, Cursor, ChatGPT) delegates an
-open-ended instruction; our agent reasons over your files, runs scripts, calls connected tools,
-and returns a synthesized result.
+Most MCP integrations expose a fixed list of tools. This product instead exposes **an agent that
+sits next to your context**. A caller (Claude Code, Cursor, ChatGPT) asks in natural language; the
+vault's agent reasons over your files, recipes, and SOPs and returns a synthesized answer or an
+**executable plan**. It dissolves most of the "discovery" problem: the caller needn't know the
+vault's internal structure — it expresses intent and the agent navigates.
 
-This is *MCP-as-agent-handoff* rather than *MCP-as-tool-list*. It also dissolves most of the
-"discovery" problem: the caller does not need to know the vault's internal structure; it
-expresses intent, and our agent navigates the structure itself.
+**The boundary (decisive).** The vault is the **operator of your recipes and kitchen equipment** —
+it gives context, looks things up, offers skills/SOPs, and explains *how* to use your tools. It
+**does not execute external actions.** The **caller executes** (via `invoke`). So the vault is your
+*specialized* context+tools layer, not a competing general agent — which keeps the value-prop intact
+(the vault is the constant; the executing front-ends are swappable).
 
-### 2.1 Operations — caller as orchestrator
+A powerful consequence: **the agent never touches secrets.** It only plans, which needs the
+integration *manifest* (action + param shapes), never the credential. Secrets live only in the
+broker and are injected server-side at the moment the **caller** calls `invoke`. "Hide secrets from
+the agent" becomes trivial — the agent has no reason to hold them.
 
-User journeys (Perplexity standalone, Perplexity-on-context, retrieve a skill/workflow, the
-Moneybird bookkeeping workflow) revealed four distinct operations, plus discovery. **Each MCP
-tool description names the "Geode vault"** so a caller routes intent reliably (e.g. "add this to
-my Geode vault" → `remember`).
+### 2.1 Operations
 
-| Tool | What it does (MCP intent) | Cost | Who reasons |
+Five operations (each MCP description names the "Geode vault" so callers route intent reliably):
+
+| Tool | What it does | Cost | Who works |
 |---|---|---|---|
-| `find` | search/read your Geode vault (context, recipes, facts) | cheap | caller |
-| `invoke` | run an **action** of an integration in your Geode vault; secret injected by the broker | medium | caller |
-| `delegate` | hand an open-ended task to your Geode vault's agent to execute | expensive | vault |
-| `remember` | save/update knowledge in your Geode vault (file a learning; integrated + committed) | medium | vault |
-| `list_capabilities` | list what your Geode vault offers (recipes/skills + integrations & their actions) | cheap | — |
+| `find` | direct, mechanical lookup of your vault — read a file / list a dir / search (grep · ls · cat). Raw content; the caller reasons. | cheap | caller |
+| `delegate` | ask the vault to research/plan over your context + recipes; returns a synthesized answer **or an executable plan** (ordered steps + the exact `invoke` calls & values). **Does not execute external actions.** | expensive | vault agent |
+| `invoke` | **the caller** runs one action of an integration; the broker injects the secret server-side and returns the result. | medium | caller |
+| `remember` | save/update knowledge in the vault (ingest: integrated + committed). | medium | vault agent |
+| `list_capabilities` | the menu: what the vault offers (recipes/skills + integrations & their actions). | cheap | — |
 
-Default model: **the caller is the orchestrator; the vault is the recipe + the kitchen
-equipment.** The caller `find`s a recipe and `invoke`s the vault's integration actions (using
-your connections without ever seeing your secrets), reasoning for itself. `delegate` is the
-fallback for weak callers (e.g. a limited ChatGPT integration) or full hand-off.
+**Who does what.** `delegate` is the smart front door for *"how do I do X with my vault?"* — it
+finds the steps + integrations and returns a ready-to-run plan; the **caller executes** that plan
+with `invoke`. `find` and `invoke` are the caller's **direct shortcuts** (cheap lookup; run one
+tool) for when it knows exactly what it wants. `list_capabilities` is discovery; `remember` is the
+save-back. The vault agent operates only **within your vault** (read / organize / plan + bash to
+inspect); it never calls integrations itself — that's the caller's job.
 
-**Writing into context = `remember`, a distinct tool — not `delegate`.** Filing a learning well
-(right place, dedup, cross-ref, update `index.md`/`log.md`, commit) is the karpathy *ingest*
-operation — agentic, but it is its **own** tool for two reasons: (1) callers recognize "save
-this" reliably from the MCP description, and (2) `delegate` stays focused on execution and fast.
-`remember` may use a latency-optimized model (fast-ack, file in the background). There is **no
-mandatory post-`delegate` auto-save reflex** (it would add latency); ambient auto-capture can be
-an opt-in config later. `delegate` can still write as a *side effect* of a task; explicit
-knowledge capture goes through `remember`.
+**Routing is a tuning knob (test on real cases).** With `find`/`list_capabilities` available, a
+capable caller may try to do everything itself and skip `delegate`, missing your canonical,
+synthesized knowledge. We bias the tool *descriptions* toward `delegate` as the default for "figure
+out how to do X" and frame `find`/`invoke` as explicit shortcuts — but the caller is autonomous; we
+steer, not force, and good DIY outcomes are fine. The optimal descriptions are empirical: tune via
+dogfooding and observe which tools real callers pick.
 
-Open mechanic for `invoke` (deferred): expose each integration's actions as their own MCP tools,
-or one generic `invoke(integration, action, params)` + discovery (current lean: the latter, to
-avoid tool-list bloat).
+**Writing into context = `remember`** (a distinct, recognizable tool). Filing a learning well
+(right place, dedup, cross-ref, update `index.md`/`capabilities.md`/`log.md`, commit) is the
+karpathy *ingest* operation. It reuses the vault agent but is its own tool so callers reliably pick
+it for "save this".
+
+Open mechanic for `invoke` (deferred): expose each integration's actions as their own MCP tools, or
+one generic `invoke(integration, action, params)` + discovery (current lean: the latter, to avoid
+tool-list bloat).
 
 ## 3. Distribution model (open-core)
 
@@ -108,15 +118,16 @@ boundary.
 1. **Kernel** — MCP server exposing `find` (cheap retrieval) + `delegate` (the
    agent-in-the-middle), over a git-backed workspace. The unproven magic; everything depends on
    it. *(Specced; build first.)*
-2. **Context tools** — `remember` (ingest), the `list_capabilities` discovery tool, the
-   autonomous reorganization ("lint"), and the event log.
-3. **Secret broker** — secure secret storage + injection without ever exposing the value to the
-   agent.
+2. **Context tools** — `remember` (ingest) + `list_capabilities` + vault seeding/enriched
+   constitution. *(Done + merged 2026-06-17; autonomous lint deferred.)*
+3. **Secret broker + `invoke`** — encrypted secret store + server-side injection (the agent never
+   sees secrets and never calls integrations), the caller-only `invoke` operation, and ONE sample
+   integration. *(First cut; merges the core of #3 + #5.)*
 4. **Dashboard** — web UI (chat / file-tree + viewer / event-feed), realtime updates, git
    history. *(Core layout + realtime experience validated 2026-06-17; detail spec later.)*
-5. **Integrations / repo installer** — install repos/tools (MCP servers, CLIs, API connections)
-   needing OAuth/env/keys, with a link-back flow to add secrets, and the `invoke` surface.
-   Depends on #3.
+5. **Integrations installer** — the broader installer: OAuth flows, repo/CLI install, the signed
+   auth-link, more integration types (the `invoke` surface + first sample integration land in #3).
+   Depends on #3 + #4.
 6. **Multi-workspace** — multiple workspaces with inheritance, optionally their own MCP
    endpoints. For self-host: folders within one vault rather than separate tenants.
 
@@ -201,34 +212,38 @@ name only** (`requires: [NOTION_TOKEN]`) — never the value. An integration exp
 (the MCP-native "tools"), called via `invoke`. "Connection" is therefore one *type* of
 integration, not the umbrella term.
 
-### 5.8 Secret broker — hiding requires a trust boundary
+### 5.8 Secret broker
 
-If the agent has full bash, env vars are readable (`printenv`, `/proc/<pid>/environ`). Injecting a
-secret as an env var hides *nothing* while agent and secret share a shell.
-
-True hiding requires a **trust boundary** between the agent and the secret — exactly the "own
-workspace/container" from the original vision:
+The vault agent never calls integrations (§2) — so **the agent never needs a secret.** Secrets are
+used in exactly one place: when the **caller** calls `invoke`, the **kernel server** fetches the
+secret from the broker, injects it into the outbound request, and returns only the result. The
+caller gets data, never the credential; the agent isn't involved at all.
 
 ```
-┌─ WORKSPACE CONTAINER (agent, unprivileged user) ─┐
-│  agent ── "do Notion call" ──┐ socket, NO secret │
-└──────────────────────────────┼──────────────────┘
-                               ▼
-              ┌─ SECRET BROKER (separate user / sidecar) ─┐
-              │  holds NOTION_TOKEN; injects auth;        │
-              │  forwards to API; returns only the result │
-              └────────────────────────────────────────────┘
+caller ── invoke(integration, action, params) ──▶ KERNEL SERVER
+                                                    • broker.getSecret(ref)  (decrypt in memory)
+                                                    • inject auth → call the integration's API
+                                                    • return ONLY the response to the caller
 ```
 
-Two access modes:
-- **APIs** → broker is a proxy that injects the auth header (strongest).
-- **CLI tools** → broker spawns the tool as the privileged user with the secret in its env; agent
-  receives only stdout.
+**Store:** secrets live **outside the vault** (never in git), **encrypted-at-rest** (AES-256-GCM),
+workspace-namespaced. Key from `GEODE_SECRETS_KEY`, or a generated `0600` key file on first run.
 
-The same isolation that makes running arbitrary agent code *safe* also delivers secret-hiding —
-one architectural investment, two problems solved. **Decision:** design the broker properly from
-the start (trust boundary + proxy/wrapper); build it later as #3. Integrations wait for it (no weak
-env-var interim phase).
+**Injection modes:**
+- **API integrations** (first cut): the server injects auth (e.g. a header) into the outbound HTTP
+  call. The secret only ever lives in the broker + that one request.
+- **CLI tools** (later): the broker spawns the tool with the secret in the child's env, returning
+  stdout. Weaker (a same-user agent could inspect `/proc`) — wants the OS/container boundary.
+
+**Isolation, honestly.** Because the secret stays server-side and the agent is uninvolved, an
+**in-server broker** suffices for the self-host first cut. A determined agent with full bash on the
+same OS user could still read the store/key — best-effort now, hardened by the OS-user/container
+boundary in the hosted layer (the same isolation that makes running arbitrary agent code safe).
+**Decision:** build the store/injection cleanly now (in-server, caller-`invoke`); build the hard
+boundary with the hosted layer.
+
+> First-cut secrets are added via a **CLI** (no dashboard yet); the signed auth-link + unified auth
+> screen (§5.9) land with the dashboard (#4).
 
 ### 5.9 Auth flow — unified screen + signed capability link
 
