@@ -1,4 +1,4 @@
-import { expect, test, vi } from "vitest";
+import { expect, test } from "vitest";
 import { delegate, type DelegateDeps } from "../src/delegate.js";
 import { createRunManager } from "../src/runManager.js";
 import type { EngineEvent } from "../src/engine.js";
@@ -11,7 +11,7 @@ function fakeWorkspace() {
     init: async () => {},
     isClean: async () => true,
     head: async () => "HEAD0",
-    commitAll: async (_m: string) => { calls.push("commit"); return "COMMIT1"; },
+    commitAll: async (m: string) => { calls.push(`commit:${m}`); return "COMMIT1"; },
     resetToHead: async () => { calls.push("reset"); },
     changedFilesSince: async (_r: string) => ["note.md"],
   };
@@ -37,7 +37,7 @@ function deps(over: Partial<DelegateDeps>): DelegateDeps {
   };
 }
 
-test("on success: streams progress, commits, logs ok, returns result + files", async () => {
+test("on success: streams progress, commits agent changes AND the log, logs ok, returns result + files", async () => {
   const progress: string[] = [];
   const d = deps({});
   const res = await delegate(d, "do X", (m) => progress.push(m));
@@ -46,16 +46,19 @@ test("on success: streams progress, commits, logs ok, returns result + files", a
   expect(res.commit).toBe("COMMIT1");
   expect(res.filesTouched).toEqual(["note.md"]);
   expect((d.eventLog as any).entries[0]).toMatchObject({ status: "ok", commit: "COMMIT1" });
-  expect((d.workspace as any).calls).toContain("commit");
+  // both the agent change and the event-log entry are committed (log must be persisted)
+  expect((d.workspace as any).calls).toContain("commit:delegate run-1: do X");
+  expect((d.workspace as any).calls).toContain("commit:delegate run-1: log");
 });
 
-test("on engine failure: resets workspace, logs error, rethrows", async () => {
+test("on engine failure: resets, logs error, COMMITS the error entry, rethrows (no agent commit)", async () => {
   const ws = fakeWorkspace();
   const boom = async function* () { yield { type: "progress", text: "p" }; throw new Error("boom"); };
   const log = fakeLog();
   const d = deps({ workspace: ws as any, engine: boom as any, eventLog: log as any });
   await expect(delegate(d, "do Y")).rejects.toThrow("boom");
   expect(ws.calls).toContain("reset");
-  expect(ws.calls).not.toContain("commit");
+  expect(ws.calls).toContain("commit:delegate run-1: log (error)");
+  expect(ws.calls.some((c) => c.includes("do Y"))).toBe(false); // agent change never committed
   expect(log.entries[0]).toMatchObject({ status: "error" });
 });

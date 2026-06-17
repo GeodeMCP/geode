@@ -44,10 +44,14 @@ export async function delegate(
       const commit = await deps.workspace.commitAll(`delegate ${runId}: ${truncate(instruction, 60)}`);
       const filesTouched = commit ? await deps.workspace.changedFilesSince(before) : [];
       await deps.eventLog.append({ runId, instruction, status: "ok", commit, summary: truncate(finalText) });
+      // Persist the event-log entry itself: it is written after the agent commit, so it would
+      // otherwise stay uncommitted and be wiped by the next run's clean/reset.
+      await deps.workspace.commitAll(`delegate ${runId}: log`);
       return { runId, text: finalText, commit, filesTouched };
     } catch (err) {
       await deps.workspace.resetToHead();
       await deps.eventLog.append({ runId, instruction, status: "error", error: String(err) });
+      await deps.workspace.commitAll(`delegate ${runId}: log (error)`);
       throw err;
     }
   });

@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { mapMessage } from "../src/engine.js";
+import { mapMessage, buildQueryOptions } from "../src/engine.js";
 
 test("maps assistant text blocks to progress events", () => {
   const events = mapMessage({ type: "assistant", message: { content: [{ text: "working on it" }] } });
@@ -18,4 +18,18 @@ test("maps a result message to a single result event", () => {
 
 test("ignores unknown message types", () => {
   expect(mapMessage({ type: "system" })).toEqual([]);
+});
+
+test("buildQueryOptions appends the constitution to the claude_code preset (so the agent knows its cwd)", () => {
+  const o = buildQueryOptions({ instruction: "x", cwd: "/vault", systemPrompt: "RULES", abortController: new AbortController() });
+  expect(o.cwd).toBe("/vault");
+  expect(o.systemPrompt).toEqual({ type: "preset", preset: "claude_code", append: "RULES" });
+  expect(o.tools).toEqual({ type: "preset", preset: "claude_code" });
+  expect(o.permissionMode).toBe("bypassPermissions");
+});
+
+test("buildQueryOptions includes model only when provided", () => {
+  const base = { instruction: "x", cwd: "/v", systemPrompt: "r", abortController: new AbortController() };
+  expect("model" in buildQueryOptions(base)).toBe(false);
+  expect(buildQueryOptions({ ...base, model: "m" }).model).toBe("m");
 });
