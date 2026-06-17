@@ -1,4 +1,5 @@
 import express from "express";
+import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -6,7 +7,9 @@ import { find as findOp, type FindArgs, type FindResult } from "./find.js";
 import { delegate, type DelegateDeps, type DelegateResult } from "./delegate.js";
 
 export function checkAuth(header: string | undefined, token: string): boolean {
-  return header === `Bearer ${token}`;
+  const expected = `Bearer ${token}`;
+  if (typeof header !== "string" || header.length !== expected.length) return false;
+  return timingSafeEqual(Buffer.from(header), Buffer.from(expected));
 }
 
 // --- Tool handlers (unit-tested) ---
@@ -39,11 +42,16 @@ export function makeDelegateHandler(deps: DelegateHandlerDeps) {
         });
       }
     };
-    const result = await deps.runDelegate(args.instruction, onProgress);
-    return {
-      content: [{ type: "text" as const, text: result.text }],
-      structuredContent: { runId: result.runId, commit: result.commit, filesTouched: result.filesTouched },
-    };
+    try {
+      const result = await deps.runDelegate(args.instruction, onProgress);
+      return {
+        content: [{ type: "text" as const, text: result.text }],
+        structuredContent: { runId: result.runId, commit: result.commit, filesTouched: result.filesTouched },
+      };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { content: [{ type: "text" as const, text: `delegate failed: ${message}` }], isError: true };
+    }
   };
 }
 
@@ -57,7 +65,7 @@ export function buildMcpServer(delegateDeps: DelegateDeps): McpServer {
     "find",
     {
       description: "Search and read from your Geode vault (your personal context, recipes and knowledge). Cheap and fast; returns raw content. Provide `path` to list a folder or read a file, or `query` to search file contents.",
-      inputSchema: { path: z.string().optional(), query: z.string().optional() },
+      inputSchema: { path: z.string().optional(), query: z.string().optional(), maxResults: z.number().optional() },
     },
     findHandler,
   );
@@ -77,7 +85,7 @@ export function buildMcpServer(delegateDeps: DelegateDeps): McpServer {
   return server;
 }
 
-export function buildHttpApp(server: McpServer, authToken: string) {
+export function buildHttpApp(makeServer: () => McpServer, authToken: string) {
   const app = express();
   app.use(express.json({ limit: "8mb" }));
   app.post("/mcp", async (req, res) => {
@@ -85,10 +93,17 @@ export function buildHttpApp(server: McpServer, authToken: string) {
       res.status(401).json({ error: "unauthorized" });
       return;
     }
+    const server = makeServer();
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
-    res.on("close", () => void transport.close());
-    await server.connect(transport);
-    await transport.handleRequest(req, res, req.body);
+    res.on("close", () => { void transport.close(); void server.close(); });
+    try {
+      await server.connect(transport);
+      await transport.handleRequest(req, res, req.body);
+    } catch {
+      if (!res.headersSent) {
+        res.status(500).json({ jsonrpc: "2.0", error: { code: -32603, message: "internal error" }, id: null });
+      }
+    }
   });
   return app;
 }

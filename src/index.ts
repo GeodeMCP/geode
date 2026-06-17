@@ -21,8 +21,7 @@ async function main() {
     model: config.model,
   };
 
-  const server = buildMcpServer(delegateDeps);
-  const app = buildHttpApp(server, config.authToken);
+  const app = buildHttpApp(() => buildMcpServer(delegateDeps), config.authToken);
   app.listen(config.port, () => {
     console.log(`Geode kernel listening on http://localhost:${config.port}/mcp (workspace: ${config.workspaceRoot})`);
   });

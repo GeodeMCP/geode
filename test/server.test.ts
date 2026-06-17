@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { checkAuth, makeFindHandler, makeDelegateHandler } from "../src/server.js";
+import { checkAuth, makeFindHandler, makeDelegateHandler, buildMcpServer } from "../src/server.js";
 
 test("checkAuth accepts the correct bearer token and rejects others", () => {
   expect(checkAuth("Bearer secret", "secret")).toBe(true);
@@ -14,6 +14,18 @@ test("find handler returns the result as JSON text content", async () => {
   const payload = JSON.parse(res.content[0].text);
   expect(payload.kind).toBe("list");
   expect(payload.entries).toEqual(["AGENTS.md"]);
+});
+
+test("buildMcpServer returns a fresh server instance per call (no shared transport reuse)", () => {
+  const deps = { workspace: { root: "/vault" }, engine: async function* () {}, runManager: { run: async (fn: any) => fn(new AbortController(), "run-1") }, eventLog: { append: async () => {} }, systemPrompt: "SYS" } as any;
+  expect(buildMcpServer(deps)).not.toBe(buildMcpServer(deps));
+});
+
+test("delegate handler returns a structured error result when the run throws", async () => {
+  const handler = makeDelegateHandler({ runDelegate: async () => { throw new Error("kernel busy: run queue is full"); } } as any);
+  const res = await handler({ instruction: "do X" }, {});
+  expect(res.isError).toBe(true);
+  expect(res.content[0].text).toContain("kernel busy");
 });
 
 test("delegate handler returns result text and forwards progress when a token is present", async () => {
