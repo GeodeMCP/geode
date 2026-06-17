@@ -143,7 +143,8 @@ modals 12–16px; CTA band 18px; avatars 10px/15px; chips/eyebrows/status/dots f
 
 ## 8. Iconography & motion
 - Icons: inline SVG, `stroke="currentColor"`, `stroke-width:2`, `fill:none`, rounded joins
-  (Lucide/Feather thin-line). No icon font.
+  (Lucide/Feather thin-line). No icon font, and **never emoji** — emoji read as amateur and
+  break the aesthetic. Tree/file/connection glyphs, bell, status, etc. are all inline SVG.
 - Motion: uniform/fast/restrained. Standard `.15s cubic-bezier(.4,0,.2,1)` (`--ease`); 3D cards
   `.35s`. Hovers shift border/bg subtly; nothing bounces.
 
