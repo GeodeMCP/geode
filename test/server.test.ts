@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import { checkAuth, makeFindHandler, makeDelegateHandler, buildMcpServer } from "../src/server.js";
+import { makeRememberHandler, makeListCapabilitiesHandler } from "../src/server.js";
 
 test("checkAuth accepts the correct bearer token and rejects others", () => {
   expect(checkAuth("Bearer secret", "secret")).toBe(true);
@@ -42,4 +43,32 @@ test("delegate handler returns result text and forwards progress when a token is
   expect(sent[0].method).toBe("notifications/progress");
   expect(sent[0].params.progressToken).toBe(7);
   expect(sent[0].params.message).toBe("step 1");
+});
+
+test("remember handler returns result text + structured content and forwards progress", async () => {
+  const sent: any[] = [];
+  const handler = makeRememberHandler({
+    runRemember: async (_args: any, onProgress?: (m: string) => void) => {
+      onProgress?.("ingesting");
+      return { runId: "run-1", text: "filed under brand/voice.md", commit: "C1", filesTouched: ["brand/voice.md"] };
+    },
+  } as any);
+  const extra = { _meta: { progressToken: 3 }, sendNotification: async (n: any) => { sent.push(n); } };
+  const res = await handler({ content: "x" }, extra);
+  expect(res.content[0].text).toBe("filed under brand/voice.md");
+  expect(res.structuredContent.filesTouched).toEqual(["brand/voice.md"]);
+  expect(sent[0].params.progressToken).toBe(3);
+});
+
+test("remember handler returns a structured error when the run throws", async () => {
+  const handler = makeRememberHandler({ runRemember: async () => { throw new Error("boom"); } } as any);
+  const res = await handler({ content: "x" }, {});
+  expect(res.isError).toBe(true);
+  expect(res.content[0].text).toContain("boom");
+});
+
+test("list_capabilities handler returns the manifest text", async () => {
+  const handler = makeListCapabilitiesHandler({ root: "/vault", list: async () => "# Capabilities\n- voice" });
+  const res = await handler({}, {});
+  expect(res.content[0].text).toContain("Capabilities");
 });

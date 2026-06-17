@@ -5,6 +5,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { find as findOp, type FindArgs, type FindResult } from "./find.js";
 import { delegate, type DelegateDeps, type DelegateResult } from "./delegate.js";
+import { remember, type RememberArgs } from "./ingest.js";
+import { listCapabilities } from "./capabilities.js";
 
 export function checkAuth(header: string | undefined, token: string): boolean {
   const expected = `Bearer ${token}`;
@@ -26,33 +28,58 @@ export function makeFindHandler(deps: FindHandlerDeps) {
   };
 }
 
+// Shared runner for agentic tools (delegate, remember): streams progress and
+// returns text + structured content, or a structured error on throw.
+async function runAgenticTool(
+  extra: any,
+  run: (onProgress: (m: string) => void) => Promise<DelegateResult>,
+  label: string,
+) {
+  let progress = 0;
+  const token = extra?._meta?.progressToken;
+  const onProgress = (message: string) => {
+    if (token !== undefined && typeof extra?.sendNotification === "function") {
+      void extra.sendNotification({
+        method: "notifications/progress",
+        params: { progressToken: token, progress: ++progress, message },
+      });
+    }
+  };
+  try {
+    const result = await run(onProgress);
+    return {
+      content: [{ type: "text" as const, text: result.text }],
+      structuredContent: { runId: result.runId, commit: result.commit, filesTouched: result.filesTouched },
+    };
+  } catch (err) {
+    return { content: [{ type: "text" as const, text: `${label} failed: ${err instanceof Error ? err.message : String(err)}` }], isError: true };
+  }
+}
+
 export interface DelegateHandlerDeps {
   runDelegate: (instruction: string, onProgress?: (m: string) => void) => Promise<DelegateResult>;
 }
-
 export function makeDelegateHandler(deps: DelegateHandlerDeps) {
-  return async (args: { instruction: string; workspace?: string }, extra: any) => {
-    let progress = 0;
-    const token = extra?._meta?.progressToken;
-    const onProgress = (message: string) => {
-      if (token !== undefined && typeof extra?.sendNotification === "function") {
-        void extra.sendNotification({
-          method: "notifications/progress",
-          params: { progressToken: token, progress: ++progress, message },
-        });
-      }
-    };
-    try {
-      const result = await deps.runDelegate(args.instruction, onProgress);
-      return {
-        content: [{ type: "text" as const, text: result.text }],
-        structuredContent: { runId: result.runId, commit: result.commit, filesTouched: result.filesTouched },
-      };
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      return { content: [{ type: "text" as const, text: `delegate failed: ${message}` }], isError: true };
-    }
-  };
+  return async (args: { instruction: string; workspace?: string }, extra: any) =>
+    runAgenticTool(extra, (op) => deps.runDelegate(args.instruction, op), "delegate");
+}
+
+export interface RememberHandlerDeps {
+  runRemember: (args: RememberArgs, onProgress?: (m: string) => void) => Promise<DelegateResult>;
+}
+export function makeRememberHandler(deps: RememberHandlerDeps) {
+  return async (args: RememberArgs, extra: any) =>
+    runAgenticTool(extra, (op) => deps.runRemember(args, op), "remember");
+}
+
+export interface ListCapabilitiesHandlerDeps {
+  root: string;
+  list: (root: string) => Promise<string>;
+}
+export function makeListCapabilitiesHandler(deps: ListCapabilitiesHandlerDeps) {
+  return async (_args: unknown, _extra: unknown) => ({
+    content: [{ type: "text" as const, text: await deps.list(deps.root) }],
+  });
 }
 
 // --- Server assembly (integration) ---
@@ -80,6 +107,33 @@ export function buildMcpServer(delegateDeps: DelegateDeps): McpServer {
       inputSchema: { instruction: z.string(), workspace: z.string().optional() },
     },
     delegateHandler,
+  );
+
+  const rememberHandler = makeRememberHandler({
+    runRemember: (args, onProgress) => remember(delegateDeps, args, onProgress),
+  });
+  server.registerTool(
+    "remember",
+    {
+      description: "Save a distilled learning, fact, or note in your Geode vault. Give the essence — not a whole conversation; the vault agent integrates, dedups, and files it. Example — content: 'Client X wants invoices on the 1st, net-30.', source: 'call 2026-06-17'.",
+      inputSchema: {
+        content: z.string().describe("The knowledge to save — a distilled, self-contained learning, fact, or note (not a raw transcript); one idea is fine."),
+        source: z.string().optional().describe("Where it came from, for provenance (e.g. 'Claude chat 2026-06-17', a URL, a person)."),
+        title: z.string().optional().describe("A short hint of what this is about, to help filing (the agent refines it)."),
+        workspace: z.string().optional(),
+      },
+    },
+    rememberHandler,
+  );
+
+  const listCapabilitiesHandler = makeListCapabilitiesHandler({ root: delegateDeps.workspace.root, list: listCapabilities });
+  server.registerTool(
+    "list_capabilities",
+    {
+      description: "List what your Geode vault offers — recipes/skills and integrations with their actions. Cheap; call this to learn what the vault can do before delegating.",
+      inputSchema: {},
+    },
+    listCapabilitiesHandler,
   );
 
   return server;
