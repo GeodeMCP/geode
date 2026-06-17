@@ -233,6 +233,8 @@ Validated as a three-zone web UI:
 
 Git underpins it: changes are uncommitted until committed (by the user or auto by the agent);
 the git timeline is the history. Detailed component/interaction spec is its own sub-project.
+Visual style (dark-first, emerald+blue on warm hue-165 near-black, 4-font split) is specified
+in `docs/design/geodemcp-visual-style.md`.
 
 ## 6. Deferred / open
 
