@@ -32,6 +32,26 @@ This is *MCP-as-agent-handoff* rather than *MCP-as-tool-list*. It also dissolves
 the "discovery" problem: the caller does not need to know the vault's internal structure;
 it expresses intent, and our agent navigates the structure itself.
 
+### 2.1 Three operations — caller as orchestrator
+
+User journeys (Perplexity standalone, Perplexity-on-context, retrieve a skill/workflow, the
+Moneybird bookkeeping workflow) revealed three distinct operations, not one:
+
+| Operation | What | Cost | Who reasons |
+|---|---|---|---|
+| `find` | return context, recipes, skills, facts | cheap | caller |
+| `invoke` | run a vault tool/connection, secret injected by the broker, return the result | medium | caller |
+| `delegate` | the agent-in-the-middle does the whole task | expensive | vault |
+
+Default model: **the caller is the orchestrator; the vault is the recipe + the kitchen
+equipment.** The caller `find`s a recipe and `invoke`s the vault's tools (using your
+connections without ever seeing your secrets), reasoning for itself. `delegate` is the
+fallback for weak callers (e.g. a limited ChatGPT integration) or full hand-off.
+`list_capabilities` is the discovery backbone — the caller must know which recipes + tools
+exist. Open mechanic for `invoke` (deferred): expose each connection as its own MCP tool, or
+one generic `invoke(connection, action, params)` + discovery (current lean: the latter, to
+avoid tool-list bloat).
+
 ## 3. Distribution model (open-core)
 
 - **Now:** an open-source, self-hostable kernel. Single-tenant per installation. No
@@ -45,7 +65,7 @@ multi-tenancy, accounts, per-user auth, and billing.
 
 ## 4. Decomposition & build order
 
-1. **Kernel** — MCP server with a `query` tool that runs a headless agent in a git-backed
+1. **Kernel** — MCP server exposing `find` (cheap retrieval) + `delegate` (the agent-in-the-middle), over a git-backed
    workspace. The unproven magic; everything depends on it. *(Specced; build first.)*
 2. **Context tools** — MCP tools to store/organize context, a `list_capabilities`
    discovery tool, the autonomous reorganization ("lint"), and the event log.
