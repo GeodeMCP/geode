@@ -44,6 +44,7 @@ export async function query(
   deps: QueryDeps,
   instruction: string,
   onProgress?: (message: string) => void,
+  opts?: { commit?: boolean },
 ): Promise<QueryResult> {
   return deps.runManager.run(async (abortController, runId) => {
     if (!(await deps.workspace.isClean())) await deps.workspace.resetToHead();
@@ -60,6 +61,11 @@ export async function query(
       })) {
         if (ev.type === "progress") onProgress?.(ev.text);
         else finalText = ev.text;
+      }
+      if (opts?.commit === false) {
+        // Review mode (dashboard): leave changes uncommitted for the human to Commit/Verwerp.
+        const filesTouched = await deps.workspace.uncommittedChanges();
+        return { runId, text: finalText, commit: null, filesTouched };
       }
       const commit = await deps.workspace.commitAll(`query ${runId}: ${truncate(instruction, 60)}`);
       const filesTouched = commit ? await deps.workspace.changedFilesSince(before) : [];

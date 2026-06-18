@@ -6,10 +6,14 @@ import { claudeAgentEngine } from "./engine.js";
 import { CONSTITUTION } from "./constitution.js";
 import { buildMcpServer, buildHttpApp } from "./server.js";
 import type { QueryDeps } from "./query.js";
+import { query } from "./query.js";
+import { remember } from "./ingest.js";
 import { seedVault, ensureArtifactsIgnored } from "./seed.js";
 import { createSecretStore, loadOrCreateKey } from "./secrets.js";
 import { createArtifactStore } from "./artifacts.js";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { mountDashboard } from "./dashboard/index.js";
 
 async function main() {
   const config = loadConfig();
@@ -46,6 +50,22 @@ async function main() {
   };
 
   const app = buildHttpApp(() => buildMcpServer(queryDeps, { secrets, artifacts }), config.authToken, artifacts);
+
+  if (config.dashboardPassword) {
+    const sessionKey = loadOrCreateKey(join(config.secretsDir, "session"), process.env.GEODE_SESSION_KEY);
+    const webDir = join(dirname(fileURLToPath(import.meta.url)), "..", "web", "dist");
+    mountDashboard(app, {
+      sessionKey,
+      dashboardPassword: config.dashboardPassword,
+      secure: config.baseUrl.startsWith("https://"),
+      workspace,
+      webDir,
+      runQuery: (instruction, onProgress) => query(queryDeps, instruction, onProgress, { commit: false }),
+      runRemember: (args, onProgress) => remember(queryDeps, args, onProgress, { commit: false }),
+    });
+    console.log(`Dashboard enabled at ${config.baseUrl}/`);
+  }
+
   app.listen(config.port, () => {
     console.log(`Geode kernel listening on http://localhost:${config.port}/mcp (workspace: ${config.workspaceRoot})`);
   });
