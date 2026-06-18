@@ -3,7 +3,6 @@ import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { find as findOp, type FindArgs, type FindResult } from "./find.js";
 import { query, type QueryDeps, type QueryResult } from "./query.js";
 import { remember, type RememberArgs } from "./ingest.js";
 import { listCapabilities } from "./capabilities.js";
@@ -15,18 +14,6 @@ export function checkAuth(header: string | undefined, token: string): boolean {
 }
 
 // --- Tool handlers (unit-tested) ---
-
-export interface FindHandlerDeps {
-  root: string;
-  find: (root: string, args: FindArgs) => Promise<FindResult>;
-}
-
-export function makeFindHandler(deps: FindHandlerDeps) {
-  return async (args: FindArgs, _extra: unknown) => {
-    const result = await deps.find(deps.root, args);
-    return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
-  };
-}
 
 // Shared runner for agentic tools (query, remember): streams progress and
 // returns text + structured content, or a structured error on throw.
@@ -86,16 +73,6 @@ export function makeListCapabilitiesHandler(deps: ListCapabilitiesHandlerDeps) {
 
 export function buildMcpServer(queryDeps: QueryDeps): McpServer {
   const server = new McpServer({ name: "geode-kernel", version: "0.1.0" });
-
-  const findHandler = makeFindHandler({ root: queryDeps.workspace.root, find: findOp });
-  server.registerTool(
-    "find",
-    {
-      description: "Search and read from your Geode vault (your personal context, recipes and knowledge). Cheap and fast; returns raw content. Provide `path` to list a folder or read a file, or `query` to search file contents.",
-      inputSchema: { path: z.string().optional(), query: z.string().optional(), maxResults: z.number().optional() },
-    },
-    findHandler,
-  );
 
   const queryHandler = makeQueryHandler({
     runQuery: (instruction, onProgress) => query(queryDeps, instruction, onProgress),

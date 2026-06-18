@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { checkAuth, makeFindHandler, makeQueryHandler, buildMcpServer } from "../src/server.js";
+import { checkAuth, makeQueryHandler, buildMcpServer } from "../src/server.js";
 import { makeRememberHandler, makeListCapabilitiesHandler } from "../src/server.js";
 
 test("checkAuth accepts the correct bearer token and rejects others", () => {
@@ -7,14 +7,6 @@ test("checkAuth accepts the correct bearer token and rejects others", () => {
   expect(checkAuth("Bearer wrong", "secret")).toBe(false);
   expect(checkAuth(undefined, "secret")).toBe(false);
   expect(checkAuth("secret", "secret")).toBe(false);
-});
-
-test("find handler returns the result as JSON text content", async () => {
-  const handler = makeFindHandler({ root: "/vault", find: async () => ({ kind: "list", entries: ["AGENTS.md"] }) } as any);
-  const res = await handler({ path: "." }, {});
-  const payload = JSON.parse(res.content[0].text);
-  expect(payload.kind).toBe("list");
-  expect(payload.entries).toEqual(["AGENTS.md"]);
 });
 
 test("buildMcpServer returns a fresh server instance per call (no shared transport reuse)", () => {
