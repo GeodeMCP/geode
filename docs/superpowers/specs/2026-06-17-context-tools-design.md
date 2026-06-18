@@ -1,5 +1,10 @@
 # Context Tools — Design Spec (Sub-project #2)
 
+> **Updated 2026-06-18:** `list_capabilities` is revised to **derive** the menu from OKF frontmatter +
+> integration manifests (replacing the hand-maintained `capabilities.md` described below), and
+> `remember` wraps **`query`** (renamed from `delegate`). See the architecture doc + the #3 spec
+> (`2026-06-17-secret-broker-design.md`) for the current model.
+
 > Status: **Draft (brainstorm output, 2026-06-17).** Builds directly on the kernel
 > (`2026-06-17-kernel-design.md`) and the architecture doc
 > (`2026-06-17-context-vault-architecture.md`). Reuses the kernel's engine, run manager,

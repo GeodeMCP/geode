@@ -1,5 +1,10 @@
 # Kernel — Design Spec (Sub-project #1)
 
+> **Updated 2026-06-18:** the agentic tool `delegate` is renamed **`query`** and the mechanical
+> `find` tool is **removed** (all context access goes through `query`) in the v1-core completion cut
+> (`2026-06-17-secret-broker-design.md`). This doc records the kernel as originally built; the
+> architecture doc + #3 spec hold the current surface.
+
 > Status: **Draft (brainstorm output, 2026-06-17), approved-but-not-frozen.**
 > The kernel is the foundation: an MCP web service that serves a git-backed workspace
 > through a cheap retrieval surface and an embedded agent. See
