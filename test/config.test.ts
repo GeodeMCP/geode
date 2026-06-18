@@ -42,3 +42,9 @@ test("env overrides for artifactsDir, baseUrl and secretsDir", () => {
   expect(cfg.baseUrl).toBe("https://example.com");
   expect(cfg.secretsDir).toBe("/run/secrets");
 });
+
+test("dashboardPassword is read from env and is undefined by default", () => {
+  const base = { GEODE_AUTH_TOKEN: "t", GEODE_WORKSPACE: "/tmp/x" };
+  expect(loadConfig({ ...base }).dashboardPassword).toBeUndefined();
+  expect(loadConfig({ ...base, GEODE_DASHBOARD_PASSWORD: "hunter2" }).dashboardPassword).toBe("hunter2");
+});
