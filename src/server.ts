@@ -159,7 +159,9 @@ export function buildHttpApp(makeServer: () => McpServer, authToken: string, art
   app.use(express.json({ limit: "8mb" }));
   if (artifacts) {
     app.get(/^\/artifacts\/(.+)$/, (req, res) => {
-      const relPath = decodeURIComponent((req.params as any)[0] as string);
+      // Express 5 already URI-decodes the captured path segment; decoding again
+      // would throw URIError on a lone '%' (→ uncaught 500 + stack-trace leak).
+      const relPath = (req.params as any)[0] as string;
       const authed = checkAuth(req.headers.authorization, authToken);
       const exp = typeof req.query.exp === "string" ? req.query.exp : undefined;
       const sig = typeof req.query.sig === "string" ? req.query.sig : undefined;

@@ -9,6 +9,11 @@ test("resolveTemplate substitutes params and secrets", () => {
   expect(resolveTemplate("/u/${params.id}", { params: { id: "7" }, secrets: {} })).toBe("/u/7");
 });
 
+test("resolveTemplate throws on an unresolved reference (no silent empty substitution)", () => {
+  expect(() => resolveTemplate("/u/${params.id}", { params: {}, secrets: {} })).toThrow(/params\.id/);
+  expect(() => resolveTemplate("Bearer ${secrets.K}", { params: {}, secrets: {} })).toThrow(/secrets\.K/);
+});
+
 let root: string;
 beforeEach(() => { root = mkdtempSync(join(tmpdir(), "geode-int-")); });
 afterEach(() => { rmSync(root, { recursive: true, force: true }); });

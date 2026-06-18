@@ -12,6 +12,9 @@ export async function loadIntegration(root: string, name: string): Promise<Integ
 export function resolveTemplate(input: string, ctx: { params: Record<string, unknown>; secrets: Record<string, string> }): string {
   return input.replace(/\$\{(params|secrets)\.([\w-]+)\}/g, (_m, ns: string, k: string) => {
     const v = ns === "params" ? ctx.params[k] : ctx.secrets[k];
-    return v === undefined || v === null ? "" : String(v);
+    // Fail loudly rather than silently substituting "" — an unresolved ref would
+    // otherwise fire a malformed request at a real external API.
+    if (v === undefined || v === null) throw new Error(`unresolved template reference: \${${ns}.${k}} — provide it in the invoke ${ns}`);
+    return String(v);
   });
 }
