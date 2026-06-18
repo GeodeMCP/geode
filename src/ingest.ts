@@ -21,9 +21,10 @@ export async function remember(
   deps: QueryDeps,
   args: RememberArgs,
   onProgress?: (message: string) => void,
+  opts?: { commit?: boolean },
 ): Promise<QueryResult> {
   if (!args.content || !args.content.trim()) {
     throw new Error("remember: content is required and cannot be empty");
   }
-  return query(deps, buildIngestInstruction(args.content, args.source, args.title), onProgress);
+  return query(deps, buildIngestInstruction(args.content, args.source, args.title), onProgress, opts);
 }
