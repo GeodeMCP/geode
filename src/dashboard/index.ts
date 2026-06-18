@@ -16,5 +16,9 @@ export function mountDashboard(app: Express, deps: DashboardDeps): void {
     app.use(express.static(deps.webDir));
     // SPA fallback: any non-/api, non-/mcp, non-/artifacts GET returns index.html
     app.get(/^\/(?!api\/|mcp$|artifacts\/).*/, (_req, res) => { res.sendFile(join(deps.webDir, "index.html")); });
+  } else {
+    app.get(/^\/(?!api\/|mcp$|artifacts\/).*/, (_req, res) => {
+      res.status(503).type("text/plain").send("Dashboard SPA not built. Run: cd web && npm run build");
+    });
   }
 }

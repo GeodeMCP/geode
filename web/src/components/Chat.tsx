@@ -1,11 +1,12 @@
 import { useState } from "react";
 import type { SseEvent } from "../api";
 type Msg = { who: "me" | "ag" | "card" | "progress"; text: string };
-export function Chat({ onSend, running }: { onSend: (instruction: string, onEvent: (e: SseEvent) => void) => Promise<void>; running: boolean }) {
+export function Chat({ onSend, running, dirty }: { onSend: (instruction: string, onEvent: (e: SseEvent) => void) => Promise<void>; running: boolean; dirty: boolean }) {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [text, setText] = useState("");
   const submit = async () => {
     const instruction = text.trim(); if (!instruction || running) return;
+    if (dirty) { setMsgs((m) => [...m, { who: "ag", text: "Commit of verwerp eerst je openstaande wijzigingen." }]); return; }
     setText(""); setMsgs((m) => [...m, { who: "me", text: instruction }]);
     await onSend(instruction, (e) => {
       if (e.event === "progress") setMsgs((m) => [...m, { who: "progress", text: e.data.message }]);

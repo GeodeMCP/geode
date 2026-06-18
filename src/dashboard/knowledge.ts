@@ -28,7 +28,8 @@ export function parseStatus(porcelain: string): { modified: string[]; created: s
   const modified: string[] = [], created: string[] = [];
   for (const line of porcelain.split("\n")) {
     if (!line.trim()) continue;
-    const code = line.slice(0, 2), path = line.slice(3);
+    const norm = line.length < 3 || line[2] !== " " ? " " + line : line;
+    const code = norm.slice(0, 2), path = norm.slice(3);
     if (code === "??" || code[0] === "A") created.push(path);
     else modified.push(path);
   }

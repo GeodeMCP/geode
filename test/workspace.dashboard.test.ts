@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createWorkspace } from "../src/workspace.js";
@@ -27,4 +28,18 @@ test("fileContent rejects path traversal", async () => {
   const ws = createWorkspace(root);
   await ws.init();
   await expect(ws.fileContent("../secret")).rejects.toThrow(/outside/);
+});
+
+test("fileContent rejects a symlink that escapes the workspace, and machinery dirs", async () => {
+  const ws = createWorkspace(root); await ws.init();
+  symlinkSync("/etc/hosts", join(root, "escape.md"));
+  await expect(ws.fileContent("escape.md")).rejects.toThrow(/outside|not allowed/);
+  await expect(ws.fileContent(".git/config")).rejects.toThrow(/not allowed/);
+});
+
+test("diff shows a newly-created (untracked) file as additions", async () => {
+  const ws = createWorkspace(root); await ws.init();
+  writeFileSync(join(root, "index.md"), "# Index\n"); await ws.commitAll("seed");
+  writeFileSync(join(root, "fresh.md"), "brand new line\n");
+  expect(await ws.diff("fresh.md")).toContain("brand new line");
 });

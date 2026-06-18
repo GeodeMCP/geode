@@ -37,7 +37,7 @@ export function VaultHome() {
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
       <TopBar />
       <div className="main">
-        <Chat onSend={send} running={running} />
+        <Chat onSend={send} running={running} dirty={dirty} />
         <FileTree tree={tree} status={status} selected={selected} onSelect={setSelected} />
         <Viewer path={selected} diff={diff} dirty={dirty} onCommit={commit} onDiscard={discard} />
       </div>

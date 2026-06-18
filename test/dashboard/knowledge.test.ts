@@ -32,3 +32,10 @@ test("parseStatus splits modified vs created", () => {
   expect(out.modified).toContain("index.md");
   expect(out.created.sort()).toEqual(["clients/y.md", "note.md"]);
 });
+
+test("parseStatus handles a runGit-trimmed first modified line (leading space stripped)", () => {
+  // runGit trims stdout, turning " M index.md" into "M index.md"
+  const out = parseStatus("M index.md\n?? note.md");
+  expect(out.modified).toEqual(["index.md"]);
+  expect(out.created).toEqual(["note.md"]);
+});

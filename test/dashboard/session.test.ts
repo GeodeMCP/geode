@@ -1,4 +1,4 @@
-import { expect, test, vi } from "vitest";
+import { expect, test } from "vitest";
 import { signSession, verifySession, parseCookie } from "../../src/dashboard/session.js";
 
 const key = Buffer.from("k".repeat(32));
