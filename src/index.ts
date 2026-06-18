@@ -11,6 +11,7 @@ import { remember } from "./ingest.js";
 import { seedVault, ensureArtifactsIgnored } from "./seed.js";
 import { createSecretStore, loadOrCreateKey } from "./secrets.js";
 import { createArtifactStore } from "./artifacts.js";
+import { invoke } from "./invoke.js";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { mountDashboard } from "./dashboard/index.js";
@@ -62,6 +63,12 @@ async function main() {
       webDir,
       runQuery: (instruction, onProgress) => query(queryDeps, instruction, onProgress, { commit: false }),
       runRemember: (args, onProgress) => remember(queryDeps, args, onProgress, { commit: false }),
+      secrets,
+      artifacts,
+      artifactsDir: config.artifactsDir,
+      baseUrl: config.baseUrl,
+      invoke: (args) => invoke({ root: workspace.root, secrets }, args),
+      linkKey: loadOrCreateKey(join(config.secretsDir, "link"), process.env.GEODE_LINK_KEY),
     });
     console.log(`Dashboard enabled at ${config.baseUrl}/`);
   }

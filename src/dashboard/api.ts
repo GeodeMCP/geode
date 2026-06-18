@@ -3,9 +3,14 @@ import { timingSafeEqual } from "node:crypto";
 import type { Workspace } from "../workspace.js";
 import type { QueryResult } from "../query.js";
 import type { RememberArgs } from "../ingest.js";
+import type { SecretStore } from "../secrets.js";
+import type { ArtifactStore } from "../artifacts.js";
 import { signSession, requireSession, setSessionCookie, clearSessionCookie } from "./session.js";
 import { buildKnowledgeTree, parseStatus } from "./knowledge.js";
 import { openSse } from "./sse.js";
+import { deriveCapabilities } from "../capabilities.js";
+import { listIntegrations, getIntegration, listSecrets, listArtifacts } from "./ops.js";
+import { mintSecretLink } from "./secretLinks.js";
 
 export interface ApiDeps {
   sessionKey: Buffer;
@@ -14,8 +19,15 @@ export interface ApiDeps {
   workspace: Workspace;
   runQuery: (instruction: string, onProgress: (m: string) => void) => Promise<QueryResult>;
   runRemember: (args: RememberArgs, onProgress: (m: string) => void) => Promise<QueryResult>;
+  linkKey: Buffer;
+  secrets: Pick<SecretStore, "list" | "delete" | "set">;
+  artifacts: Pick<ArtifactStore, "mintPublicUrl" | "resolve">;
+  artifactsDir: string;
+  baseUrl: string;
+  invoke: (args: { integration: string; action: string; params?: Record<string, unknown> }) => Promise<{ status: number; body: unknown }>;
 }
 
+const SAFE_NAME = /^[A-Za-z0-9_-]+$/;
 const SESSION_TTL = 86_400_000; // 24h
 
 export function createApiRouter(deps: ApiDeps): Router {
@@ -62,6 +74,40 @@ export function createApiRouter(deps: ApiDeps): Router {
     res.json({ commit });
   });
   router.post("/discard", async (_req, res) => { await deps.workspace.resetToHead(); res.json({ ok: true }); });
+
+  router.get("/capabilities", async (_req, res) => { res.json(await deriveCapabilities(deps.workspace.root)); });
+
+  router.get("/integrations", async (_req, res) => { res.json(await listIntegrations(deps.workspace.root, deps.secrets)); });
+  router.get("/integrations/:name", async (req, res) => {
+    if (!SAFE_NAME.test(req.params.name)) { res.status(404).json({ error: "unknown integration" }); return; }
+    try { res.json(await getIntegration(deps.workspace.root, req.params.name, deps.secrets)); }
+    catch { res.status(404).json({ error: "unknown integration" }); }
+  });
+  router.post("/integrations/:name/test", async (req, res) => {
+    if (!SAFE_NAME.test(req.params.name)) { res.status(404).json({ error: "unknown integration" }); return; }
+    try { res.json(await deps.invoke({ integration: req.params.name, action: String(req.body?.action ?? ""), params: req.body?.params ?? {} })); }
+    catch (e) { res.status(400).json({ error: e instanceof Error ? e.message : String(e) }); }
+  });
+
+  router.get("/secrets", async (_req, res) => { res.json(await listSecrets(deps.workspace.root, deps.secrets)); });
+  router.post("/secrets/:ref/link", (req, res) => {
+    if (!SAFE_NAME.test(req.params.ref)) { res.status(400).json({ error: "invalid ref" }); return; }
+    res.json({ url: `${deps.baseUrl}/auth/s/${mintSecretLink(deps.linkKey, req.params.ref, 600_000)}` });
+  });
+  router.delete("/secrets/:ref", async (req, res) => {
+    if (!SAFE_NAME.test(req.params.ref)) { res.status(400).json({ error: "invalid ref" }); return; }
+    await deps.secrets.delete(req.params.ref); res.json({ ok: true });
+  });
+
+  router.get("/artifacts", async (_req, res) => { res.json(listArtifacts(deps.artifactsDir)); });
+  router.get("/artifacts/download", (req, res) => {
+    try { res.sendFile(deps.artifacts.resolve(String(req.query.path ?? "")), (err) => { if (err && !res.headersSent) res.status(404).json({ error: "not found" }); }); }
+    catch { res.status(400).json({ error: "bad path" }); }
+  });
+  router.post("/artifacts/public-link", (req, res) => {
+    try { res.json({ url: deps.artifacts.mintPublicUrl(String(req.body?.path ?? "")) }); }
+    catch (e) { res.status(400).json({ error: e instanceof Error ? e.message : String(e) }); }
+  });
 
   return router;
 }

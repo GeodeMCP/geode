@@ -1,4 +1,5 @@
 export interface TreeNode { name: string; path: string; type: "file" | "dir"; children?: TreeNode[] }
+export interface IntegrationView { name: string; type: string; description: string; actions: { name: string; method: string; url: string; description?: string }[]; requiredSecrets: { ref: string; set: boolean }[] }
 export interface SseEvent { event: string; data: any }
 
 /** Parse a buffer of SSE text into complete events + the unparsed remainder. */
@@ -32,6 +33,16 @@ export const api = {
   status: () => json<{ modified: string[]; created: string[] }>("/api/status"),
   commit: (message?: string) => json<{ commit: string | null }>("/api/commit", { method: "POST", body: JSON.stringify({ message }) }),
   discard: () => json<{ ok: true }>("/api/discard", { method: "POST" }),
+  capabilities: () => json<{ integrations: { name: string; description: string; actions: string[] }[]; recipes: { title: string; description: string; path: string }[] }>("/api/capabilities"),
+  integrations: () => json<IntegrationView[]>("/api/integrations"),
+  integration: (name: string) => json<IntegrationView>(`/api/integrations/${encodeURIComponent(name)}`),
+  testAction: (name: string, action: string, params: Record<string, unknown>) => json<{ status: number; body: unknown }>(`/api/integrations/${encodeURIComponent(name)}/test`, { method: "POST", body: JSON.stringify({ action, params }) }),
+  secrets: () => json<{ ref: string; requiredBy: string[] }[]>("/api/secrets"),
+  secretLink: (ref: string) => json<{ url: string }>(`/api/secrets/${encodeURIComponent(ref)}/link`, { method: "POST" }),
+  deleteSecret: (ref: string) => json<{ ok: true }>(`/api/secrets/${encodeURIComponent(ref)}`, { method: "DELETE" }),
+  artifacts: () => json<{ path: string }[]>("/api/artifacts"),
+  artifactDownload: (path: string) => `/api/artifacts/download?path=${encodeURIComponent(path)}`,
+  artifactPublicLink: (path: string) => json<{ url: string }>("/api/artifacts/public-link", { method: "POST", body: JSON.stringify({ path }) }),
   /** Stream an agent run; calls onEvent for each SSE event until the stream closes. */
   async run(path: "/api/query" | "/api/remember", body: object, onEvent: (e: SseEvent) => void): Promise<void> {
     const res = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });

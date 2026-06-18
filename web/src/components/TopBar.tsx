@@ -1,5 +1,6 @@
-export function TopBar() {
-  const items = ["Vault", "Capabilities", "Integrations", "Secrets", "Artifacts"];
+export const VIEWS = ["Vault", "Capabilities", "Integrations", "Secrets", "Artifacts"] as const;
+export type View = typeof VIEWS[number];
+export function TopBar({ view, onNav }: { view: View; onNav: (v: View) => void }) {
   return (
     <div className="topbar">
       <div className="brand">
@@ -7,7 +8,7 @@ export function TopBar() {
         <span className="name">Geode</span>
         <span className="ws">personal-vault</span>
       </div>
-      <nav>{items.map((it, i) => <a key={it} className={i === 0 ? "active" : ""}>{it}</a>)}</nav>
+      <nav>{VIEWS.map((v) => <a key={v} className={v === view ? "active" : ""} onClick={() => onNav(v)} style={{ cursor: "pointer" }}>{v}</a>)}</nav>
       <div className="tb-right"><span className="chip live"><span className="pulse" />live</span><span className="avatar" /></div>
     </div>
   );

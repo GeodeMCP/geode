@@ -19,6 +19,12 @@ async function boot() {
     sessionKey: KEY, dashboardPassword: "pw", secure: false, workspace: ws,
     runQuery: async (instruction, onProgress) => { onProgress("thinking"); writeFileSync(join(root, "note.md"), "x"); return { runId: "r1", text: "ok: " + instruction, commit: null, filesTouched: ["note.md"] }; },
     runRemember: async (_args, onProgress) => { onProgress("filing"); return { runId: "r2", text: "filed", commit: null, filesTouched: [] }; },
+    linkKey: KEY,
+    secrets: { list: async () => [], delete: async () => {}, set: async () => {} } as any,
+    artifacts: {} as any,
+    artifactsDir: root,
+    baseUrl: "http://h",
+    invoke: async () => ({ status: 200, body: {} }),
   }));
   await new Promise<void>((r) => { server = app.listen(0, () => { url = `http://localhost:${(server.address() as any).port}`; r(); }); });
 }

@@ -5,6 +5,7 @@ export interface IntegrationAction { method: "GET"|"POST"|"PUT"|"PATCH"|"DELETE"
 export interface IntegrationManifest { name: string; type: "connection"; description: string; requires: string[]; actions: Record<string, IntegrationAction> }
 
 export async function loadIntegration(root: string, name: string): Promise<IntegrationManifest> {
+  if (!/^[A-Za-z0-9_-]+$/.test(name)) throw new Error(`invalid integration name: ${name}`);
   const raw = await readFile(join(root, "integrations", name, "manifest.json"), "utf8");
   return JSON.parse(raw) as IntegrationManifest;
 }
