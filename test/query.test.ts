@@ -1,4 +1,7 @@
 import { expect, test } from "vitest";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { query, type QueryDeps } from "../src/query.js";
 import { createRunManager } from "../src/runManager.js";
 import type { EngineEvent } from "../src/engine.js";
@@ -61,4 +64,17 @@ test("on engine failure: resets, logs error, COMMITS the error entry, rethrows (
   expect(ws.calls).toContain("commit:query run-1: log (error)");
   expect(ws.calls.some((c) => c.includes("do Y"))).toBe(false); // agent change never committed
   expect(log.entries[0]).toMatchObject({ status: "error" });
+});
+
+test("reports only newly-created artifacts (diffs pre-existing) with bearer URLs", async () => {
+  const artifactsDir = mkdtempSync(join(tmpdir(), "geode-qa-"));
+  writeFileSync(join(artifactsDir, "old.md"), "old");           // pre-existing → must NOT be reported
+  const writingEngine = async function* () {
+    writeFileSync(join(artifactsDir, "new.md"), "new");          // created during the run → reported
+    yield { type: "result", text: "done" } as any;
+  };
+  const d = deps({ engine: writingEngine as any, artifactsDir, baseUrl: "http://h" } as any);
+  const res = await query(d, "make a report");
+  expect(res.artifacts).toEqual([{ path: "new.md", url: "http://h/artifacts/new.md" }]);
+  rmSync(artifactsDir, { recursive: true, force: true });
 });

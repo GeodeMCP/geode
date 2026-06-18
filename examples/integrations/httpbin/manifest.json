@@ -1,0 +1,14 @@
+{
+  "name": "httpbin",
+  "type": "connection",
+  "description": "Sample HTTP integration against httpbin.org — demonstrates server-side secret injection. Copy into <vault>/integrations/httpbin/ to try invoke.",
+  "requires": ["DEMO_KEY"],
+  "actions": {
+    "headers": {
+      "method": "GET",
+      "url": "https://httpbin.org/headers",
+      "headers": { "X-Demo": "Bearer ${secrets.DEMO_KEY}" },
+      "description": "Echoes the request headers back. The injected X-Demo header proves the broker supplied DEMO_KEY server-side; the caller never sees the secret."
+    }
+  }
+}
