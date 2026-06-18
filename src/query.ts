@@ -1,3 +1,5 @@
+import { existsSync, readdirSync } from "node:fs";
+import { join, relative, sep } from "node:path";
 import type { Engine } from "./engine.js";
 import type { EventLog } from "./eventLog.js";
 import type { RunManager } from "./runManager.js";
@@ -10,6 +12,8 @@ export interface QueryDeps {
   eventLog: EventLog;
   systemPrompt: string;
   model?: string;
+  artifactsDir?: string;
+  baseUrl?: string;
 }
 
 export interface QueryResult {
@@ -17,6 +21,21 @@ export interface QueryResult {
   text: string;
   commit: string | null;
   filesTouched: string[];
+  artifacts?: { path: string; url: string }[];
+}
+
+function listArtifacts(dir: string): string[] {
+  if (!existsSync(dir)) return [];
+  const out: string[] = [];
+  const walk = (d: string) => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      const p = join(d, e.name);
+      if (e.isDirectory()) walk(p);
+      else out.push(relative(dir, p).split(sep).join("/"));
+    }
+  };
+  walk(dir);
+  return out;
 }
 
 const truncate = (s: string, n = 200): string => (s.length > n ? `${s.slice(0, n)}…` : s);
@@ -29,6 +48,7 @@ export async function query(
   return deps.runManager.run(async (abortController, runId) => {
     if (!(await deps.workspace.isClean())) await deps.workspace.resetToHead();
     const before = await deps.workspace.head();
+    const artifactsBefore = deps.artifactsDir ? new Set(listArtifacts(deps.artifactsDir)) : new Set<string>();
     let finalText = "";
     try {
       for await (const ev of deps.engine({
@@ -47,7 +67,14 @@ export async function query(
       // Persist the event-log entry itself: it is written after the agent commit, so it would
       // otherwise stay uncommitted and be wiped by the next run's clean/reset.
       await deps.workspace.commitAll(`query ${runId}: log`);
-      return { runId, text: finalText, commit, filesTouched };
+      let artifacts: { path: string; url: string }[] | undefined;
+      if (deps.artifactsDir && deps.baseUrl) {
+        const base = deps.baseUrl;
+        artifacts = listArtifacts(deps.artifactsDir)
+          .filter((a) => !artifactsBefore.has(a))
+          .map((p) => ({ path: p, url: `${base}/artifacts/${p}` }));
+      }
+      return { runId, text: finalText, commit, filesTouched, artifacts };
     } catch (err) {
       await deps.workspace.resetToHead();
       await deps.eventLog.append({ runId, instruction, status: "error", error: String(err) });

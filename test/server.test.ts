@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { checkAuth, makeQueryHandler, buildMcpServer } from "../src/server.js";
+import { checkAuth, makeQueryHandler, buildMcpServer, makeInvokeHandler } from "../src/server.js";
 import { makeRememberHandler, makeListCapabilitiesHandler } from "../src/server.js";
 
 test("checkAuth accepts the correct bearer token and rejects others", () => {
@@ -63,4 +63,16 @@ test("list_capabilities handler returns the manifest text", async () => {
   const handler = makeListCapabilitiesHandler({ root: "/vault", derive: async () => ({ text: "# Capabilities\n(nothing yet)" }) });
   const res = await handler({}, {});
   expect(res.content[0].text).toContain("Capabilities");
+});
+
+test("invoke handler returns status + body", async () => {
+  const handler = makeInvokeHandler({ invoke: async () => ({ status: 200, body: { ok: true } }) } as any);
+  const res = await handler({ integration: "demo", action: "ping" } as any, {});
+  expect(JSON.parse(res.content[0].text).status).toBe(200);
+});
+test("invoke handler returns a structured error when invoke throws", async () => {
+  const handler = makeInvokeHandler({ invoke: async () => { throw new Error("boom"); } } as any);
+  const res = await handler({ integration: "x", action: "y" } as any, {});
+  expect(res.isError).toBe(true);
+  expect(res.content[0].text).toContain("boom");
 });

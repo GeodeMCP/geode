@@ -6,6 +6,9 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { query, type QueryDeps, type QueryResult } from "./query.js";
 import { remember, type RememberArgs } from "./ingest.js";
 import { deriveCapabilities } from "./capabilities.js";
+import { invoke, type InvokeArgs, type InvokeResult } from "./invoke.js";
+import type { SecretStore } from "./secrets.js";
+import type { ArtifactStore } from "./artifacts.js";
 
 export function checkAuth(header: string | undefined, token: string): boolean {
   const expected = `Bearer ${token}`;
@@ -34,9 +37,12 @@ async function runAgenticTool(
   };
   try {
     const result = await run(onProgress);
+    const text = result.artifacts && result.artifacts.length
+      ? `${result.text}\n\nArtifacts:\n${result.artifacts.map((a) => `- ${a.url}`).join("\n")}`
+      : result.text;
     return {
-      content: [{ type: "text" as const, text: result.text }],
-      structuredContent: { runId: result.runId, commit: result.commit, filesTouched: result.filesTouched },
+      content: [{ type: "text" as const, text }],
+      structuredContent: { runId: result.runId, commit: result.commit, filesTouched: result.filesTouched, artifacts: result.artifacts },
     };
   } catch (err) {
     return { content: [{ type: "text" as const, text: `${label} failed: ${err instanceof Error ? err.message : String(err)}` }], isError: true };
@@ -69,9 +75,26 @@ export function makeListCapabilitiesHandler(deps: ListCapabilitiesHandlerDeps) {
   });
 }
 
+export interface InvokeHandlerDeps {
+  invoke: (args: InvokeArgs) => Promise<InvokeResult>;
+}
+export function makeInvokeHandler(deps: InvokeHandlerDeps) {
+  return async (args: InvokeArgs, _extra: any) => {
+    try {
+      const r = await deps.invoke(args);
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify(r, null, 2) }],
+        structuredContent: { status: r.status },
+      };
+    } catch (e) {
+      return { content: [{ type: "text" as const, text: `invoke failed: ${e instanceof Error ? e.message : String(e)}` }], isError: true };
+    }
+  };
+}
+
 // --- Server assembly (integration) ---
 
-export function buildMcpServer(queryDeps: QueryDeps): McpServer {
+export function buildMcpServer(queryDeps: QueryDeps, opts?: { secrets?: SecretStore; artifacts?: ArtifactStore }): McpServer {
   const server = new McpServer({ name: "geode-kernel", version: "0.1.0" });
 
   const queryHandler = makeQueryHandler({
@@ -113,12 +136,47 @@ export function buildMcpServer(queryDeps: QueryDeps): McpServer {
     listCapabilitiesHandler,
   );
 
+  if (opts?.secrets) {
+    const secrets = opts.secrets;
+    const invokeHandler = makeInvokeHandler({
+      invoke: (a) => invoke({ root: queryDeps.workspace.root, secrets }, a),
+    });
+    server.registerTool(
+      "invoke",
+      {
+        description: "Run one action of an integration in your Geode vault — you (the caller) execute it; the server injects the required secret. First ask `query` for the plan (or read the integration manifest) to learn the action + params.",
+        inputSchema: { integration: z.string(), action: z.string(), params: z.record(z.string(), z.any()).optional(), workspace: z.string().optional() },
+      },
+      invokeHandler,
+    );
+  }
+
   return server;
 }
 
-export function buildHttpApp(makeServer: () => McpServer, authToken: string) {
+export function buildHttpApp(makeServer: () => McpServer, authToken: string, artifacts?: ArtifactStore) {
   const app = express();
   app.use(express.json({ limit: "8mb" }));
+  if (artifacts) {
+    app.get(/^\/artifacts\/(.+)$/, (req, res) => {
+      const relPath = decodeURIComponent((req.params as any)[0] as string);
+      const authed = checkAuth(req.headers.authorization, authToken);
+      const exp = typeof req.query.exp === "string" ? req.query.exp : undefined;
+      const sig = typeof req.query.sig === "string" ? req.query.sig : undefined;
+      const signed = exp !== undefined && sig !== undefined && artifacts.verifyPublic(relPath, exp, sig);
+      if (!authed && !signed) {
+        const sigAttempt = exp !== undefined || sig !== undefined;
+        res.status(sigAttempt ? 403 : 401).json({ error: sigAttempt ? "invalid or expired signature" : "unauthorized" });
+        return;
+      }
+      let abs: string;
+      try { abs = artifacts.resolve(relPath); }
+      catch { res.status(400).json({ error: "bad path" }); return; }
+      res.sendFile(abs, (err: unknown) => {
+        if (err && !res.headersSent) res.status(404).json({ error: "not found" });
+      });
+    });
+  }
   app.post("/mcp", async (req, res) => {
     if (!checkAuth(req.headers.authorization, authToken)) {
       res.status(401).json({ error: "unauthorized" });
