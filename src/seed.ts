@@ -3,9 +3,13 @@ import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 export const SCAFFOLD: Record<string, string> = {
-  "AGENTS.md": `# Vault schema
+  "AGENTS.md": `---
+type: schema
+title: Vault schema
+description: Conventions for this Geode vault (you and the agent co-evolve this)
+---
 
-This file is the schema for this Geode vault. You and the agent co-evolve it.
+# Vault schema
 
 ## Folder map
 - (add top-level folders and what they hold)
@@ -13,18 +17,18 @@ This file is the schema for this Geode vault. You and the agent co-evolve it.
 ## Conventions
 - Canonical sources: every fact lives in exactly one file; other files reference it by path, never copy it.
 - Inheritance: rules/conventions defined higher in the tree apply to everything below — don't restate them.
+- Concepts are OKF files: YAML frontmatter with at least \`type\` (+ \`title\`/\`description\`/\`tags\`).
 - Naming: kebab-case file names; one clear topic per file.
 `,
-  "index.md": `# Index
+  "index.md": `---
+type: index
+title: Index
+description: Catalog of concepts, kept current by the agent
+---
 
-Catalog of pages, kept current by the agent: each entry is a link + a one-line summary.
-`,
-  "capabilities.md": `# Capabilities
+# Index
 
-Kept current by the agent — what this vault offers.
-
-## Recipes & skills
-## Integrations
+Each entry: a link + a one-line summary.
 `,
 };
 
