@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Auth-scherm — GeodeMCP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Instrument+Sans:wght@400;500;600;700&family=Onest:wght@500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0f0e; --surface:#141917; --surface-2:#191e1c; --input:#080b0a;
+    --text:#f2f2f2; --neutral-200:#e5e5e5; --muted:#a3a3a3; --faint:#777;
+    --border:rgba(255,255,255,.07); --border-strong:rgba(255,255,255,.12);
+    --green:#34d399; --emerald-300:#6ee7b7; --emerald-500:#10b981;
+    --amber:#d9a13a; --blue:#2563eb; --blue-500:#3b82f6; --blue-100:#dbeafe;
+    --ease:cubic-bezier(.4,0,.2,1);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:"Geist",system-ui,sans-serif;-webkit-font-smoothing:antialiased;font-feature-settings:"cv01" 1;display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:26px 20px;position:relative;}
+  .glow{position:fixed;top:-160px;left:50%;transform:translateX(-50%);width:720px;height:340px;background:radial-gradient(closest-side,rgba(38,77,76,.5),transparent);filter:blur(30px);pointer-events:none;}
+  .ic{width:16px;height:16px;flex:none;vertical-align:middle;}
+  /* address strip */
+  .urlbar{position:relative;z-index:1;display:flex;align-items:center;gap:9px;color:var(--faint);font-family:"Geist Mono",monospace;font-size:12.5px;border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:7px 14px;margin-bottom:22px;}
+  .urlbar .ic{width:14px;height:14px;color:var(--green);}
+  .brand{position:relative;z-index:1;display:flex;align-items:center;gap:9px;margin-bottom:8px;}
+  .name{font-family:"Onest",sans-serif;font-weight:500;font-size:19px;letter-spacing:-.02em;}
+  .eyebrow{font-family:"Instrument Sans",sans-serif;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.17em;color:var(--green);}
+  .validity{position:relative;z-index:1;display:inline-flex;align-items:center;gap:8px;font-family:"Instrument Sans",sans-serif;font-size:12.5px;color:var(--muted);border:1px solid var(--border-strong);border-radius:999px;padding:5px 12px;margin-bottom:20px;}
+  .validity .ic{width:14px;height:14px;color:var(--amber);}
+  .validity b{color:var(--text);font-weight:500;}
+  .card{position:relative;z-index:1;width:480px;max-width:100%;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:18px;}
+  .card h2{font-family:"Instrument Sans",sans-serif;font-size:21px;font-weight:600;letter-spacing:-.02em;margin:6px 0 4px;}
+  .meta{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 18px;}
+  .pill{font-family:"Instrument Sans",sans-serif;font-size:11.5px;font-weight:600;border-radius:999px;border:1px solid var(--border-strong);color:var(--muted);padding:3px 10px;}
+  .pill b{color:var(--text);font-weight:500;}
+  .label{font-family:"Geist Mono",monospace;font-size:12.5px;color:var(--emerald-300);margin-bottom:7px;display:block;}
+  .field{display:flex;align-items:center;gap:10px;background:var(--input);border:1px solid var(--border-strong);border-radius:9px;padding:11px 13px;}
+  .field input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-family:"Geist Mono",monospace;font-size:14px;letter-spacing:2px;}
+  .field input::placeholder{color:var(--faint);letter-spacing:normal;font-family:"Geist",sans-serif;}
+  .field .ic{color:var(--faint);}
+  .lock-note{display:flex;align-items:flex-start;gap:9px;color:var(--faint);font-size:12.5px;line-height:1.5;margin:14px 0 20px;}
+  .lock-note .ic{color:var(--green);margin-top:1px;}
+  .btn{width:100%;justify-content:center;display:inline-flex;align-items:center;gap:8px;font-family:"Instrument Sans",sans-serif;font-weight:500;font-size:14.5px;background:var(--blue);border:1px solid var(--blue-500);color:var(--blue-100);border-radius:8px;padding:12px 16px;cursor:pointer;transition:.15s var(--ease);}
+  .btn:hover{background:#1d4ed8;}
+  .divider{position:relative;z-index:1;display:flex;align-items:center;gap:12px;width:480px;max-width:100%;color:var(--faint);font-size:12px;margin:6px 0 18px;}
+  .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--border);}
+  .card.alt{opacity:.92;}
+  .card.alt .tag{font-family:"Instrument Sans",sans-serif;font-size:10.5px;font-weight:600;color:var(--faint);text-transform:uppercase;letter-spacing:.14em;}
+  .oauth-btn{width:100%;justify-content:center;display:inline-flex;align-items:center;gap:9px;font-family:"Instrument Sans",sans-serif;font-weight:500;font-size:14px;background:var(--blue);border:1px solid var(--blue-500);color:var(--blue-100);border-radius:8px;padding:11px 16px;cursor:pointer;}
+  .gicon{width:17px;height:17px;background:#fff;border-radius:3px;display:inline-flex;align-items:center;justify-content:center;font-family:"Geist",sans-serif;font-weight:700;color:#4285F4;font-size:12px;}
+</style>
+</head>
+<body>
+  <div class="glow"></div>
+
+  <div class="urlbar">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    geode.app/auth/s/8f3a…e7 · getekende link
+  </div>
+
+  <div class="brand">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><polygon points="12,2 22,9 12,22" fill="#3FCFA1"/><polygon points="12,2 2,9 12,22" fill="#86ECCB"/><polygon points="2,9 12,22 22,9" fill="#4C7DF4" opacity=".85"/></svg>
+    <span class="name">Geode</span>
+  </div>
+
+  <div class="validity">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+    Verloopt over <b>9:58</b> · eenmalig bruikbaar · scope <b>acme-corp</b>
+  </div>
+
+  <!-- API KEY VARIANT -->
+  <div class="card">
+    <span class="eyebrow">Wat jij nu invult — API key</span>
+    <h2>NOTION_TOKEN toevoegen</h2>
+    <div class="meta">
+      <span class="pill">Integration: <b>notion-mcp</b></span>
+      <span class="pill">Provider: <b>Notion</b></span>
+      <span class="pill">Workspace: <b>acme-corp</b></span>
+    </div>
+    <span class="label">NOTION_TOKEN</span>
+    <div class="field">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>
+      <input type="password" value="secret_aB3xK9..." placeholder="Plak je Notion API key…">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor:pointer"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+    </div>
+    <div class="lock-note">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      Gaat rechtstreeks de broker in en wordt versleuteld opgeslagen. De agent ziet deze waarde nooit — alleen de referentie <span style="font-family:'Geist Mono',monospace;color:var(--muted)">NOTION_TOKEN</span>.
+    </div>
+    <button class="btn">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+      Opslaan in broker
+    </button>
+  </div>
+
+  <div class="divider">zo ziet het eruit bij OAuth</div>
+
+  <!-- OAUTH VARIANT -->
+  <div class="card alt">
+    <span class="tag">Voorbeeld — OAuth-integration (Gmail)</span>
+    <h2 style="margin-top:8px">Gmail verbinden</h2>
+    <div class="meta">
+      <span class="pill">Integration: <b>gmail</b></span>
+      <span class="pill">Provider: <b>Google</b></span>
+      <span class="pill">Workspace: <b>acme-corp</b></span>
+    </div>
+    <div class="lock-note" style="margin-top:4px">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      Geen invoerveld: je wordt naar Google gestuurd; de token landt rechtstreeks in de broker. Je ziet hem nooit.
+    </div>
+    <button class="oauth-btn">
+      <span class="gicon">G</span> Verbind met Google
+    </button>
+  </div>
+
+</body>
+</html>

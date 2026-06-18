@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connectie-detail — GeodeMCP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Instrument+Sans:wght@400;500;600;700&family=Onest:wght@500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0f0e; --surface:#141917; --surface-2:#191e1c; --input:#080b0a;
+    --text:#f2f2f2; --neutral-200:#e5e5e5; --muted:#a3a3a3; --faint:#777;
+    --border:rgba(255,255,255,.07); --border-strong:rgba(255,255,255,.12);
+    --green:#34d399; --emerald-300:#6ee7b7; --emerald-500:#10b981;
+    --blue:#2563eb; --blue-500:#3b82f6; --blue-100:#dbeafe;
+    --ease:cubic-bezier(.4,0,.2,1);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:"Geist",system-ui,sans-serif;-webkit-font-smoothing:antialiased;font-feature-settings:"cv01" 1;display:flex;flex-direction:column;overflow:hidden;}
+  .ic{width:17px;height:17px;flex:none;vertical-align:middle;}
+  .topo{position:absolute;inset:0;width:100%;height:100%;opacity:.6;pointer-events:none;-webkit-mask-image:radial-gradient(120% 100% at 30% 0%,#000,transparent 70%);}
+  .topbar{position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;height:64px;padding:0 24px;border-bottom:1px solid var(--border);background:rgba(20,25,23,.72);backdrop-filter:blur(12px);overflow:hidden;}
+  .brand{display:flex;align-items:center;gap:11px;position:relative;z-index:1;}
+  .name{font-family:"Onest",sans-serif;font-weight:500;font-size:21px;letter-spacing:-.02em;}
+  .ws{display:flex;align-items:center;gap:6px;font-family:"Instrument Sans",sans-serif;font-size:13.5px;color:var(--muted);border:1px solid var(--border-strong);border-radius:999px;padding:6px 12px;margin-left:8px;}
+  .tb-right{display:flex;align-items:center;gap:18px;color:var(--faint);position:relative;z-index:1;}
+  .chip{font-family:"Instrument Sans",sans-serif;font-weight:600;font-size:12.5px;border-radius:999px;border:1px solid var(--border-strong);color:var(--muted);padding:5px 11px;display:inline-flex;align-items:center;gap:7px;}
+  .chip.live{color:var(--green);background:rgba(52,211,153,.10);border-color:rgba(52,211,153,.45);}
+  .pulse{width:7px;height:7px;border-radius:999px;background:var(--green);box-shadow:0 0 8px var(--green);}
+  .avatar{width:30px;height:30px;border-radius:10px;background:var(--surface-2);border:1px solid var(--border-strong);}
+  .main{position:relative;z-index:1;flex:1;display:flex;min-height:0;}
+  .col{display:flex;flex-direction:column;min-height:0;}
+  .tree{flex:0 0 25%;border-right:1px solid var(--border);}
+  .detail{flex:1;overflow:auto;}
+  .eyebrow{font-family:"Instrument Sans",sans-serif;font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.17em;color:var(--green);padding:18px 22px 10px;}
+  /* tree */
+  .tree-list{padding:4px 0;font-size:14.5px;color:var(--muted);overflow:auto;}
+  .row{padding:8px 20px;display:flex;align-items:center;gap:10px;}
+  .row .ic{color:var(--faint);}
+  .row.sub{padding-left:38px;}
+  .row.active{background:var(--surface);color:var(--text);}
+  .row.active .ic{color:var(--emerald-300);}
+  /* detail */
+  .dhead{padding:24px;border-bottom:1px solid var(--border);position:relative;overflow:hidden;}
+  .ctitle{display:flex;align-items:center;gap:13px;position:relative;z-index:1;}
+  .ctitle .ic{width:24px;height:24px;color:var(--emerald-300);}
+  .ctitle h2{font-family:"Instrument Sans",sans-serif;font-size:24px;font-weight:600;letter-spacing:-.02em;margin:0;}
+  .status{display:inline-flex;align-items:center;gap:6px;font-family:"Instrument Sans",sans-serif;font-size:12.5px;font-weight:600;color:var(--green);background:rgba(52,211,153,.10);border:1px solid rgba(52,211,153,.45);border-radius:999px;padding:4px 11px;}
+  .status .ic{width:14px;height:14px;color:var(--green);}
+  .desc{color:var(--muted);font-size:15px;margin:12px 0 0;position:relative;z-index:1;}
+  .meta{display:flex;gap:20px;color:var(--faint);font-size:13.5px;margin-top:12px;position:relative;z-index:1;}
+  .meta b{color:var(--muted);font-weight:500;}
+  .block{padding:18px 24px;border-bottom:1px solid var(--border);}
+  .tool-row{display:flex;align-items:center;gap:14px;padding:11px 0;border-bottom:1px solid var(--border);}
+  .tool-row:last-child{border-bottom:none;}
+  .tool-name{font-family:"Geist Mono",monospace;font-size:13.5px;color:var(--emerald-300);min-width:170px;}
+  .tool-desc{color:var(--muted);font-size:14px;}
+  .secret-row{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--border);}
+  .secret-row:last-child{border-bottom:none;}
+  .secret-name{font-family:"Geist Mono",monospace;font-size:13.5px;color:var(--text);min-width:190px;}
+  .masked{font-family:"Geist Mono",monospace;letter-spacing:2.5px;color:var(--faint);font-size:15px;}
+  .smeta{color:var(--faint);font-size:12.5px;}
+  .actions{margin-left:auto;display:flex;gap:8px;}
+  .mini{display:inline-flex;align-items:center;gap:6px;font-family:"Instrument Sans",sans-serif;font-size:12.5px;background:transparent;border:1px solid var(--border-strong);color:var(--neutral-200);border-radius:7px;padding:6px 11px;cursor:pointer;}
+  .mini .ic{width:14px;height:14px;}
+  .lock-note{display:flex;align-items:center;gap:9px;color:var(--faint);font-size:13px;padding:14px 24px;}
+  .lock-note .ic{width:15px;height:15px;color:var(--green);}
+  .reconnect{display:inline-flex;align-items:center;gap:6px;font-family:"Instrument Sans",sans-serif;font-size:12.5px;background:transparent;border:1px solid var(--border-strong);color:var(--neutral-200);border-radius:7px;padding:6px 11px;cursor:pointer;}
+</style>
+</head>
+<body>
+  <!-- TOPBAR with subtle topo -->
+  <div class="topbar">
+    <svg class="topo" viewBox="0 0 1200 64" preserveAspectRatio="none" fill="none" stroke="rgba(155,188,176,.10)" stroke-width="1">
+      <path d="M0 50 C200 30 400 60 600 42 S1000 30 1200 48"/>
+      <path d="M0 40 C200 22 400 50 600 32 S1000 20 1200 38"/>
+      <path d="M0 30 C200 14 400 40 600 22 S1000 12 1200 28"/>
+      <path d="M0 20 C200 6 400 30 600 14 S1000 4 1200 18"/>
+      <path d="M0 58 C200 42 400 66 600 52 S1000 40 1200 56"/>
+    </svg>
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><polygon points="12,2 22,9 12,22" fill="#3FCFA1"/><polygon points="12,2 2,9 12,22" fill="#86ECCB"/><polygon points="2,9 12,22 22,9" fill="#4C7DF4" opacity=".85"/></svg>
+      <span class="name">Geode</span>
+      <span class="ws">acme-corp <svg class="ic" style="width:14px;height:14px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span>
+    </div>
+    <div class="tb-right">
+      <span class="chip live"><span class="pulse"></span>live</span>
+      <span style="display:flex;color:var(--muted)"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></span>
+      <span class="avatar"></span>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- TREE -->
+    <div class="col tree">
+      <div class="eyebrow">Vault</div>
+      <div class="tree-list">
+        <div class="row"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg> brand</div>
+        <div class="row"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg> content</div>
+        <div class="row"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg> connections</div>
+        <div class="row sub active"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7V2"/><path d="M15 7V2"/><path d="M6 7h12v4a6 6 0 0 1-12 0Z"/><path d="M12 17v5"/></svg> moneybird</div>
+        <div class="row sub"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7V2"/><path d="M15 7V2"/><path d="M6 7h12v4a6 6 0 0 1-12 0Z"/><path d="M12 17v5"/></svg> gmail</div>
+        <div class="row sub"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7V2"/><path d="M15 7V2"/><path d="M6 7h12v4a6 6 0 0 1-12 0Z"/><path d="M12 17v5"/></svg> perplexity</div>
+      </div>
+    </div>
+
+    <!-- DETAIL -->
+    <div class="col detail">
+      <div class="dhead">
+        <div class="ctitle">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7V2"/><path d="M15 7V2"/><path d="M6 7h12v4a6 6 0 0 1-12 0Z"/><path d="M12 17v5"/></svg>
+          <h2>Moneybird</h2>
+          <span class="status"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Verbonden</span>
+        </div>
+        <p class="desc">Boekhouding — facturen, banktransacties en contacten. MCP-connectie, geïnstalleerd in deze workspace.</p>
+        <div class="meta"><span>Type: <b>MCP-connectie</b></span><span>Scope: <b>acme-corp</b></span><span>Geïnstalleerd: <b>3 weken geleden</b></span></div>
+      </div>
+
+      <div class="block">
+        <div class="eyebrow" style="padding:0 0 12px">Tools die deze connectie aanbiedt</div>
+        <div class="tool-row"><span class="tool-name">create_invoice</span><span class="tool-desc">Maak een nieuwe verkoopfactuur aan.</span></div>
+        <div class="tool-row"><span class="tool-name">list_transactions</span><span class="tool-desc">Haal banktransacties op binnen een periode.</span></div>
+        <div class="tool-row"><span class="tool-name">reconcile_payment</span><span class="tool-desc">Koppel een transactie aan een factuur.</span></div>
+        <div class="tool-row"><span class="tool-name">list_contacts</span><span class="tool-desc">Zoek relaties/contacten.</span></div>
+      </div>
+
+      <div class="block">
+        <div class="eyebrow" style="padding:0 0 12px">Secrets — via de broker</div>
+        <div class="secret-row">
+          <span class="secret-name">MONEYBIRD_API_KEY</span>
+          <span class="masked">••••••••••••••••</span>
+          <span class="smeta">laatst gebruikt 2u geleden</span>
+          <span class="actions">
+            <button class="mini"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>Onthul</button>
+            <button class="mini"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>Roteer</button>
+          </span>
+        </div>
+        <div class="lock-note"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Waarden leven in de broker, buiten de agent-omgeving. De agent ziet ze nooit — alleen jij, ingelogd, kunt onthullen of roteren.</div>
+      </div>
+
+      <div class="block" style="border-bottom:none">
+        <div class="eyebrow" style="padding:0 0 12px">Gerelateerd — Gmail (OAuth)</div>
+        <div class="secret-row" style="border-bottom:none">
+          <span class="secret-name">Gmail</span>
+          <span class="smeta" style="color:var(--muted)">Verbonden als <b style="color:var(--text);font-weight:500">jij@acme.nl</b> · verloopt over 50 dagen</span>
+          <span class="actions"><button class="reconnect"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>Opnieuw verbinden</button></span>
+        </div>
+        <div class="lock-note" style="padding-left:0"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>OAuth-tokens worden nooit getoond — alleen de status en "opnieuw verbinden".</div>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,64 @@
+<h2>Donker of licht?</h2>
+<p class="subtitle">Zelfde dashboard, twee thema's. Mijn aanbeveling: donker-first (premium dev-tool-gevoel, diffs/code knallen, rustig bij lange sessies) — licht als latere toggle. Klik wat je het lekkerst vindt, of reageer in de terminal.</p>
+
+<div class="cards">
+
+  <!-- DARK -->
+  <div class="card" data-choice="dark" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:10px;background:#181a1f;">
+      <div style="background:#0f1115;color:#e6e6e9;font-size:9px;border-radius:8px;overflow:hidden;text-align:left;border:1px solid #23262d;">
+        <div style="display:flex;justify-content:space-between;padding:6px 8px;border-bottom:1px solid #23262d;">
+          <span style="color:#d3d3da;">🗄 Vault · acme-corp ▾</span><span style="color:#8a8a93;">🔔&nbsp;&nbsp;👤</span>
+        </div>
+        <div style="display:flex;height:96px;">
+          <div style="flex:0 0 40%;border-right:1px solid #23262d;padding:6px;">
+            <div style="background:#1a1d24;border-radius:6px;padding:4px;margin-bottom:5px;color:#c4c4cc;">Gedaan — 2 regels herschreven.</div>
+            <div style="background:rgba(124,108,255,.16);border:1px solid rgba(124,108,255,.55);border-radius:6px;padding:4px;color:#cfc8ff;">✏️ voice-and-tone.md <span style="color:#7c9;">+4</span> <span style="color:#e88;">−1</span></div>
+          </div>
+          <div style="flex:0 0 24%;border-right:1px solid #23262d;padding:6px;color:#aeaeb8;line-height:1.7;">
+            📂 brand<br>&nbsp;&nbsp;📄 voice <span style="color:#d9a13a;">●</span><br>📂 content
+          </div>
+          <div style="flex:1;padding:6px;font-family:monospace;color:#d6d6dc;line-height:1.6;">
+            <div>&nbsp;Direct, warm…</div>
+            <div style="background:rgba(80,200,120,.22);">+ Korte zinnen.</div>
+            <div style="background:rgba(230,80,80,.22);">- Soms lang.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Donker <span style="font-weight:400;opacity:.7;">(aanbevolen)</span></h3>
+      <p>Premium, rustig, diffs &amp; code springen eruit. Accent indigo.</p>
+    </div>
+  </div>
+
+  <!-- LIGHT -->
+  <div class="card" data-choice="light" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:10px;background:#ececed;">
+      <div style="background:#ffffff;color:#1c1c22;font-size:9px;border-radius:8px;overflow:hidden;text-align:left;border:1px solid #e3e3e8;">
+        <div style="display:flex;justify-content:space-between;padding:6px 8px;border-bottom:1px solid #ededf1;">
+          <span style="color:#33333b;">🗄 Vault · acme-corp ▾</span><span style="color:#9a9aa3;">🔔&nbsp;&nbsp;👤</span>
+        </div>
+        <div style="display:flex;height:96px;">
+          <div style="flex:0 0 40%;border-right:1px solid #ededf1;padding:6px;">
+            <div style="background:#f3f3f6;border-radius:6px;padding:4px;margin-bottom:5px;color:#3a3a44;">Gedaan — 2 regels herschreven.</div>
+            <div style="background:rgba(108,92,255,.10);border:1px solid rgba(108,92,255,.45);border-radius:6px;padding:4px;color:#4a3fb0;">✏️ voice-and-tone.md <span style="color:#2e9e63;">+4</span> <span style="color:#cc4b4b;">−1</span></div>
+          </div>
+          <div style="flex:0 0 24%;border-right:1px solid #ededf1;padding:6px;color:#55555f;line-height:1.7;">
+            📂 brand<br>&nbsp;&nbsp;📄 voice <span style="color:#c98a17;">●</span><br>📂 content
+          </div>
+          <div style="flex:1;padding:6px;font-family:monospace;color:#2a2a32;line-height:1.6;">
+            <div>&nbsp;Direct, warm…</div>
+            <div style="background:rgba(46,158,99,.16);">+ Korte zinnen.</div>
+            <div style="background:rgba(204,75,75,.14);">- Soms lang.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Licht</h3>
+      <p>Helder, kantoor-vriendelijk. Zelfde indigo-accent, zachtere diff-kleuren.</p>
+    </div>
+  </div>
+
+</div>

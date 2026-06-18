@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard — GeodeMCP stijl</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Instrument+Sans:wght@400;500;600;700&family=Onest:wght@500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0f0e; --surface:#141917; --surface-2:#191e1c; --input:#080b0a;
+    --text:#f2f2f2; --neutral-200:#e5e5e5; --muted:#a3a3a3; --faint:#777;
+    --border:rgba(255,255,255,.07); --border-strong:rgba(255,255,255,.12);
+    --green:#34d399; --emerald-300:#6ee7b7; --emerald-500:#10b981;
+    --blue:#2563eb; --blue-500:#3b82f6; --blue-100:#dbeafe;
+    --ease:cubic-bezier(.4,0,.2,1);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:"Geist",system-ui,sans-serif;-webkit-font-smoothing:antialiased;font-feature-settings:"cv01" 1;display:flex;flex-direction:column;overflow:hidden;}
+  .ic{width:17px;height:17px;flex:none;vertical-align:middle;}
+  .glow{position:fixed;top:-160px;left:50%;transform:translateX(-50%);width:820px;height:380px;background:radial-gradient(closest-side,rgba(38,77,76,.5),transparent);filter:blur(30px);pointer-events:none;z-index:0;}
+  /* TOPBAR */
+  .topbar{position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;height:64px;padding:0 24px;border-bottom:1px solid var(--border);background:rgba(20,25,23,.72);backdrop-filter:blur(12px);}
+  .brand{display:flex;align-items:center;gap:11px;}
+  .name{font-family:"Onest",sans-serif;font-weight:500;font-size:21px;letter-spacing:-.02em;}
+  .ws{display:flex;align-items:center;gap:6px;font-family:"Instrument Sans",sans-serif;font-size:13.5px;color:var(--muted);border:1px solid var(--border-strong);border-radius:999px;padding:6px 12px;margin-left:8px;}
+  .tb-right{display:flex;align-items:center;gap:18px;color:var(--faint);}
+  .chip{font-family:"Instrument Sans",sans-serif;font-weight:600;font-size:12.5px;border-radius:999px;border:1px solid var(--border-strong);color:var(--muted);padding:5px 11px;display:inline-flex;align-items:center;gap:7px;}
+  .chip.live{color:var(--green);background:rgba(52,211,153,.10);border-color:rgba(52,211,153,.45);}
+  .pulse{width:7px;height:7px;border-radius:999px;background:var(--green);box-shadow:0 0 8px var(--green);}
+  .iconbtn{color:var(--muted);display:flex;cursor:pointer;}
+  .avatar{width:30px;height:30px;border-radius:10px;background:var(--surface-2);border:1px solid var(--border-strong);}
+  /* BODY */
+  .main{position:relative;z-index:1;flex:1;display:flex;min-height:0;}
+  .col{display:flex;flex-direction:column;min-height:0;}
+  .chat{flex:0 0 34%;border-right:1px solid var(--border);}
+  .tree{flex:0 0 23%;border-right:1px solid var(--border);}
+  .viewer{flex:1;}
+  .eyebrow{font-family:"Instrument Sans",sans-serif;font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.17em;color:var(--green);padding:18px 20px 10px;}
+  .msgs{flex:1;padding:6px 20px;display:flex;flex-direction:column;gap:12px;overflow:hidden;font-size:14.5px;}
+  .bubble{max-width:90%;padding:11px 14px;border-radius:13px;line-height:1.5;}
+  .bubble.me{align-self:flex-end;background:var(--surface-2);border:1px solid var(--border);}
+  .bubble.ag{align-self:flex-start;background:var(--surface);border:1px solid var(--border);color:var(--muted);}
+  .card{align-self:flex-start;max-width:94%;border-radius:13px;padding:12px 14px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.45);font-size:14px;display:flex;gap:11px;align-items:center;}
+  .card .ic{color:var(--emerald-300);}
+  .card .fn{color:var(--emerald-300);font-weight:500;font-family:"Geist Mono",monospace;font-size:13px;}
+  .ctrl{padding:16px 20px;border-top:1px solid var(--border);}
+  .input{width:100%;background:var(--input);border:1px solid var(--border-strong);border-radius:9px;padding:12px 14px;color:var(--text);font-family:"Geist",sans-serif;font-size:14.5px;}
+  .input::placeholder{color:var(--faint);}
+  /* TREE */
+  .tree-list{padding:4px 0;font-size:14.5px;color:var(--muted);overflow:auto;}
+  .row{padding:8px 20px;display:flex;align-items:center;gap:10px;}
+  .row .ic{color:var(--faint);}
+  .row.sub{padding-left:38px;}
+  .row.active{background:var(--surface);color:var(--text);}
+  .row.active .ic{color:var(--text);}
+  .spacer{flex:1;}
+  .badge{display:inline-flex;align-items:center;gap:4px;font-family:"Instrument Sans",sans-serif;font-size:11px;font-weight:600;border-radius:999px;padding:2px 9px;}
+  .badge.new{color:var(--green);background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.4);}
+  .badge.new .ic{width:12px;height:12px;color:var(--green);}
+  .dot-mod{width:7px;height:7px;border-radius:999px;background:#d9a13a;box-shadow:0 0 7px rgba(217,161,58,.6);}
+  /* VIEWER */
+  .panel-bar{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border);}
+  .tl{display:flex;gap:7px;}
+  .tl span{width:11px;height:11px;border-radius:999px;background:rgba(255,255,255,.10);}
+  .fname{font-family:"Geist Mono",monospace;font-size:13px;color:var(--emerald-300);}
+  .uncommitted{display:inline-flex;align-items:center;gap:6px;color:#d9a13a;font-family:"Instrument Sans",sans-serif;font-size:12.5px;}
+  .pre{flex:1;padding:20px;font-family:"Geist Mono",monospace;font-size:14px;line-height:1.85;color:var(--text);overflow:auto;}
+  .add{background:rgba(52,211,153,.14);}
+  .del{background:rgba(230,80,80,.16);color:#eaa;}
+  .btn{font-family:"Instrument Sans",sans-serif;font-weight:500;font-size:14px;background:var(--blue);border:1px solid var(--blue-500);color:var(--blue-100);border-radius:7px;padding:9px 16px;cursor:pointer;transition:.15s var(--ease);}
+  .btn:hover{background:#1d4ed8;}
+  .ghost{font-family:"Instrument Sans",sans-serif;font-size:14px;background:transparent;border:1px solid var(--border-strong);color:var(--neutral-200);border-radius:7px;padding:9px 15px;cursor:pointer;}
+  .foot{padding:12px 20px;border-top:1px solid var(--border);font-size:12.5px;color:var(--faint);}
+</style>
+</head>
+<body>
+  <div class="glow"></div>
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><polygon points="12,2 22,9 12,22" fill="#3FCFA1"/><polygon points="12,2 2,9 12,22" fill="#86ECCB"/><polygon points="2,9 12,22 22,9" fill="#4C7DF4" opacity=".85"/></svg>
+      <span class="name">Geode</span>
+      <span class="ws">acme-corp
+        <svg class="ic" style="width:14px;height:14px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+      </span>
+    </div>
+    <div class="tb-right">
+      <span class="chip live"><span class="pulse"></span>live</span>
+      <span class="iconbtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></span>
+      <span class="avatar"></span>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- CHAT -->
+    <div class="col chat">
+      <div class="eyebrow">Vault agent</div>
+      <div class="msgs">
+        <div class="bubble me">Maak de tone-of-voice scherper.</div>
+        <div class="bubble ag">Gedaan — twee regels herschreven en gecommit.</div>
+        <div class="card">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          <span><span class="fn">brand/voice-and-tone.md</span><br><span style="color:var(--green)">+4</span> <span style="color:#e88">−1</span> · diff geopend →</span>
+        </div>
+      </div>
+      <div class="ctrl"><input class="input" placeholder="Praat met je vault…"></div>
+    </div>
+
+    <!-- TREE -->
+    <div class="col tree">
+      <div class="eyebrow">Vault</div>
+      <div class="tree-list">
+        <div class="row"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg> AGENTS.md</div>
+        <div class="row"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg> index.md</div>
+        <div class="row"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg> brand</div>
+        <div class="row sub active"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg> voice-and-tone.md <span class="spacer"></span><span class="dot-mod"></span></div>
+        <div class="row"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg> content</div>
+        <div class="row sub"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg> linkedin <span class="spacer"></span><span class="badge new"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>nieuw</span></div>
+        <div class="row"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg> connections</div>
+        <div class="row sub"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7V2"/><path d="M15 7V2"/><path d="M6 7h12v4a6 6 0 0 1-12 0Z"/><path d="M12 17v5"/></svg> moneybird</div>
+      </div>
+    </div>
+
+    <!-- VIEWER -->
+    <div class="col viewer">
+      <div class="panel-bar">
+        <div style="display:flex;align-items:center;gap:14px;">
+          <div class="tl"><span></span><span></span><span></span></div>
+          <span class="fname">brand/voice-and-tone.md</span>
+          <span class="uncommitted"><span class="dot-mod"></span>niet-gecommit</span>
+        </div>
+        <div style="display:flex;gap:10px;"><button class="ghost">Verwerp</button><button class="btn">Commit</button></div>
+      </div>
+      <div class="pre">
+        <div>&nbsp;&nbsp;<span style="color:var(--emerald-500)"># Voice &amp; Tone</span></div>
+        <div>&nbsp;&nbsp;Direct, warm, geen jargon.</div>
+        <div class="del">- Soms lange zinnen.</div>
+        <div class="add">+ Korte zinnen. Actieve vorm.</div>
+        <div class="add">+ Geen buzzwords, geen clichés.</div>
+        <div class="add">+ Spreek de lezer direct aan.</div>
+      </div>
+      <div class="foot">Geopend vanuit de chat-kaart · auto-scroll terwijl de agent schrijft</div>
+    </div>
+
+  </div>
+</body>
+</html>
