@@ -24,6 +24,7 @@ export function Integrations() {
         </div>
       ))}
       {result && <pre className="pre" style={{ border: "1px solid var(--border)", borderRadius: 10, marginTop: 10 }}>{result}</pre>}
+      {result && <p style={{ color: "var(--faint)", fontSize: 12, marginTop: 6 }}>Let op: een echo-endpoint kan een geïnjecteerd secret terugkaatsen in dit resultaat.</p>}
       <div className="eyebrow" style={{ marginTop: 16 }}>Vereiste secrets</div>
       {open.requiredSecrets.map((s) => (
         <div key={s.ref} className="card" style={{ display: "flex", gap: 12, marginBottom: 8 }}>

@@ -27,6 +27,7 @@ export interface ApiDeps {
   invoke: (args: { integration: string; action: string; params?: Record<string, unknown> }) => Promise<{ status: number; body: unknown }>;
 }
 
+const SAFE_NAME = /^[A-Za-z0-9_-]+$/;
 const SESSION_TTL = 86_400_000; // 24h
 
 export function createApiRouter(deps: ApiDeps): Router {
@@ -78,19 +79,25 @@ export function createApiRouter(deps: ApiDeps): Router {
 
   router.get("/integrations", async (_req, res) => { res.json(await listIntegrations(deps.workspace.root, deps.secrets)); });
   router.get("/integrations/:name", async (req, res) => {
+    if (!SAFE_NAME.test(req.params.name)) { res.status(404).json({ error: "unknown integration" }); return; }
     try { res.json(await getIntegration(deps.workspace.root, req.params.name, deps.secrets)); }
     catch { res.status(404).json({ error: "unknown integration" }); }
   });
   router.post("/integrations/:name/test", async (req, res) => {
+    if (!SAFE_NAME.test(req.params.name)) { res.status(404).json({ error: "unknown integration" }); return; }
     try { res.json(await deps.invoke({ integration: req.params.name, action: String(req.body?.action ?? ""), params: req.body?.params ?? {} })); }
     catch (e) { res.status(400).json({ error: e instanceof Error ? e.message : String(e) }); }
   });
 
   router.get("/secrets", async (_req, res) => { res.json(await listSecrets(deps.workspace.root, deps.secrets)); });
   router.post("/secrets/:ref/link", (req, res) => {
+    if (!SAFE_NAME.test(req.params.ref)) { res.status(400).json({ error: "invalid ref" }); return; }
     res.json({ url: `${deps.baseUrl}/auth/s/${mintSecretLink(deps.linkKey, req.params.ref, 600_000)}` });
   });
-  router.delete("/secrets/:ref", async (req, res) => { await deps.secrets.delete(req.params.ref); res.json({ ok: true }); });
+  router.delete("/secrets/:ref", async (req, res) => {
+    if (!SAFE_NAME.test(req.params.ref)) { res.status(400).json({ error: "invalid ref" }); return; }
+    await deps.secrets.delete(req.params.ref); res.json({ ok: true });
+  });
 
   router.get("/artifacts", async (_req, res) => { res.json(listArtifacts(deps.artifactsDir)); });
   router.get("/artifacts/download", (req, res) => {

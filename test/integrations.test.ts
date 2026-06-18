@@ -25,3 +25,7 @@ test("loadIntegration parses a manifest; throws on missing", async () => {
   expect(m.actions.ping.method).toBe("GET");
   await expect(loadIntegration(root, "nope")).rejects.toThrow();
 });
+
+test("loadIntegration rejects a traversal name", async () => {
+  await expect(loadIntegration("/tmp", "../../etc")).rejects.toThrow(/invalid integration name/);
+});

@@ -73,3 +73,10 @@ test("capabilities renders the derived menu", async () => {
   const cap = await (await fetch(`${url}/api/capabilities`, { headers: { cookie } })).json();
   expect(cap.integrations.map((i: any) => i.name)).toContain("demo");
 });
+
+test("path-traversal route params are rejected", async () => {
+  const cookie = await login();
+  expect((await fetch(`${url}/api/integrations/..%2f..%2fetc`, { headers: { cookie } })).status).toBe(404);
+  expect((await fetch(`${url}/api/secrets/..%2f..%2fX`, { method: "DELETE", headers: { cookie } })).status).toBe(400);
+  expect((await fetch(`${url}/api/secrets/..%2fX/link`, { method: "POST", headers: { cookie } })).status).toBe(400);
+});
