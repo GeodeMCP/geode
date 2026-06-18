@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, type TreeNode, type SseEvent } from "../api";
-import { TopBar } from "../components/TopBar";
 import { Chat } from "../components/Chat";
 import { FileTree } from "../components/FileTree";
 import { Viewer } from "../components/Viewer";
@@ -34,13 +33,10 @@ export function VaultHome() {
   const discard = async () => { await api.discard(); await refresh(); setDiff(""); };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
-      <TopBar />
-      <div className="main">
-        <Chat onSend={send} running={running} dirty={dirty} />
-        <FileTree tree={tree} status={status} selected={selected} onSelect={setSelected} />
-        <Viewer path={selected} diff={diff} dirty={dirty} onCommit={commit} onDiscard={discard} />
-      </div>
+    <div className="main">
+      <Chat onSend={send} running={running} dirty={dirty} />
+      <FileTree tree={tree} status={status} selected={selected} onSelect={setSelected} />
+      <Viewer path={selected} diff={diff} dirty={dirty} onCommit={commit} onDiscard={discard} />
     </div>
   );
 }
