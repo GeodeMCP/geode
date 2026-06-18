@@ -60,7 +60,7 @@ test("remember handler returns a structured error when the run throws", async ()
 });
 
 test("list_capabilities handler returns the manifest text", async () => {
-  const handler = makeListCapabilitiesHandler({ root: "/vault", list: async () => "# Capabilities\n- voice" });
+  const handler = makeListCapabilitiesHandler({ root: "/vault", derive: async () => ({ text: "# Capabilities\n(nothing yet)" }) });
   const res = await handler({}, {});
   expect(res.content[0].text).toContain("Capabilities");
 });

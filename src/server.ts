@@ -5,7 +5,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { query, type QueryDeps, type QueryResult } from "./query.js";
 import { remember, type RememberArgs } from "./ingest.js";
-import { listCapabilities } from "./capabilities.js";
+import { deriveCapabilities } from "./capabilities.js";
 
 export function checkAuth(header: string | undefined, token: string): boolean {
   const expected = `Bearer ${token}`;
@@ -61,11 +61,11 @@ export function makeRememberHandler(deps: RememberHandlerDeps) {
 
 export interface ListCapabilitiesHandlerDeps {
   root: string;
-  list: (root: string) => Promise<string>;
+  derive: (root: string) => Promise<{ text: string }>;
 }
 export function makeListCapabilitiesHandler(deps: ListCapabilitiesHandlerDeps) {
   return async (_args: unknown, _extra: unknown) => ({
-    content: [{ type: "text" as const, text: await deps.list(deps.root) }],
+    content: [{ type: "text" as const, text: (await deps.derive(deps.root)).text }],
   });
 }
 
@@ -103,7 +103,7 @@ export function buildMcpServer(queryDeps: QueryDeps): McpServer {
     rememberHandler,
   );
 
-  const listCapabilitiesHandler = makeListCapabilitiesHandler({ root: queryDeps.workspace.root, list: listCapabilities });
+  const listCapabilitiesHandler = makeListCapabilitiesHandler({ root: queryDeps.workspace.root, derive: deriveCapabilities });
   server.registerTool(
     "list_capabilities",
     {
