@@ -1,4 +1,4 @@
-import { delegate, type DelegateDeps, type DelegateResult } from "./delegate.js";
+import { query, type QueryDeps, type QueryResult } from "./query.js";
 
 export interface RememberArgs {
   content: string;
@@ -18,12 +18,12 @@ export function buildIngestInstruction(content: string, source?: string, title?:
 }
 
 export async function remember(
-  deps: DelegateDeps,
+  deps: QueryDeps,
   args: RememberArgs,
   onProgress?: (message: string) => void,
-): Promise<DelegateResult> {
+): Promise<QueryResult> {
   if (!args.content || !args.content.trim()) {
     throw new Error("remember: content is required and cannot be empty");
   }
-  return delegate(deps, buildIngestInstruction(args.content, args.source, args.title), onProgress);
+  return query(deps, buildIngestInstruction(args.content, args.source, args.title), onProgress);
 }

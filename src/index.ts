@@ -5,7 +5,7 @@ import { createRunManager } from "./runManager.js";
 import { claudeAgentEngine } from "./engine.js";
 import { CONSTITUTION } from "./constitution.js";
 import { buildMcpServer, buildHttpApp } from "./server.js";
-import type { DelegateDeps } from "./delegate.js";
+import type { QueryDeps } from "./query.js";
 import { seedVault } from "./seed.js";
 
 async function main() {
@@ -16,7 +16,7 @@ async function main() {
   const seeded = await seedVault(config.workspaceRoot);
   if (seeded.length > 0) await workspace.commitAll(`chore: seed vault scaffolds (${seeded.join(", ")})`);
 
-  const delegateDeps: DelegateDeps = {
+  const queryDeps: QueryDeps = {
     workspace,
     engine: claudeAgentEngine,
     runManager: createRunManager({ maxRuntimeMs: config.maxRuntimeMs, queueLimit: config.queueLimit }),
@@ -25,7 +25,7 @@ async function main() {
     model: config.model,
   };
 
-  const app = buildHttpApp(() => buildMcpServer(delegateDeps), config.authToken);
+  const app = buildHttpApp(() => buildMcpServer(queryDeps), config.authToken);
   app.listen(config.port, () => {
     console.log(`Geode kernel listening on http://localhost:${config.port}/mcp (workspace: ${config.workspaceRoot})`);
   });

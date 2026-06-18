@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { checkAuth, makeFindHandler, makeDelegateHandler, buildMcpServer } from "../src/server.js";
+import { checkAuth, makeFindHandler, makeQueryHandler, buildMcpServer } from "../src/server.js";
 import { makeRememberHandler, makeListCapabilitiesHandler } from "../src/server.js";
 
 test("checkAuth accepts the correct bearer token and rejects others", () => {
@@ -22,17 +22,17 @@ test("buildMcpServer returns a fresh server instance per call (no shared transpo
   expect(buildMcpServer(deps)).not.toBe(buildMcpServer(deps));
 });
 
-test("delegate handler returns a structured error result when the run throws", async () => {
-  const handler = makeDelegateHandler({ runDelegate: async () => { throw new Error("kernel busy: run queue is full"); } } as any);
+test("query handler returns a structured error result when the run throws", async () => {
+  const handler = makeQueryHandler({ runQuery: async () => { throw new Error("kernel busy: run queue is full"); } } as any);
   const res = await handler({ instruction: "do X" }, {});
   expect(res.isError).toBe(true);
   expect(res.content[0].text).toContain("kernel busy");
 });
 
-test("delegate handler returns result text and forwards progress when a token is present", async () => {
+test("query handler returns result text and forwards progress when a token is present", async () => {
   const sent: any[] = [];
-  const handler = makeDelegateHandler({
-    runDelegate: async (_instruction: string, onProgress?: (m: string) => void) => {
+  const handler = makeQueryHandler({
+    runQuery: async (_instruction: string, onProgress?: (m: string) => void) => {
       onProgress?.("step 1");
       return { runId: "run-1", text: "done", commit: "C1", filesTouched: ["a.md"] };
     },

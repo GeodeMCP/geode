@@ -33,7 +33,7 @@ function fakeDeps(captured: { instruction?: string }) {
   } as any;
 }
 
-test("remember runs delegate with the ingest instruction and returns the result", async () => {
+test("remember runs query with the ingest instruction and returns the result", async () => {
   const captured: { instruction?: string } = {};
   const args: RememberArgs = { content: "Client X wants net-30.", source: "call" };
   const res = await remember(fakeDeps(captured), args);

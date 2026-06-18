@@ -3,7 +3,7 @@ import type { EventLog } from "./eventLog.js";
 import type { RunManager } from "./runManager.js";
 import type { Workspace } from "./workspace.js";
 
-export interface DelegateDeps {
+export interface QueryDeps {
   workspace: Workspace;
   engine: Engine;
   runManager: RunManager;
@@ -12,7 +12,7 @@ export interface DelegateDeps {
   model?: string;
 }
 
-export interface DelegateResult {
+export interface QueryResult {
   runId: string;
   text: string;
   commit: string | null;
@@ -21,11 +21,11 @@ export interface DelegateResult {
 
 const truncate = (s: string, n = 200): string => (s.length > n ? `${s.slice(0, n)}…` : s);
 
-export async function delegate(
-  deps: DelegateDeps,
+export async function query(
+  deps: QueryDeps,
   instruction: string,
   onProgress?: (message: string) => void,
-): Promise<DelegateResult> {
+): Promise<QueryResult> {
   return deps.runManager.run(async (abortController, runId) => {
     if (!(await deps.workspace.isClean())) await deps.workspace.resetToHead();
     const before = await deps.workspace.head();
@@ -41,17 +41,17 @@ export async function delegate(
         if (ev.type === "progress") onProgress?.(ev.text);
         else finalText = ev.text;
       }
-      const commit = await deps.workspace.commitAll(`delegate ${runId}: ${truncate(instruction, 60)}`);
+      const commit = await deps.workspace.commitAll(`query ${runId}: ${truncate(instruction, 60)}`);
       const filesTouched = commit ? await deps.workspace.changedFilesSince(before) : [];
       await deps.eventLog.append({ runId, instruction, status: "ok", commit, summary: truncate(finalText) });
       // Persist the event-log entry itself: it is written after the agent commit, so it would
       // otherwise stay uncommitted and be wiped by the next run's clean/reset.
-      await deps.workspace.commitAll(`delegate ${runId}: log`);
+      await deps.workspace.commitAll(`query ${runId}: log`);
       return { runId, text: finalText, commit, filesTouched };
     } catch (err) {
       await deps.workspace.resetToHead();
       await deps.eventLog.append({ runId, instruction, status: "error", error: String(err) });
-      await deps.workspace.commitAll(`delegate ${runId}: log (error)`);
+      await deps.workspace.commitAll(`query ${runId}: log (error)`);
       throw err;
     }
   });

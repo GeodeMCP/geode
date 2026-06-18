@@ -4,7 +4,7 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { find as findOp, type FindArgs, type FindResult } from "./find.js";
-import { delegate, type DelegateDeps, type DelegateResult } from "./delegate.js";
+import { query, type QueryDeps, type QueryResult } from "./query.js";
 import { remember, type RememberArgs } from "./ingest.js";
 import { listCapabilities } from "./capabilities.js";
 
@@ -28,11 +28,11 @@ export function makeFindHandler(deps: FindHandlerDeps) {
   };
 }
 
-// Shared runner for agentic tools (delegate, remember): streams progress and
+// Shared runner for agentic tools (query, remember): streams progress and
 // returns text + structured content, or a structured error on throw.
 async function runAgenticTool(
   extra: any,
-  run: (onProgress: (m: string) => void) => Promise<DelegateResult>,
+  run: (onProgress: (m: string) => void) => Promise<QueryResult>,
   label: string,
 ) {
   let progress = 0;
@@ -56,16 +56,16 @@ async function runAgenticTool(
   }
 }
 
-export interface DelegateHandlerDeps {
-  runDelegate: (instruction: string, onProgress?: (m: string) => void) => Promise<DelegateResult>;
+export interface QueryHandlerDeps {
+  runQuery: (instruction: string, onProgress?: (m: string) => void) => Promise<QueryResult>;
 }
-export function makeDelegateHandler(deps: DelegateHandlerDeps) {
+export function makeQueryHandler(deps: QueryHandlerDeps) {
   return async (args: { instruction: string; workspace?: string }, extra: any) =>
-    runAgenticTool(extra, (op) => deps.runDelegate(args.instruction, op), "delegate");
+    runAgenticTool(extra, (op) => deps.runQuery(args.instruction, op), "query");
 }
 
 export interface RememberHandlerDeps {
-  runRemember: (args: RememberArgs, onProgress?: (m: string) => void) => Promise<DelegateResult>;
+  runRemember: (args: RememberArgs, onProgress?: (m: string) => void) => Promise<QueryResult>;
 }
 export function makeRememberHandler(deps: RememberHandlerDeps) {
   return async (args: RememberArgs, extra: any) =>
@@ -84,10 +84,10 @@ export function makeListCapabilitiesHandler(deps: ListCapabilitiesHandlerDeps) {
 
 // --- Server assembly (integration) ---
 
-export function buildMcpServer(delegateDeps: DelegateDeps): McpServer {
+export function buildMcpServer(queryDeps: QueryDeps): McpServer {
   const server = new McpServer({ name: "geode-kernel", version: "0.1.0" });
 
-  const findHandler = makeFindHandler({ root: delegateDeps.workspace.root, find: findOp });
+  const findHandler = makeFindHandler({ root: queryDeps.workspace.root, find: findOp });
   server.registerTool(
     "find",
     {
@@ -97,20 +97,20 @@ export function buildMcpServer(delegateDeps: DelegateDeps): McpServer {
     findHandler,
   );
 
-  const delegateHandler = makeDelegateHandler({
-    runDelegate: (instruction, onProgress) => delegate(delegateDeps, instruction, onProgress),
+  const queryHandler = makeQueryHandler({
+    runQuery: (instruction, onProgress) => query(queryDeps, instruction, onProgress),
   });
   server.registerTool(
-    "delegate",
+    "query",
     {
-      description: "Hand an open-ended task to your Geode vault's agent to execute (multi-step work using your context, scripts and tools). Streams progress; commits results to git.",
+      description: "Ask your Geode vault — it searches your context, recipes and SOPs and returns a synthesized answer, OR an executable plan (the exact `invoke` calls to run). It prepares; you execute via `invoke`.",
       inputSchema: { instruction: z.string(), workspace: z.string().optional() },
     },
-    delegateHandler,
+    queryHandler,
   );
 
   const rememberHandler = makeRememberHandler({
-    runRemember: (args, onProgress) => remember(delegateDeps, args, onProgress),
+    runRemember: (args, onProgress) => remember(queryDeps, args, onProgress),
   });
   server.registerTool(
     "remember",
@@ -126,7 +126,7 @@ export function buildMcpServer(delegateDeps: DelegateDeps): McpServer {
     rememberHandler,
   );
 
-  const listCapabilitiesHandler = makeListCapabilitiesHandler({ root: delegateDeps.workspace.root, list: listCapabilities });
+  const listCapabilitiesHandler = makeListCapabilitiesHandler({ root: queryDeps.workspace.root, list: listCapabilities });
   server.registerTool(
     "list_capabilities",
     {
