@@ -23,3 +23,22 @@ test("reads overrides", () => {
 test("throws when a required field is missing", () => {
   expect(() => loadConfig({ GEODE_WORKSPACE: "/tmp/vault" })).toThrow(/GEODE_AUTH_TOKEN/);
 });
+
+test("derives artifactsDir, baseUrl and secretsDir from defaults", () => {
+  const cfg = loadConfig(base);
+  expect(cfg.artifactsDir).toBe("/tmp/vault/artifacts");
+  expect(cfg.baseUrl).toBe("http://localhost:8787");
+  expect(cfg.secretsDir).toMatch(/\/.geode\/secrets$/);
+});
+
+test("env overrides for artifactsDir, baseUrl and secretsDir", () => {
+  const cfg = loadConfig({
+    ...base,
+    GEODE_ARTIFACTS_DIR: "/data/artifacts",
+    GEODE_BASE_URL: "https://example.com",
+    GEODE_SECRETS_DIR: "/run/secrets",
+  });
+  expect(cfg.artifactsDir).toBe("/data/artifacts");
+  expect(cfg.baseUrl).toBe("https://example.com");
+  expect(cfg.secretsDir).toBe("/run/secrets");
+});

@@ -1,3 +1,6 @@
+import { homedir } from "node:os";
+import { join } from "node:path";
+
 export interface Config {
   authToken: string;
   workspaceRoot: string;
@@ -5,6 +8,9 @@ export interface Config {
   model?: string;
   maxRuntimeMs: number;
   queueLimit: number;
+  secretsDir: string;
+  artifactsDir: string;
+  baseUrl: string;
 }
 
 function required(env: Record<string, string | undefined>, key: string): string {
@@ -21,5 +27,8 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     model: env.GEODE_MODEL || undefined,
     maxRuntimeMs: env.GEODE_MAX_RUNTIME_MS ? Number(env.GEODE_MAX_RUNTIME_MS) : 300000,
     queueLimit: env.GEODE_QUEUE_LIMIT ? Number(env.GEODE_QUEUE_LIMIT) : 4,
+    secretsDir: env.GEODE_SECRETS_DIR || join(homedir(), ".geode", "secrets"),
+    artifactsDir: env.GEODE_ARTIFACTS_DIR || join(required(env, "GEODE_WORKSPACE"), "artifacts"),
+    baseUrl: env.GEODE_BASE_URL || `http://localhost:${env.GEODE_PORT ? Number(env.GEODE_PORT) : 8787}`,
   };
 }
