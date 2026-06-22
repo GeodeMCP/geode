@@ -43,3 +43,12 @@ test("diff shows a newly-created (untracked) file as additions", async () => {
   writeFileSync(join(root, "fresh.md"), "brand new line\n");
   expect(await ws.diff("fresh.md")).toContain("brand new line");
 });
+
+test("writeFile writes a knowledge file (creating parent dirs) and rejects machinery/traversal", async () => {
+  const ws = createWorkspace(root); await ws.init();
+  await ws.writeFile("notes/new.md", "# Hi\nbody\n");
+  expect(await ws.fileContent("notes/new.md")).toContain("# Hi");
+  await expect(ws.writeFile("../escape.md", "x")).rejects.toThrow(/outside|not allowed/);
+  await expect(ws.writeFile(".git/hooks/evil", "x")).rejects.toThrow(/not allowed/);
+  await expect(ws.writeFile("integrations/x/manifest.json", "{}")).rejects.toThrow(/not allowed/);
+});

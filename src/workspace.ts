@@ -1,4 +1,4 @@
-import { readFile, realpath } from "node:fs/promises";
+import { readFile, realpath, writeFile as fsWriteFile, mkdir } from "node:fs/promises";
 import { dirname, resolve, sep } from "node:path";
 import { runGit } from "./git.js";
 
@@ -14,6 +14,7 @@ export interface Workspace {
   fileContent(relPath: string): Promise<string>;
   diff(relPath: string): Promise<string>;
   statusPorcelain(): Promise<string>;
+  writeFile(relPath: string, content: string): Promise<void>;
 }
 
 export function createWorkspace(root: string): Workspace {
@@ -103,6 +104,11 @@ export function createWorkspace(root: string): Workspace {
     },
     async statusPorcelain() {
       return runGit(root, ["status", "--porcelain", "-uall"]);
+    },
+    async writeFile(relPath, content) {
+      const abs = await safeResolve(relPath);
+      await mkdir(dirname(abs), { recursive: true });
+      await fsWriteFile(abs, content, "utf8");
     },
   };
 }
