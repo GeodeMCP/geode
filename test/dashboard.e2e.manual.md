@@ -22,3 +22,13 @@ Needs a reachable model (`ANTHROPIC_API_KEY` or local Ollama). Build the SPA fir
 11. Back in **Integrations → httpbin**, the secret now shows "gezet". Click **Test** on `headers` → a 200 result with the injected header echoed (proves invoke + server-side injection from the dashboard).
 12. Produce an artifact (a `query` that writes to `artifacts/`), then **Artifacts** → see it; **Download** (session-authed) returns the file; **Deel-link** mints a signed public URL that works without auth.
 13. Confirm no secret value is ever shown anywhere in the UI.
+
+## Increment C — context files (manual)
+
+(Build the SPA; log in as before.)
+
+14. Select an existing committed note in the tree → it renders as **markdown** (frontmatter shown as a header chip), not an empty panel.
+15. Click **Bewerk** → edit a line → **Opslaan** → the file shows as a **diff** (niet-gecommit) → **Commit** → re-selecting shows the updated rendered markdown.
+16. Click **+ nieuw** in the Vault column → name it → a `notes/<slug>.md` OKF stub opens; edit + Opslaan + Commit → it appears in the tree.
+17. With **no integrations** in the vault, the top-bar shows only **Vault** and **Capabilities** (Integrations/Secrets/Artifacts hidden). Add an integration manifest → reload → the tool nav appears.
+18. A write to a forbidden path is rejected (e.g. via devtools `POST /api/file {path:"../x"}` → 400).
