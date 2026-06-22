@@ -43,6 +43,7 @@ export const api = {
   artifacts: () => json<{ path: string }[]>("/api/artifacts"),
   artifactDownload: (path: string) => `/api/artifacts/download?path=${encodeURIComponent(path)}`,
   artifactPublicLink: (path: string) => json<{ url: string }>("/api/artifacts/public-link", { method: "POST", body: JSON.stringify({ path }) }),
+  writeFile: (path: string, content: string) => json<{ ok: true }>("/api/file", { method: "POST", body: JSON.stringify({ path, content }) }),
   /** Stream an agent run; calls onEvent for each SSE event until the stream closes. */
   async run(path: "/api/query" | "/api/remember", body: object, onEvent: (e: SseEvent) => void): Promise<void> {
     const res = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
