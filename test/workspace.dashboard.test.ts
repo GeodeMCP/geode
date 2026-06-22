@@ -44,6 +44,12 @@ test("diff shows a newly-created (untracked) file as additions", async () => {
   expect(await ws.diff("fresh.md")).toContain("brand new line");
 });
 
+test("writeFile rejects a dangling symlink leaf pointing outside the vault", async () => {
+  const ws = createWorkspace(root); await ws.init();
+  symlinkSync("/tmp/geode-escape-does-not-exist.md", join(root, "danglink.md"));
+  await expect(ws.writeFile("danglink.md", "x")).rejects.toThrow(/outside/);
+});
+
 test("writeFile writes a knowledge file (creating parent dirs) and rejects machinery/traversal", async () => {
   const ws = createWorkspace(root); await ws.init();
   await ws.writeFile("notes/new.md", "# Hi\nbody\n");

@@ -22,6 +22,7 @@ export function VaultHome() {
   }, [selected, status]);
 
   const dirty = status.modified.length + status.created.length > 0;
+  const selectedDirty = !!selected && (status.modified.includes(selected) || status.created.includes(selected));
 
   const send = async (instruction: string, onEvent: (e: SseEvent) => void) => {
     setRunning(true);
@@ -46,7 +47,7 @@ export function VaultHome() {
     <div className="main">
       <Chat onSend={send} running={running} dirty={dirty} />
       <FileTree tree={tree} status={status} selected={selected} onSelect={setSelected} onNew={newNote} />
-      <Viewer path={selected} content={content} diff={diff} dirty={dirty} onCommit={commit} onDiscard={discard} onSave={save} />
+      <Viewer path={selected} content={content} diff={diff} dirty={selectedDirty} onCommit={commit} onDiscard={discard} onSave={save} />
     </div>
   );
 }

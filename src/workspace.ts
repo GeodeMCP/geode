@@ -1,4 +1,4 @@
-import { readFile, realpath, writeFile as fsWriteFile, mkdir } from "node:fs/promises";
+import { readFile, realpath, writeFile as fsWriteFile, mkdir, lstat } from "node:fs/promises";
 import { dirname, resolve, sep } from "node:path";
 import { runGit } from "./git.js";
 
@@ -37,7 +37,13 @@ export function createWorkspace(root: string): Workspace {
         if (real !== rootReal && !real.startsWith(rootReal + sep)) throw new Error(`path outside workspace: ${relPath}`);
         break;
       } catch (e: any) {
-        if (e?.code === "ENOENT") { const parent = dirname(probe); if (parent === probe || parent.length < root.length) break; probe = parent; continue; }
+        if (e?.code === "ENOENT") {
+          if (probe === lexical) {
+            try { if ((await lstat(lexical)).isSymbolicLink()) throw new Error(`path outside workspace: ${relPath}`); }
+            catch (le: any) { if (le?.code !== "ENOENT") throw le; }
+          }
+          const parent = dirname(probe); if (parent === probe || parent.length < root.length) break; probe = parent; continue;
+        }
         throw e;
       }
     }

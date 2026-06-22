@@ -41,6 +41,7 @@ export function Viewer({ path, content, diff, dirty, onCommit, onDiscard, onSave
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
               {fm.type && <span className="chip">{fm.type}</span>}
               {fm.title && <span style={{ color: "var(--muted)", fontSize: 13 }}>{fm.title}</span>}
+              {fm.tags && <span style={{ color: "var(--faint)", fontSize: 12 }}>{fm.tags}</span>}
             </div>
           )}
           <div dangerouslySetInnerHTML={{ __html: renderMarkdown(body) }} />

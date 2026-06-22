@@ -15,3 +15,10 @@ test("splitFrontmatter separates OKF frontmatter from the body", () => {
   expect(body.trim()).toBe("# Body");
   expect(splitFrontmatter("# No fm").fm).toEqual({});
 });
+
+test("splitFrontmatter tolerates CRLF and hyphenated keys", () => {
+  const { fm, body } = splitFrontmatter("---\r\ntype: note\r\nsome-key: v\r\n---\r\n\r\n# Body");
+  expect(fm.type).toBe("note");
+  expect(fm["some-key"]).toBe("v");
+  expect(body).toContain("# Body");
+});
