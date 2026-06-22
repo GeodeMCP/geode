@@ -65,6 +65,12 @@ export function createApiRouter(deps: ApiDeps): Router {
     try { res.json({ content: await deps.workspace.fileContent(String(req.query.path ?? "")) }); }
     catch (e) { res.status(400).json({ error: e instanceof Error ? e.message : String(e) }); }
   });
+  router.post("/file", async (req, res) => {
+    const path = String(req.body?.path ?? "");
+    if (!path) { res.status(400).json({ error: "path required" }); return; }
+    try { await deps.workspace.writeFile(path, String(req.body?.content ?? "")); res.json({ ok: true }); }
+    catch (e) { res.status(400).json({ error: e instanceof Error ? e.message : String(e) }); }
+  });
   router.get("/diff", async (req, res) => {
     try { res.json({ diff: await deps.workspace.diff(String(req.query.path ?? "")) }); }
     catch (e) { res.status(400).json({ error: e instanceof Error ? e.message : String(e) }); }

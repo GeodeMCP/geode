@@ -65,3 +65,13 @@ test("commit then discard operate on the working tree", async () => {
   const s = await (await fetch(`${url}/api/status`, { headers: { cookie } })).json();
   expect(s.modified).toEqual([]); expect(s.created).toEqual([]);
 });
+
+test("POST /api/file writes a knowledge file (uncommitted); rejects traversal", async () => {
+  const cookie = await login();
+  const ok = await fetch(`${url}/api/file`, { method: "POST", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ path: "notes/m.md", content: "# M\n" }) });
+  expect((await ok.json()).ok).toBe(true);
+  const f = await (await fetch(`${url}/api/file?path=notes/m.md`, { headers: { cookie } })).json();
+  expect(f.content).toContain("# M");
+  const bad = await fetch(`${url}/api/file`, { method: "POST", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ path: "../evil.md", content: "x" }) });
+  expect(bad.status).toBe(400);
+});
