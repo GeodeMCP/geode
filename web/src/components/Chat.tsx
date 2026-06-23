@@ -177,7 +177,7 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard }: {
 
   const submit = async () => {
     const instruction = text.trim();
-    if (!instruction || running || dirty) return;
+    if (!instruction || running) return; // dirty no longer blocks — review-mode runs accumulate onto the draft
     setText("");
     setMsgs((m) => [...m, { kind: "user", text: instruction, ts: Date.now() }]);
     await onSend(instruction, (e) => {
@@ -232,8 +232,8 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard }: {
         <div ref={endRef} />
       </div>
       <div className="ctrl">
-        <input className="input" value={text} disabled={running || dirty}
-          placeholder={dirty ? "Commit or discard your changes first…" : running ? "Working…" : "Talk to your vault…"}
+        <input className="input" value={text} disabled={running}
+          placeholder={running ? "Working…" : "Talk to your vault…"}
           onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} />
       </div>
     </div>
