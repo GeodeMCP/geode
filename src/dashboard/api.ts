@@ -17,8 +17,8 @@ export interface ApiDeps {
   dashboardPassword: string;
   secure: boolean;
   workspace: Workspace;
-  runQuery: (instruction: string, onProgress: (m: string) => void) => Promise<QueryResult>;
-  runRemember: (args: RememberArgs, onProgress: (m: string) => void) => Promise<QueryResult>;
+  runQuery: (instruction: string, onProgress: (m: string, detail?: string) => void) => Promise<QueryResult>;
+  runRemember: (args: RememberArgs, onProgress: (m: string, detail?: string) => void) => Promise<QueryResult>;
   linkKey: Buffer;
   secrets: Pick<SecretStore, "list" | "delete" | "set">;
   artifacts: Pick<ArtifactStore, "mintPublicUrl" | "resolve">;
@@ -45,10 +45,10 @@ export function createApiRouter(deps: ApiDeps): Router {
   // everything below requires a session
   router.use(requireSession(deps.sessionKey));
 
-  const stream = (run: (op: (m: string) => void) => Promise<QueryResult>) => async (_req: Request, res: Response) => {
+  const stream = (run: (op: (m: string, detail?: string) => void) => Promise<QueryResult>) => async (_req: Request, res: Response) => {
     const sse = openSse(res);
     try {
-      const result = await run((m) => sse.send("progress", { message: m }));
+      const result = await run((m, detail) => sse.send("progress", { message: m, detail }));
       sse.send("result", result);
     } catch (e) {
       sse.send("error", { message: e instanceof Error ? e.message : String(e) });

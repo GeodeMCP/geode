@@ -11,11 +11,14 @@ test("maps tool-use blocks to a progress marker", () => {
   expect(events).toEqual([{ type: "progress", text: "→ Bash" }]);
 });
 
-test("tool-use includes a useful detail from the input (command / file / pattern)", () => {
+test("tool-use carries a summary in the text + the full detail to reveal on expand", () => {
   expect(mapMessage({ type: "assistant", message: { content: [{ name: "Bash", input: { command: "git status" } }] } }))
-    .toEqual([{ type: "progress", text: "→ Bash · git status" }]);
-  expect(mapMessage({ type: "assistant", message: { content: [{ name: "Write", input: { file_path: "notes/hoi.md" } }] } }))
-    .toEqual([{ type: "progress", text: "→ Write · notes/hoi.md" }]);
+    .toEqual([{ type: "progress", text: "→ Bash · git status", detail: "git status" }]);
+  expect(mapMessage({ type: "assistant", message: { content: [{ name: "Write", input: { file_path: "notes/hoi.md", content: "hello body" } }] } }))
+    .toEqual([{ type: "progress", text: "→ Write · notes/hoi.md", detail: "hello body" }]);
+  // a tool with no extra detail (Read) carries no `detail`
+  expect(mapMessage({ type: "assistant", message: { content: [{ name: "Read", input: { file_path: "index.md" } }] } }))
+    .toEqual([{ type: "progress", text: "→ Read · index.md" }]);
 });
 
 test("maps a result message to a single result event", () => {

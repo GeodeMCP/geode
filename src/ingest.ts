@@ -20,7 +20,7 @@ export function buildIngestInstruction(content: string, source?: string, title?:
 export async function remember(
   deps: QueryDeps,
   args: RememberArgs,
-  onProgress?: (message: string) => void,
+  onProgress?: (message: string, detail?: string) => void,
   opts?: { commit?: boolean },
 ): Promise<QueryResult> {
   if (!args.content || !args.content.trim()) {

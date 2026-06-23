@@ -43,7 +43,7 @@ const truncate = (s: string, n = 200): string => (s.length > n ? `${s.slice(0, n
 export async function query(
   deps: QueryDeps,
   instruction: string,
-  onProgress?: (message: string) => void,
+  onProgress?: (message: string, detail?: string) => void,
   opts?: { commit?: boolean },
 ): Promise<QueryResult> {
   return deps.runManager.run(async (abortController, runId) => {
@@ -59,7 +59,7 @@ export async function query(
         model: deps.model,
         abortController,
       })) {
-        if (ev.type === "progress") onProgress?.(ev.text);
+        if (ev.type === "progress") onProgress?.(ev.text, ev.detail);
         else finalText = ev.text;
       }
       if (opts?.commit === false) {
