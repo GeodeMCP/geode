@@ -1,6 +1,14 @@
 export interface TreeNode { name: string; path: string; type: "file" | "dir"; children?: TreeNode[] }
 export interface IntegrationView { name: string; type: string; description: string; actions: { name: string; method: string; url: string; description?: string }[]; requiredSecrets: { ref: string; set: boolean }[] }
 export interface SseEvent { event: string; data: any }
+export interface TranscriptRecord {
+  runId: string;
+  ts: number;
+  instruction: string;
+  events: any[];
+  result?: { text: string; metrics?: { durationMs: number; costUsd: number; tokens: number } };
+  error?: string;
+}
 
 /** Parse a buffer of SSE text into complete events + the unparsed remainder. */
 export function parseSseChunk(buffer: string): { events: SseEvent[]; rest: string } {
@@ -33,6 +41,8 @@ export const api = {
   status: () => json<{ modified: string[]; created: string[] }>("/api/status"),
   commit: (message?: string) => json<{ commit: string | null }>("/api/commit", { method: "POST", body: JSON.stringify({ message }) }),
   discard: () => json<{ ok: true }>("/api/discard", { method: "POST" }),
+  history: () => json<TranscriptRecord[]>("/api/history"),
+  clearHistory: () => json<{ ok: true }>("/api/history", { method: "DELETE" }),
   capabilities: () => json<{ integrations: { name: string; description: string; actions: string[] }[]; recipes: { title: string; description: string; path: string }[] }>("/api/capabilities"),
   integrations: () => json<IntegrationView[]>("/api/integrations"),
   integration: (name: string) => json<IntegrationView>(`/api/integrations/${encodeURIComponent(name)}`),
