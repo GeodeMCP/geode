@@ -15,15 +15,21 @@ const FileIcon = () => (
 const Chevron = () => (
   <svg className="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="m9 6 6 6-6 6" /></svg>
 );
+const TrashIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></svg>
+);
 
-export function FileTree({ tree, status, selected, onSelect, onCreate }: {
-  tree: TreeNode[]; status: { modified: string[]; created: string[] }; selected: string | null; onSelect: (p: string) => void; onCreate: (path: string) => void;
+export function FileTree({ tree, status, selected, onSelect, onCreate, onDelete }: {
+  tree: TreeNode[]; status: { modified: string[]; created: string[] }; selected: string | null;
+  onSelect: (p: string) => void; onCreate: (path: string) => void; onDelete: (path: string) => void;
 }) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
+  const [confirming, setConfirming] = useState<string | null>(null);
   const toggle = (p: string) => setCollapsed((s) => { const n = new Set(s); n.has(p) ? n.delete(p) : n.add(p); return n; });
   const submitNew = () => { const v = name.trim(); if (!v) return; onCreate(v); setCreating(false); setName(""); };
+  const stop = (e: React.MouseEvent) => e.stopPropagation();
 
   const render = (nodes: TreeNode[], depth = 0): React.ReactNode => nodes.map((n) => {
     const isDir = n.type === "dir";
@@ -39,8 +45,18 @@ export function FileTree({ tree, status, selected, onSelect, onCreate }: {
             {isDir ? <FolderIcon /> : <FileIcon />}
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.name}</span>
           </span>
-          {status.modified.includes(n.path) && <span className="badge mod">modified</span>}
-          {status.created.includes(n.path) && <span className="badge new">new</span>}
+          {confirming === n.path ? (
+            <span className="confirm" onClick={stop}>
+              <button className="ghost sm danger" onClick={(e) => { stop(e); onDelete(n.path); setConfirming(null); }}>Delete</button>
+              <button className="ghost sm" onClick={(e) => { stop(e); setConfirming(null); }}>Cancel</button>
+            </span>
+          ) : (
+            <>
+              {status.modified.includes(n.path) && <span className="badge mod">modified</span>}
+              {status.created.includes(n.path) && <span className="badge new">new</span>}
+              <button className="del-btn" title={`Delete ${n.name}`} onClick={(e) => { stop(e); setConfirming(n.path); }}><TrashIcon /></button>
+            </>
+          )}
         </div>
         {isDir && open && n.children && render(n.children, depth + 1)}
       </div>

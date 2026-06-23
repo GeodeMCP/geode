@@ -18,7 +18,7 @@ const status = { modified: ["index.md"], created: [] };
 const noop = () => {};
 
 test("renders nested files/folders; folders collapse and expand", () => {
-  render(<FileTree tree={tree} status={status} selected={null} onSelect={noop} onCreate={noop} />);
+  render(<FileTree tree={tree} status={status} selected={null} onSelect={noop} onCreate={noop} onDelete={noop} />);
   for (const t of ["clients", "acme", "deep.md", "x.md", "index.md"]) expect(screen.getByText(t)).toBeTruthy();
   fireEvent.click(screen.getByText("clients"));            // collapse top folder
   expect(screen.queryByText("acme")).toBeNull();
@@ -30,8 +30,17 @@ test("renders nested files/folders; folders collapse and expand", () => {
 
 test("selecting a file calls onSelect; a modified file shows a 'modified' pill", () => {
   let sel = "";
-  render(<FileTree tree={tree} status={status} selected={null} onSelect={(p) => (sel = p)} onCreate={noop} />);
+  render(<FileTree tree={tree} status={status} selected={null} onSelect={(p) => (sel = p)} onCreate={noop} onDelete={noop} />);
   fireEvent.click(screen.getByText("index.md"));
   expect(sel).toBe("index.md");
   expect(screen.getByText("modified")).toBeTruthy();
+});
+
+test("delete asks for confirmation, then calls onDelete with the path", () => {
+  let deleted = "";
+  render(<FileTree tree={tree} status={status} selected={null} onSelect={noop} onCreate={noop} onDelete={(p) => (deleted = p)} />);
+  fireEvent.click(screen.getByTitle("Delete index.md"));   // trash → confirm
+  expect(screen.getByText("Cancel")).toBeTruthy();
+  fireEvent.click(screen.getByText("Delete"));             // confirm
+  expect(deleted).toBe("index.md");
 });

@@ -1,4 +1,4 @@
-import { readFile, realpath, writeFile as fsWriteFile, mkdir, lstat } from "node:fs/promises";
+import { readFile, realpath, writeFile as fsWriteFile, mkdir, lstat, rm } from "node:fs/promises";
 import { dirname, resolve, sep } from "node:path";
 import { runGit } from "./git.js";
 
@@ -15,6 +15,7 @@ export interface Workspace {
   diff(relPath: string): Promise<string>;
   statusPorcelain(): Promise<string>;
   writeFile(relPath: string, content: string): Promise<void>;
+  deletePath(relPath: string): Promise<void>;
 }
 
 export function createWorkspace(root: string): Workspace {
@@ -115,6 +116,10 @@ export function createWorkspace(root: string): Workspace {
       const abs = await safeResolve(relPath);
       await mkdir(dirname(abs), { recursive: true });
       await fsWriteFile(abs, content, "utf8");
+    },
+    async deletePath(relPath) {
+      // path-safe + knowledge-only via safeResolve; removes a file or a folder (recursive).
+      await rm(await safeResolve(relPath), { recursive: true, force: true });
     },
   };
 }

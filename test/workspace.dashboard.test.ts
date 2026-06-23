@@ -58,3 +58,15 @@ test("writeFile writes a knowledge file (creating parent dirs) and rejects machi
   await expect(ws.writeFile(".git/hooks/evil", "x")).rejects.toThrow(/not allowed/);
   await expect(ws.writeFile("integrations/x/manifest.json", "{}")).rejects.toThrow(/not allowed/);
 });
+
+test("deletePath removes a file and a folder (recursive); rejects machinery/traversal", async () => {
+  const ws = createWorkspace(root); await ws.init();
+  await ws.writeFile("a.md", "x");
+  await ws.writeFile("dir/b.md", "y");
+  await ws.deletePath("a.md");
+  await expect(ws.fileContent("a.md")).rejects.toThrow();        // file gone
+  await ws.deletePath("dir");
+  await expect(ws.fileContent("dir/b.md")).rejects.toThrow();    // folder + contents gone
+  await expect(ws.deletePath("../x")).rejects.toThrow(/outside|not allowed/);
+  await expect(ws.deletePath(".git")).rejects.toThrow(/not allowed/);
+});

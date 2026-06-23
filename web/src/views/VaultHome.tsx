@@ -44,11 +44,16 @@ export function VaultHome() {
     setSelected(p);
   };
   const select = (p: string) => { setCompose(null); setSelected(p); };
+  const del = async (p: string) => {
+    await api.deletePath(p);
+    if (selected === p || (selected && selected.startsWith(p + "/"))) { setSelected(null); setCompose(null); }
+    await refresh();
+  };
 
   return (
     <div className="main">
       <Chat onSend={send} running={running} dirty={dirty} onCommit={commit} onDiscard={discard} />
-      <FileTree tree={tree} status={status} selected={selected} onSelect={select} onCreate={create} />
+      <FileTree tree={tree} status={status} selected={selected} onSelect={select} onCreate={create} onDelete={del} />
       <Viewer path={selected} content={content} diff={diff} dirty={selectedDirty} compose={compose} onCommit={commit} onDiscard={discard} onSave={save} />
     </div>
   );

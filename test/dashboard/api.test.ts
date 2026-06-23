@@ -75,3 +75,13 @@ test("POST /api/file writes a knowledge file (uncommitted); rejects traversal", 
   const bad = await fetch(`${url}/api/file`, { method: "POST", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ path: "../evil.md", content: "x" }) });
   expect(bad.status).toBe(400);
 });
+
+test("DELETE /api/file removes a knowledge file; rejects traversal", async () => {
+  const cookie = await login();
+  await fetch(`${url}/api/file`, { method: "POST", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ path: "notes/del.md", content: "bye" }) });
+  const del = await fetch(`${url}/api/file?path=notes/del.md`, { method: "DELETE", headers: { cookie } });
+  expect((await del.json()).ok).toBe(true);
+  expect((await fetch(`${url}/api/file?path=notes/del.md`, { headers: { cookie } })).status).toBe(400); // gone → read fails
+  const bad = await fetch(`${url}/api/file?path=../evil`, { method: "DELETE", headers: { cookie } });
+  expect(bad.status).toBe(400);
+});
