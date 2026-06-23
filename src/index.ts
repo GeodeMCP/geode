@@ -11,6 +11,7 @@ import { remember } from "./ingest.js";
 import { seedVault, ensureArtifactsIgnored } from "./seed.js";
 import { createSecretStore, loadOrCreateKey } from "./secrets.js";
 import { createArtifactStore } from "./artifacts.js";
+import { createTranscriptStore } from "./transcripts.js";
 import { invoke } from "./invoke.js";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -38,6 +39,7 @@ async function main() {
     baseUrl: config.baseUrl,
     signKey: loadOrCreateKey(join(config.secretsDir, "sign"), process.env.GEODE_SIGN_KEY),
   });
+  const transcripts = createTranscriptStore(config.transcriptsDir);
 
   const queryDeps: QueryDeps = {
     workspace,
@@ -65,6 +67,7 @@ async function main() {
       runRemember: (args, onProgress) => remember(queryDeps, args, onProgress, { commit: false }),
       secrets,
       artifacts,
+      transcripts,
       artifactsDir: config.artifactsDir,
       baseUrl: config.baseUrl,
       invoke: (args) => invoke({ root: workspace.root, secrets }, args),
