@@ -11,6 +11,13 @@ test("maps tool-use blocks to a progress marker", () => {
   expect(events).toEqual([{ type: "progress", text: "→ Bash" }]);
 });
 
+test("tool-use includes a useful detail from the input (command / file / pattern)", () => {
+  expect(mapMessage({ type: "assistant", message: { content: [{ name: "Bash", input: { command: "git status" } }] } }))
+    .toEqual([{ type: "progress", text: "→ Bash · git status" }]);
+  expect(mapMessage({ type: "assistant", message: { content: [{ name: "Write", input: { file_path: "notes/hoi.md" } }] } }))
+    .toEqual([{ type: "progress", text: "→ Write · notes/hoi.md" }]);
+});
+
 test("maps a result message to a single result event", () => {
   const events = mapMessage({ type: "result", result: "all done" });
   expect(events).toEqual([{ type: "result", text: "all done" }]);

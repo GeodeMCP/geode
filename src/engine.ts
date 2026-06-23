@@ -13,13 +13,24 @@ export interface EngineRunOptions {
 
 export type Engine = (opts: EngineRunOptions) => AsyncIterable<EngineEvent>;
 
+// A short, useful one-liner for a tool use: what the agent is actually doing
+// (the command it runs, the file it touches) — not just the tool's name.
+export function describeTool(name: string, input: any): string {
+  const i = input ?? {};
+  const clip = (s: string) => (s.length > 100 ? s.slice(0, 100) + "…" : s);
+  if (name === "Bash" && typeof i.command === "string") return `Bash · ${clip(i.command)}`;
+  if ((name === "Read" || name === "Write" || name === "Edit" || name === "NotebookEdit") && typeof i.file_path === "string") return `${name} · ${clip(i.file_path)}`;
+  if ((name === "Glob" || name === "Grep") && typeof i.pattern === "string") return `${name} · ${clip(i.pattern)}`;
+  return name;
+}
+
 // Pure mapping from an Agent SDK message to engine events (unit-tested).
 export function mapMessage(message: any): EngineEvent[] {
   if (message?.type === "assistant" && message.message?.content) {
     const events: EngineEvent[] = [];
     for (const block of message.message.content) {
       if (typeof block?.text === "string" && block.text.trim()) events.push({ type: "progress", text: block.text });
-      else if (typeof block?.name === "string") events.push({ type: "progress", text: `→ ${block.name}` });
+      else if (typeof block?.name === "string") events.push({ type: "progress", text: `→ ${describeTool(block.name, block.input)}` });
     }
     return events;
   }
@@ -50,7 +61,9 @@ export function buildQueryOptions(opts: EngineRunOptions): Record<string, unknow
 // Live engine backed by the Claude Agent SDK. Integration-only (not unit-tested).
 export const claudeAgentEngine: Engine = async function* (opts: EngineRunOptions): AsyncIterable<EngineEvent> {
   const { query } = await import("@anthropic-ai/claude-agent-sdk");
+  // Show vault-relative paths in step detail, not the absolute cwd.
+  const strip = (s: string) => (opts.cwd ? s.split(`${opts.cwd}/`).join("").split(opts.cwd).join("") : s);
   for await (const message of query({ prompt: opts.instruction, options: buildQueryOptions(opts) } as any)) {
-    for (const ev of mapMessage(message)) yield ev;
+    for (const ev of mapMessage(message)) yield { type: ev.type, text: strip(ev.text) };
   }
 };

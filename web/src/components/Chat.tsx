@@ -75,7 +75,17 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard }: {
         {msgs.length === 0 && !running && !dirty && <div style={{ color: "var(--faint)", fontSize: 13 }}>Ask your vault something, or add knowledge.</div>}
         {msgs.map((m, i) => {
           if (m.who === "me") return <div key={i} className="bubble me">{m.text}</div>;
-          if (m.who === "step") return <div key={i} className="step"><StepIcon />{m.text}</div>;
+          if (m.who === "step") {
+            const [tool, ...rest] = m.text.split(" · ");
+            const detail = rest.join(" · ");
+            return (
+              <div key={i} className="bubble step">
+                <StepIcon />
+                <span className="step-name">{tool}</span>
+                {detail && <span className="arg">{detail}</span>}
+              </div>
+            );
+          }
           return <AgentBubble key={i} text={m.text} animate={m.animate} />;
         })}
         {running && <div className="thinking"><span className="tdots"><i /><i /><i /></span></div>}
