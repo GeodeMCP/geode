@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createApiRouter } from "../../src/dashboard/api.js";
 import { createWorkspace } from "../../src/workspace.js";
+import { createTranscriptStore } from "../../src/transcripts.js";
 
 let server: Server; let url: string; let root: string;
 const KEY = Buffer.from("k".repeat(32));
@@ -17,11 +18,17 @@ async function boot() {
   const app = express(); app.use(express.json());
   app.use("/api", createApiRouter({
     sessionKey: KEY, dashboardPassword: "pw", secure: false, workspace: ws,
-    runQuery: async (instruction, onProgress) => { onProgress({ type: "text", text: "thinking" }); writeFileSync(join(root, "note.md"), "x"); return { runId: "r1", text: "ok: " + instruction, commit: null, filesTouched: ["note.md"] }; },
+    runQuery: async (instruction, onProgress) => {
+      onProgress({ type: "tool", toolId: "t1", name: "Write", summary: "note.md", detail: "x" } as any);
+      onProgress({ type: "tool_result", toolId: "t1", ok: true, output: "ok" } as any);
+      writeFileSync(join(root, "note.md"), "x");
+      return { runId: "run-xyz", text: "ok: " + instruction, commit: null, filesTouched: ["note.md"] };
+    },
     runRemember: async (_args, onProgress) => { onProgress({ type: "text", text: "filing" }); return { runId: "r2", text: "filed", commit: null, filesTouched: [] }; },
     linkKey: KEY,
     secrets: { list: async () => [], delete: async () => {}, set: async () => {} } as any,
     artifacts: {} as any,
+    transcripts: createTranscriptStore(join(root, ".transcripts")),
     artifactsDir: root,
     baseUrl: "http://h",
     invoke: async () => ({ status: 200, body: {} }),
@@ -52,7 +59,7 @@ test("POST /api/query streams SSE progress then a result event", async () => {
   expect(res.headers.get("content-type")).toContain("text/event-stream");
   const body = await res.text();
   expect(body).toContain("event: progress");
-  expect(body).toContain("thinking");
+  expect(body).toContain("note.md");
   expect(body).toContain("event: result");
   expect(body).toContain("ok: do X");
 });
@@ -84,4 +91,20 @@ test("DELETE /api/file removes a knowledge file; rejects traversal", async () =>
   expect((await fetch(`${url}/api/file?path=notes/del.md`, { headers: { cookie } })).status).toBe(400); // gone → read fails
   const bad = await fetch(`${url}/api/file?path=../evil`, { method: "DELETE", headers: { cookie } });
   expect(bad.status).toBe(400);
+});
+
+test("records each query run and serves it via GET /api/history; DELETE clears it", async () => {
+  const cookie = await login();
+  await fetch(`${url}/api/query`, { method: "POST", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ instruction: "do X" }) }).then((r) => r.text());
+  const hist = await (await fetch(`${url}/api/history`, { headers: { cookie } })).json();
+  expect(hist).toHaveLength(1);
+  expect(hist[0]).toMatchObject({ runId: "run-xyz", instruction: "do X", result: { text: "ok: do X" } });
+  expect(hist[0].events.map((e: any) => e.type)).toEqual(["tool", "tool_result"]);
+  const del = await fetch(`${url}/api/history`, { method: "DELETE", headers: { cookie } });
+  expect((await del.json()).ok).toBe(true);
+  expect(await (await fetch(`${url}/api/history`, { headers: { cookie } })).json()).toEqual([]);
+});
+
+test("GET /api/history requires a session", async () => {
+  expect((await fetch(`${url}/api/history`)).status).toBe(401);
 });

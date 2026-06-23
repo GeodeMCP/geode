@@ -1,11 +1,12 @@
 import { Router, type Request, type Response } from "express";
-import { timingSafeEqual } from "node:crypto";
+import { timingSafeEqual, randomUUID } from "node:crypto";
 import type { Workspace } from "../workspace.js";
 import type { QueryResult } from "../query.js";
 import type { ProgressEvent } from "../engine.js";
 import type { RememberArgs } from "../ingest.js";
 import type { SecretStore } from "../secrets.js";
 import type { ArtifactStore } from "../artifacts.js";
+import type { TranscriptStore, TranscriptRecord } from "../transcripts.js";
 import { signSession, requireSession, setSessionCookie, clearSessionCookie } from "./session.js";
 import { buildKnowledgeTree, parseStatus } from "./knowledge.js";
 import { openSse } from "./sse.js";
@@ -23,6 +24,7 @@ export interface ApiDeps {
   linkKey: Buffer;
   secrets: Pick<SecretStore, "list" | "delete" | "set">;
   artifacts: Pick<ArtifactStore, "mintPublicUrl" | "resolve">;
+  transcripts: TranscriptStore;
   artifactsDir: string;
   baseUrl: string;
   invoke: (args: { integration: string; action: string; params?: Record<string, unknown> }) => Promise<{ status: number; body: unknown }>;
@@ -46,18 +48,36 @@ export function createApiRouter(deps: ApiDeps): Router {
   // everything below requires a session
   router.use(requireSession(deps.sessionKey));
 
-  const stream = (run: (op: (event: ProgressEvent) => void) => Promise<QueryResult>) => async (_req: Request, res: Response) => {
+  const stream = (
+    run: (op: (event: ProgressEvent) => void) => Promise<QueryResult>,
+    onDone?: (events: ProgressEvent[], outcome: { result: QueryResult } | { error: string }) => Promise<void>,
+  ) => async (_req: Request, res: Response) => {
     const sse = openSse(res);
+    const events: ProgressEvent[] = [];
     try {
-      const result = await run((event) => sse.send("progress", event));
+      const result = await run((event) => { events.push(event); sse.send("progress", event); });
       sse.send("result", result);
+      try { await onDone?.(events, { result }); } catch (e) { console.error("transcript append failed:", e); }
     } catch (e) {
-      sse.send("error", { message: e instanceof Error ? e.message : String(e) });
+      const message = e instanceof Error ? e.message : String(e);
+      sse.send("error", { message });
+      try { await onDone?.(events, { error: message }); } catch (err) { console.error("transcript append failed:", err); }
     } finally {
       sse.close();
     }
   };
-  router.post("/query", (req, res) => stream((op) => deps.runQuery(String(req.body?.instruction ?? ""), op))(req, res));
+  router.post("/query", (req, res) => {
+    const instruction = String(req.body?.instruction ?? "");
+    stream(
+      (op) => deps.runQuery(instruction, op),
+      async (events, outcome) => {
+        const rec: TranscriptRecord = "result" in outcome
+          ? { runId: outcome.result.runId, ts: Date.now(), instruction, events, result: { text: outcome.result.text, metrics: outcome.result.metrics } }
+          : { runId: randomUUID(), ts: Date.now(), instruction, events, error: outcome.error };
+        await deps.transcripts.append(rec);
+      },
+    )(req, res);
+  });
   router.post("/remember", (req, res) => stream((op) => deps.runRemember(req.body ?? {}, op))(req, res));
 
   router.get("/tree", async (_req, res) => { res.json(await buildKnowledgeTree(deps.workspace.root)); });
@@ -87,6 +107,9 @@ export function createApiRouter(deps: ApiDeps): Router {
     res.json({ commit });
   });
   router.post("/discard", async (_req, res) => { await deps.workspace.resetToHead(); res.json({ ok: true }); });
+
+  router.get("/history", async (_req, res) => { res.json(await deps.transcripts.list()); });
+  router.delete("/history", async (_req, res) => { await deps.transcripts.clear(); res.json({ ok: true }); });
 
   router.get("/capabilities", async (_req, res) => { res.json(await deriveCapabilities(deps.workspace.root)); });
 
