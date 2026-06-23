@@ -10,6 +10,7 @@ export interface Config {
   queueLimit: number;
   secretsDir: string;
   artifactsDir: string;
+  transcriptsDir: string;
   baseUrl: string;
   dashboardPassword?: string;
 }
@@ -30,6 +31,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     queueLimit: env.GEODE_QUEUE_LIMIT ? Number(env.GEODE_QUEUE_LIMIT) : 4,
     secretsDir: env.GEODE_SECRETS_DIR || join(homedir(), ".geode", "secrets"),
     artifactsDir: env.GEODE_ARTIFACTS_DIR || join(required(env, "GEODE_WORKSPACE"), "artifacts"),
+    transcriptsDir: env.GEODE_TRANSCRIPTS_DIR || join(homedir(), ".geode", "transcripts"),
     baseUrl: env.GEODE_BASE_URL || `http://localhost:${env.GEODE_PORT ? Number(env.GEODE_PORT) : 8787}`,
     dashboardPassword: env.GEODE_DASHBOARD_PASSWORD || undefined,
   };
