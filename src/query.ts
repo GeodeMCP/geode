@@ -48,7 +48,14 @@ export async function query(
   opts?: { commit?: boolean },
 ): Promise<QueryResult> {
   return deps.runManager.run(async (abortController, runId) => {
-    if (!(await deps.workspace.isClean())) await deps.workspace.resetToHead();
+    const review = opts?.commit === false;
+    // Review mode (dashboard): NEVER auto-reset — accumulate onto whatever is in the working tree
+    // (a prior agent draft and/or manual Viewer edits). The human's Discard is the only reset.
+    // Auto-commit mode (MCP): a dirty tree means a pending human draft — commit it as a checkpoint
+    // first (never wipe it), so this run's own changes commit cleanly on top.
+    if (!review && !(await deps.workspace.isClean())) {
+      await deps.workspace.commitAll(`dashboard-draft: checkpoint before ${runId}`);
+    }
     const before = await deps.workspace.head();
     const artifactsBefore = deps.artifactsDir ? new Set(listArtifacts(deps.artifactsDir)) : new Set<string>();
     let finalText = "";
@@ -84,9 +91,13 @@ export async function query(
       }
       return { runId, text: finalText, commit, filesTouched, artifacts, metrics };
     } catch (err) {
-      await deps.workspace.resetToHead();
-      await deps.eventLog.append({ runId, instruction, status: "error", error: String(err) });
-      await deps.workspace.commitAll(`query ${runId}: log (error)`);
+      // Review mode: leave the partial edits on the tree for the human to inspect/keep/discard, and
+      // do NOT commit an error-log entry (commitAll would sweep up the accumulated draft). Just rethrow.
+      if (!review) {
+        await deps.workspace.resetToHead();
+        await deps.eventLog.append({ runId, instruction, status: "error", error: String(err) });
+        await deps.workspace.commitAll(`query ${runId}: log (error)`);
+      }
       throw err;
     }
   });

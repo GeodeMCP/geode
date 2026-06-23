@@ -17,6 +17,7 @@ function fakeWorkspace() {
     commitAll: async (m: string) => { calls.push(`commit:${m}`); return "COMMIT1"; },
     resetToHead: async () => { calls.push("reset"); },
     changedFilesSince: async (_r: string) => ["note.md"],
+    uncommittedChanges: async () => ["draft.md"],
   };
 }
 
@@ -77,4 +78,30 @@ test("reports only newly-created artifacts (diffs pre-existing) with bearer URLs
   const res = await query(d, "make a report");
   expect(res.artifacts).toEqual([{ path: "new.md", url: "http://h/artifacts/new.md" }]);
   rmSync(artifactsDir, { recursive: true, force: true });
+});
+
+test("review mode never resets a dirty tree at start — it accumulates onto the existing draft", async () => {
+  const ws = fakeWorkspace(); ws.isClean = async () => false; // a human draft is pending
+  const d = deps({ workspace: ws as any });
+  const res = await query(d, "do X", undefined, { commit: false });
+  expect(ws.calls).not.toContain("reset");
+  expect(res.commit).toBeNull();
+  expect(res.filesTouched).toEqual(["draft.md"]);
+});
+
+test("review mode leaves the tree on failure (no reset, no error-log commit) and rethrows", async () => {
+  const ws = fakeWorkspace(); ws.isClean = async () => false;
+  const boom = async function* () { yield { type: "text", text: "p" }; throw new Error("boom"); };
+  const d = deps({ workspace: ws as any, engine: boom as any });
+  await expect(query(d, "do Y", undefined, { commit: false })).rejects.toThrow("boom");
+  expect(ws.calls).not.toContain("reset");
+  expect(ws.calls.some((c) => c.includes("log (error)"))).toBe(false);
+});
+
+test("auto-commit mode checkpoints a dirty tree before the run instead of resetting it", async () => {
+  const ws = fakeWorkspace(); ws.isClean = async () => false; // a pending dashboard draft
+  const d = deps({ workspace: ws as any });
+  await query(d, "do X"); // auto-commit mode (MCP)
+  expect(ws.calls).not.toContain("reset");
+  expect(ws.calls.some((c) => c.startsWith("commit:dashboard-draft: checkpoint before "))).toBe(true);
 });
