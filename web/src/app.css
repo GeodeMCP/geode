@@ -84,18 +84,23 @@
   .auth-brand{display:flex;align-items:center;gap:9px;margin-bottom:14px;}
   .auth-card h2{font-family:"Instrument Sans",sans-serif;font-weight:600;font-size:22px;letter-spacing:-.02em;margin:6px 0 16px;}
   /* DOC (rendered markdown viewer) */
-  .doc{flex:1;overflow:auto;padding:20px 24px;font-size:14.5px;line-height:1.7;color:var(--muted);}
-  .doc>:first-child{margin-top:0;}
-  .doc h1,.doc h2,.doc h3,.doc h4{font-family:"Instrument Sans",sans-serif;color:var(--text);letter-spacing:-.01em;line-height:1.25;margin:1.3em 0 .5em;}
-  .doc h1{font-size:24px;} .doc h2{font-size:19px;} .doc h3{font-size:16px;} .doc h4{font-size:14.5px;}
-  .doc p{margin:.6em 0;} .doc ul,.doc ol{padding-left:1.4em;margin:.5em 0;} .doc li{margin:.25em 0;}
-  .doc a{color:var(--emerald-300);text-decoration:underline;text-underline-offset:2px;}
-  .doc code{font-family:"Geist Mono",monospace;font-size:.88em;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:1px 5px;color:var(--emerald-300);}
-  .doc pre{background:var(--input);border:1px solid var(--border);border-radius:10px;padding:12px 14px;overflow:auto;}
-  .doc pre code{background:none;border:none;padding:0;color:var(--neutral-200);}
-  .doc blockquote{border-left:2px solid var(--border-strong);margin:.6em 0;padding-left:12px;color:var(--faint);}
-  .doc hr{border:none;border-top:1px solid var(--border);margin:1em 0;}
-  .doc table{border-collapse:collapse;margin:.6em 0;} .doc th,.doc td{border:1px solid var(--border);padding:6px 10px;text-align:left;}
+  .doc{flex:1;overflow:auto;padding:20px 24px;}
+  /* shared markdown prose — used by the viewer (.doc.md) and agent chat bubbles (.bubble.ag.md) */
+  .md{font-size:14.5px;line-height:1.7;color:var(--muted);white-space:normal;}
+  .md>:first-child{margin-top:0;} .md>:last-child{margin-bottom:0;}
+  .md h1,.md h2,.md h3,.md h4{font-family:"Instrument Sans",sans-serif;color:var(--text);letter-spacing:-.01em;line-height:1.25;margin:1.3em 0 .5em;}
+  .md h1{font-size:24px;} .md h2{font-size:19px;} .md h3{font-size:16px;} .md h4{font-size:14.5px;}
+  .md p{margin:.6em 0;} .md ul,.md ol{padding-left:1.4em;margin:.5em 0;} .md li{margin:.25em 0;}
+  .md a{color:var(--emerald-300);text-decoration:underline;text-underline-offset:2px;}
+  .md code{font-family:"Geist Mono",monospace;font-size:.88em;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:1px 5px;color:var(--emerald-300);}
+  .md pre{background:var(--input);border:1px solid var(--border);border-radius:10px;padding:12px 14px;overflow:auto;}
+  .md pre code{background:none;border:none;padding:0;color:var(--neutral-200);}
+  .md blockquote{border-left:2px solid var(--border-strong);margin:.6em 0;padding-left:12px;color:var(--faint);}
+  .md hr{border:none;border-top:1px solid var(--border);margin:1em 0;}
+  .md table{border-collapse:collapse;margin:.6em 0;} .md th,.md td{border:1px solid var(--border);padding:6px 10px;text-align:left;}
+  .bubble.md{font-size:14px;color:inherit;}
+  .bubble.md h1,.bubble.md h2,.bubble.md h3,.bubble.md h4{font-size:15px;margin:.5em 0 .25em;color:inherit;}
+  .bubble.md p{margin:.35em 0;} .bubble.md ul,.bubble.md ol{margin:.35em 0;}
   .doc-fm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border);}
   /* DIRTY banner (chat) */
   .dirty-banner{margin:10px 14px 0;padding:9px 12px;border-radius:10px;background:rgba(217,161,58,.1);border:1px solid rgba(217,161,58,.35);display:flex;align-items:center;gap:10px;font-size:13px;color:#e0b970;}

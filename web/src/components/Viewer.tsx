@@ -57,7 +57,7 @@ export function Viewer({ path, content, diff, dirty, compose, onCommit, onDiscar
             : <div style={{ color: "var(--faint)" }}>No changes.</div>;
         })()}</div>
       ) : path ? (
-        <div className="doc">
+        <div className="doc md">
           {(fm.title || fm.type || fm.tags) && (
             <div className="doc-fm">
               {fm.type && <span className="chip">{fm.type}</span>}
