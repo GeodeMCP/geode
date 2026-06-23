@@ -7,6 +7,10 @@ type Msg = { who: "me" | "ag" | "step"; text: string; animate?: boolean };
 const STORE = "geode.chat.v1";
 const loadMsgs = (): Msg[] => { try { return (JSON.parse(localStorage.getItem(STORE) || "[]") as Msg[]).map((m) => ({ who: m.who, text: m.text })); } catch { return []; } };
 
+const StepIcon = () => (
+  <svg className="step-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="m9 6 6 6-6 6" /></svg>
+);
+
 // Reveals the agent's text as if typed; pre-typed (persisted) messages render instantly.
 function AgentBubble({ text, animate }: { text: string; animate?: boolean }) {
   const [shown, setShown] = useState(animate ? "" : text);
@@ -27,7 +31,6 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard }: {
   const [text, setText] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
   useEffect(() => { endRef.current?.scrollIntoView({ block: "end" }); }, [msgs, running]);
-  // persist without the transient `animate` flag so reloads never re-animate
   useEffect(() => { try { localStorage.setItem(STORE, JSON.stringify(msgs.map((m) => ({ who: m.who, text: m.text })))); } catch { /* quota/private mode */ } }, [msgs]);
 
   const submit = async () => {
@@ -36,12 +39,20 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard }: {
     setText("");
     setMsgs((m) => [...m, { who: "me", text: instruction }]);
     let lastStep = "";
+    let lastAgent = "";
     await onSend(instruction, (e) => {
       if (e.event === "progress") {
         const t = (e.data.message || "").trim();
-        if (t && t !== lastStep) { lastStep = t; setMsgs((m) => [...m, { who: "step", text: t }]); }   // each step is its own message; skip consecutive dupes
+        if (!t) return;
+        if (t.startsWith("→")) {                                   // a tool action — engine marks tool use with "→ <Tool>"
+          const name = t.replace(/^→\s*/, "");
+          if (name && name !== lastStep) { lastStep = name; setMsgs((m) => [...m, { who: "step", text: name }]); }
+        } else {                                                    // the agent's prose — a real (markdown) message
+          lastAgent = t; setMsgs((m) => [...m, { who: "ag", text: t, animate: true }]);
+        }
       } else if (e.event === "result") {
-        setMsgs((m) => [...m, { who: "ag", text: e.data.text, animate: true }]);                       // stream the answer in
+        const t = (e.data.text || "").trim();
+        if (t && t !== lastAgent) setMsgs((m) => [...m, { who: "ag", text: t, animate: true }]);   // dedupe: skip if already shown as the last prose
       } else if (e.event === "error") {
         setMsgs((m) => [...m, { who: "ag", text: "Error: " + e.data.message }]);
       }
@@ -64,7 +75,7 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard }: {
         {msgs.length === 0 && !running && !dirty && <div style={{ color: "var(--faint)", fontSize: 13 }}>Ask your vault something, or add knowledge.</div>}
         {msgs.map((m, i) => {
           if (m.who === "me") return <div key={i} className="bubble me">{m.text}</div>;
-          if (m.who === "step") return <div key={i} className="step"><span className="step-dot" />{m.text}</div>;
+          if (m.who === "step") return <div key={i} className="step"><StepIcon />{m.text}</div>;
           return <AgentBubble key={i} text={m.text} animate={m.animate} />;
         })}
         {running && <div className="thinking"><span className="tdots"><i /><i /><i /></span></div>}
