@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { renderMarkdown, splitFrontmatter } from "../markdown";
+import { ColHead } from "./ColHead";
 
 // Hide git plumbing; keep hunk headers (rendered subtly) + the real +/- changes.
 function cleanDiff(diff: string): string[] {
@@ -30,19 +31,13 @@ export function Viewer({ path, content, diff, dirty, compose, onCommit, onDiscar
 
   return (
     <div className="col viewer">
-      <div className="panel-bar">
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <div className="tl"><span /><span /><span /></div>
-          <span className="fname">{path ?? "—"}</span>
-          {dirty && <span className="uncommitted"><span className="dot-mod" />uncommitted</span>}
-          {saved && <span style={{ color: "var(--green)", fontSize: 12.5 }}>Saved</span>}
-        </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          {editing && <><button className="ghost sm" onClick={() => setEditing(false)}>Cancel</button><button className="btn sm" onClick={save}>Save</button></>}
-          {!editing && path && <button className="ghost sm" onClick={startEdit}>Edit</button>}
-          {!editing && dirty && <><button className="ghost sm" onClick={onDiscard}>Discard</button><button className="btn sm" onClick={onCommit}>Commit</button></>}
-        </div>
-      </div>
+      <ColHead title="File editor" note={path ?? "—"}>
+        {dirty && <span className="uncommitted"><span className="dot-mod" />uncommitted</span>}
+        {saved && <span style={{ color: "var(--green)", fontSize: 12.5 }}>Saved</span>}
+        {editing && <><button className="ghost sm" onClick={() => setEditing(false)}>Cancel</button><button className="btn sm" onClick={save}>Save</button></>}
+        {!editing && path && <button className="ghost sm" onClick={startEdit}>Edit</button>}
+        {!editing && dirty && <><button className="ghost sm" onClick={onDiscard}>Discard</button><button className="btn sm" onClick={onCommit}>Commit</button></>}
+      </ColHead>
 
       {editing ? (
         <textarea className="input" style={{ flex: 1, margin: 16, fontFamily: "Geist Mono, monospace", fontSize: 13, resize: "none" }}

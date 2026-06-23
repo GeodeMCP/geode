@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { TreeNode } from "../api";
+import { ColHead } from "./ColHead";
 
 // Tree glyphs — identical to the marketing site (#ico-folder / #ico-file).
 const FolderIcon = () => (
@@ -65,10 +66,9 @@ export function FileTree({ tree, status, selected, onSelect, onCreate, onDelete 
 
   return (
     <div className="col tree">
-      <div className="eyebrow" style={{ display: "flex", alignItems: "center" }}>
-        <span style={{ flex: 1 }}>Vault</span>
+      <ColHead title="Vault">
         <button className="ghost sm" onClick={() => setCreating((c) => !c)} style={{ textTransform: "none", letterSpacing: 0 }}>+ New</button>
-      </div>
+      </ColHead>
       {creating && (
         <div style={{ padding: "0 14px 8px" }}>
           <input className="input" autoFocus value={name} placeholder="path/to/note"
