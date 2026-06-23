@@ -108,3 +108,34 @@ test("records each query run and serves it via GET /api/history; DELETE clears i
 test("GET /api/history requires a session", async () => {
   expect((await fetch(`${url}/api/history`)).status).toBe(401);
 });
+
+test("an errored query run is still recorded with error + a generated runId", async () => {
+  // Self-contained app whose runQuery throws — the shared boot()'s runQuery always succeeds.
+  const root2 = mkdtempSync(join(tmpdir(), "geode-api-err-"));
+  const ws2 = createWorkspace(root2); await ws2.init();
+  const app2 = express(); app2.use(express.json());
+  app2.use("/api", createApiRouter({
+    sessionKey: KEY, dashboardPassword: "pw", secure: false, workspace: ws2,
+    runQuery: async () => { throw new Error("engine boom"); },
+    runRemember: async () => ({ runId: "r", text: "", commit: null, filesTouched: [] }),
+    linkKey: KEY,
+    secrets: { list: async () => [], delete: async () => {}, set: async () => {} } as any,
+    artifacts: {} as any,
+    transcripts: createTranscriptStore(join(root2, ".transcripts")),
+    artifactsDir: root2, baseUrl: "http://h", invoke: async () => ({ status: 200, body: {} }),
+  }));
+  const srv2 = await new Promise<Server>((r) => { const s = app2.listen(0, () => r(s)); });
+  try {
+    const u2 = `http://localhost:${(srv2.address() as any).port}`;
+    const cookie = (await fetch(`${u2}/api/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password: "pw" }) })).headers.get("set-cookie")!.split(";")[0];
+    await fetch(`${u2}/api/query`, { method: "POST", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ instruction: "do X" }) }).then((r) => r.text());
+    const hist = await (await fetch(`${u2}/api/history`, { headers: { cookie } })).json();
+    expect(hist).toHaveLength(1);
+    expect(hist[0].error).toBe("engine boom");
+    expect(typeof hist[0].runId).toBe("string");
+    expect(hist[0].runId.length).toBeGreaterThan(0);
+    expect(hist[0].result).toBeUndefined();
+  } finally {
+    srv2.close(); rmSync(root2, { recursive: true, force: true });
+  }
+});

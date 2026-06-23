@@ -71,6 +71,7 @@ export function createApiRouter(deps: ApiDeps): Router {
     stream(
       (op) => deps.runQuery(instruction, op),
       async (events, outcome) => {
+        // Safe to append serially: the runManager queue serializes runs, so two /query records never interleave.
         const rec: TranscriptRecord = "result" in outcome
           ? { runId: outcome.result.runId, ts: Date.now(), instruction, events, result: { text: outcome.result.text, metrics: outcome.result.metrics } }
           : { runId: randomUUID(), ts: Date.now(), instruction, events, error: outcome.error };
