@@ -5,6 +5,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { query, type QueryDeps, type QueryResult } from "./query.js";
 import { remember, type RememberArgs } from "./ingest.js";
+import { eventText } from "./engine.js";
 import { deriveCapabilities } from "./capabilities.js";
 import { invoke, type InvokeArgs, type InvokeResult } from "./invoke.js";
 import type { SecretStore } from "./secrets.js";
@@ -98,7 +99,7 @@ export function buildMcpServer(queryDeps: QueryDeps, opts?: { secrets?: SecretSt
   const server = new McpServer({ name: "geode-kernel", version: "0.1.0" });
 
   const queryHandler = makeQueryHandler({
-    runQuery: (instruction, onProgress) => query(queryDeps, instruction, onProgress),
+    runQuery: (instruction, onProgress) => query(queryDeps, instruction, onProgress ? (ev) => { const s = eventText(ev); if (s) onProgress(s); } : undefined),
   });
   server.registerTool(
     "query",
@@ -110,7 +111,7 @@ export function buildMcpServer(queryDeps: QueryDeps, opts?: { secrets?: SecretSt
   );
 
   const rememberHandler = makeRememberHandler({
-    runRemember: (args, onProgress) => remember(queryDeps, args, onProgress),
+    runRemember: (args, onProgress) => remember(queryDeps, args, onProgress ? (ev) => { const s = eventText(ev); if (s) onProgress(s); } : undefined),
   });
   server.registerTool(
     "remember",

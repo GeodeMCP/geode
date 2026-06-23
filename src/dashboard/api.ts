@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { timingSafeEqual } from "node:crypto";
 import type { Workspace } from "../workspace.js";
 import type { QueryResult } from "../query.js";
+import type { ProgressEvent } from "../engine.js";
 import type { RememberArgs } from "../ingest.js";
 import type { SecretStore } from "../secrets.js";
 import type { ArtifactStore } from "../artifacts.js";
@@ -17,8 +18,8 @@ export interface ApiDeps {
   dashboardPassword: string;
   secure: boolean;
   workspace: Workspace;
-  runQuery: (instruction: string, onProgress: (m: string, detail?: string) => void) => Promise<QueryResult>;
-  runRemember: (args: RememberArgs, onProgress: (m: string, detail?: string) => void) => Promise<QueryResult>;
+  runQuery: (instruction: string, onProgress: (event: ProgressEvent) => void) => Promise<QueryResult>;
+  runRemember: (args: RememberArgs, onProgress: (event: ProgressEvent) => void) => Promise<QueryResult>;
   linkKey: Buffer;
   secrets: Pick<SecretStore, "list" | "delete" | "set">;
   artifacts: Pick<ArtifactStore, "mintPublicUrl" | "resolve">;
@@ -45,10 +46,10 @@ export function createApiRouter(deps: ApiDeps): Router {
   // everything below requires a session
   router.use(requireSession(deps.sessionKey));
 
-  const stream = (run: (op: (m: string, detail?: string) => void) => Promise<QueryResult>) => async (_req: Request, res: Response) => {
+  const stream = (run: (op: (event: ProgressEvent) => void) => Promise<QueryResult>) => async (_req: Request, res: Response) => {
     const sse = openSse(res);
     try {
-      const result = await run((m, detail) => sse.send("progress", { message: m, detail }));
+      const result = await run((event) => sse.send("progress", event));
       sse.send("result", result);
     } catch (e) {
       sse.send("error", { message: e instanceof Error ? e.message : String(e) });

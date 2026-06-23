@@ -1,6 +1,6 @@
 import { existsSync, readdirSync } from "node:fs";
 import { join, relative, sep } from "node:path";
-import type { Engine } from "./engine.js";
+import type { Engine, ProgressEvent, Metrics } from "./engine.js";
 import type { EventLog } from "./eventLog.js";
 import type { RunManager } from "./runManager.js";
 import type { Workspace } from "./workspace.js";
@@ -22,6 +22,7 @@ export interface QueryResult {
   commit: string | null;
   filesTouched: string[];
   artifacts?: { path: string; url: string }[];
+  metrics?: Metrics;
 }
 
 function listArtifacts(dir: string): string[] {
@@ -43,7 +44,7 @@ const truncate = (s: string, n = 200): string => (s.length > n ? `${s.slice(0, n
 export async function query(
   deps: QueryDeps,
   instruction: string,
-  onProgress?: (message: string, detail?: string) => void,
+  onProgress?: (event: ProgressEvent) => void,
   opts?: { commit?: boolean },
 ): Promise<QueryResult> {
   return deps.runManager.run(async (abortController, runId) => {
@@ -51,6 +52,7 @@ export async function query(
     const before = await deps.workspace.head();
     const artifactsBefore = deps.artifactsDir ? new Set(listArtifacts(deps.artifactsDir)) : new Set<string>();
     let finalText = "";
+    let metrics: Metrics | undefined;
     try {
       for await (const ev of deps.engine({
         instruction,
@@ -59,13 +61,13 @@ export async function query(
         model: deps.model,
         abortController,
       })) {
-        if (ev.type === "progress") onProgress?.(ev.text, ev.detail);
-        else finalText = ev.text;
+        if (ev.type === "result") { finalText = ev.text; metrics = ev.metrics; }
+        else onProgress?.(ev);
       }
       if (opts?.commit === false) {
         // Review mode (dashboard): leave changes uncommitted for the human to Commit/Verwerp.
         const filesTouched = await deps.workspace.uncommittedChanges();
-        return { runId, text: finalText, commit: null, filesTouched };
+        return { runId, text: finalText, commit: null, filesTouched, metrics };
       }
       const commit = await deps.workspace.commitAll(`query ${runId}: ${truncate(instruction, 60)}`);
       const filesTouched = commit ? await deps.workspace.changedFilesSince(before) : [];
@@ -80,7 +82,7 @@ export async function query(
           .filter((a) => !artifactsBefore.has(a))
           .map((p) => ({ path: p, url: `${base}/artifacts/${p}` }));
       }
-      return { runId, text: finalText, commit, filesTouched, artifacts };
+      return { runId, text: finalText, commit, filesTouched, artifacts, metrics };
     } catch (err) {
       await deps.workspace.resetToHead();
       await deps.eventLog.append({ runId, instruction, status: "error", error: String(err) });

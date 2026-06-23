@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Geode — chat timeline mockup</title>
+<style>
+  :root{
+    --bg:#0b0f0e; --surface:#141917; --surface-2:#191e1c; --input:#080b0a;
+    --text:#f2f2f2; --neutral-200:#e5e5e5; --muted:#a3a3a3; --faint:#777;
+    --border:rgba(255,255,255,.07); --border-strong:rgba(255,255,255,.12);
+    --green:#34d399; --emerald-300:#6ee7b7; --emerald-500:#10b981;
+    --blue:#2563eb; --blue-500:#3b82f6; --blue-100:#dbeafe;
+    --amber:#d9a13a; --rose:#f1707a;
+    --ease:cubic-bezier(.4,0,.2,1);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:"Geist",system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;display:flex;justify-content:center;gap:34px;padding:34px 24px 80px;align-items:flex-start;}
+  .ic{width:17px;height:17px;flex:none;vertical-align:middle;}
+
+  /* ---- mockup chrome ---- */
+  .stage{width:460px;max-width:100%;}
+  .stage > h1{font-family:"Instrument Sans",sans-serif;font-size:15px;font-weight:600;letter-spacing:-.01em;color:var(--text);margin:0 0 4px;}
+  .stage > p.sub{font-size:12.5px;color:var(--faint);margin:0 0 14px;line-height:1.5;}
+  .col.chat{height:760px;background:var(--surface);border:1px solid var(--border);border-radius:16px;display:flex;flex-direction:column;overflow:hidden;}
+
+  /* ---- column header with topo ---- */
+  .colhead{position:relative;overflow:hidden;display:flex;align-items:center;gap:10px;height:48px;flex:none;padding:0 16px;border-bottom:1px solid var(--border);background:var(--surface);}
+  .colhead-title{position:relative;z-index:1;font-family:"Instrument Sans",sans-serif;font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.17em;color:var(--green);white-space:nowrap;}
+  .colhead-actions{position:relative;z-index:1;display:flex;align-items:center;gap:10px;margin-left:auto;}
+  .ghost.sm{font-family:"Instrument Sans",sans-serif;font-size:12px;background:transparent;border:1px solid var(--border-strong);color:var(--neutral-200);border-radius:7px;height:30px;padding:0 11px;cursor:pointer;}
+  .topo{position:absolute;inset:0;width:100%;height:100%;opacity:.55;pointer-events:none;-webkit-mask-image:radial-gradient(140% 130% at 28% 0%,#000,transparent 78%);mask-image:radial-gradient(140% 130% at 28% 0%,#000,transparent 78%);}
+
+  /* ---- message stream ---- */
+  .msgs{flex:1;padding:16px 16px 18px;display:flex;flex-direction:column;gap:12px;overflow-y:auto;font-size:14px;}
+  /* chat items must never shrink: items with overflow:hidden get min-height:0 in a column flex and would collapse */
+  .msgs > *{flex:0 0 auto;}
+
+  /* primary lane: real conversation bubbles */
+  .row{display:flex;flex-direction:column;}
+  .row.me{align-items:flex-end;}
+  .row.ag{align-items:flex-start;}
+  .bubble{max-width:86%;padding:10px 13px;border-radius:14px;line-height:1.55;word-break:break-word;}
+  .bubble.me{background:var(--blue);border:1px solid var(--blue-500);color:var(--blue-100);border-radius:14px 14px 4px 14px;}
+  .bubble.ag{background:var(--surface-2);border:1px solid var(--border);color:var(--neutral-200);border-radius:14px 14px 14px 4px;}
+  .bubble.ag p{margin:0 0 .5em;} .bubble.ag p:last-child{margin:0;}
+  .bubble.ag code{font-family:"Geist Mono",ui-monospace,monospace;font-size:.86em;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:1px 5px;color:var(--emerald-300);}
+  .bubble.ag strong{color:var(--text);}
+  .msg-time{font-size:10px;color:var(--faint);margin-top:4px;}
+
+  /* ---- thinking: dimmed, collapsible thought ---- */
+  .thought{align-self:flex-start;max-width:90%;border:1px solid var(--border);border-radius:14px 14px 14px 4px;background:rgba(110,231,183,.04);overflow:hidden;}
+  .thought-row{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;color:var(--faint);font-size:12.5px;}
+  .thought-row .brain{color:var(--emerald-500);opacity:.8;}
+  .thought-body{padding:2px 13px 11px 33px;font-size:12.5px;line-height:1.6;color:var(--muted);font-style:italic;border-top:1px dashed var(--border);margin-top:2px;display:none;}
+  .thought.open .thought-body{display:block;}
+  .thought.open .chev{transform:rotate(90deg);}
+
+  /* ---- activity group: tool steps under a turn ---- */
+  .activity{align-self:flex-start;width:100%;border:1px dashed var(--border-strong);border-radius:12px;overflow:hidden;background:rgba(255,255,255,.012);}
+  .activity-head{display:flex;align-items:center;gap:8px;padding:8px 11px;cursor:pointer;font-family:"Instrument Sans",sans-serif;font-size:12px;color:var(--muted);}
+  .activity-head .lbl{color:var(--emerald-300);font-weight:600;}
+  .activity-head .count{color:var(--faint);font-weight:500;}
+  .activity-head .chev{margin-left:auto;}
+  .activity-body{display:flex;flex-direction:column;border-top:1px dashed var(--border);}
+  .activity.closed .activity-body{display:none;}
+  .activity.closed .activity-head .chev{transform:rotate(0);}
+  .activity-head .chev{transform:rotate(90deg);}
+
+  .step{border-bottom:1px dashed var(--border);}
+  .step:last-child{border-bottom:none;}
+  .step-row{display:flex;align-items:center;gap:9px;padding:7px 11px;font-family:"Geist Mono",ui-monospace,monospace;font-size:12px;cursor:pointer;}
+  .step-row .tic{width:14px;height:14px;flex:none;color:var(--emerald-500);}
+  .step-name{color:var(--emerald-300);flex:none;}
+  .step-arg{flex:1;min-width:0;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .step-dur{color:var(--faint);font-size:10.5px;flex:none;}
+  .step .chev{flex:none;}
+  .step-detail{margin:0;padding:9px 12px 11px;border-top:1px dashed var(--border);background:var(--input);color:var(--neutral-200);font-family:"Geist Mono",ui-monospace,monospace;font-size:11.5px;line-height:1.55;white-space:pre-wrap;word-break:break-word;max-height:220px;overflow:auto;display:none;}
+  .step.open .step-detail{display:block;}
+  .step.open > .step-row .chev{transform:rotate(90deg);}
+  .step.noexp .step-row{cursor:default;}
+  .step.noexp .chev{visibility:hidden;}
+  /* diff colouring */
+  .step-detail .add{color:var(--emerald-300);} .step-detail .del{color:var(--rose);} .step-detail .dim{color:var(--faint);}
+  /* running indicator */
+  .running .step-name{color:var(--muted);}
+  .run-pill{display:inline-flex;align-items:center;gap:6px;color:var(--amber);font-size:10.5px;}
+  .spin{width:9px;height:9px;border:1.6px solid rgba(217,161,58,.35);border-top-color:var(--amber);border-radius:999px;animation:sp .7s linear infinite;}
+  @keyframes sp{to{transform:rotate(360deg);}}
+  .done-tick{color:var(--emerald-500);}
+
+  .chev{width:13px;height:13px;color:var(--faint);transition:transform .12s var(--ease);}
+
+  /* ---- live todo card ---- */
+  .todo{align-self:flex-start;width:100%;border:1px solid rgba(52,211,153,.30);border-radius:12px;background:rgba(52,211,153,.05);overflow:hidden;}
+  .todo-head{display:flex;align-items:center;gap:8px;padding:9px 12px;font-family:"Instrument Sans",sans-serif;font-size:12px;font-weight:600;color:var(--emerald-300);border-bottom:1px solid rgba(52,211,153,.18);}
+  .todo-head .tcount{margin-left:auto;color:var(--faint);font-weight:500;}
+  .todo-list{list-style:none;margin:0;padding:7px 12px 9px;display:flex;flex-direction:column;gap:6px;font-size:13px;}
+  .todo-list li{display:flex;align-items:center;gap:9px;color:var(--muted);}
+  .todo-list li .box{width:15px;height:15px;flex:none;border-radius:5px;border:1.5px solid var(--border-strong);display:flex;align-items:center;justify-content:center;}
+  .todo-list li.done{color:var(--faint);text-decoration:line-through;}
+  .todo-list li.done .box{background:var(--emerald-500);border-color:var(--emerald-500);}
+  .todo-list li.done .box svg{color:#05221a;}
+  .todo-list li.active{color:var(--text);}
+  .todo-list li.active .box{border-color:var(--amber);}
+  .todo-list li.active .box .spin{width:8px;height:8px;}
+
+  /* ---- system dividers / chips / pills ---- */
+  .divider{display:flex;align-items:center;gap:10px;color:var(--faint);font-size:11px;font-family:"Instrument Sans",sans-serif;letter-spacing:.04em;margin:2px 2px;}
+  .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--border);}
+  .sys-chip{align-self:center;display:inline-flex;align-items:center;gap:7px;font-family:"Instrument Sans",sans-serif;font-size:11.5px;color:var(--muted);background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:4px 12px;}
+  .sys-chip .ic{width:13px;height:13px;color:var(--emerald-300);}
+  .pill{align-self:flex-start;display:inline-flex;align-items:center;gap:7px;font-family:"Instrument Sans",sans-serif;font-size:11.5px;border-radius:999px;padding:5px 12px;}
+  .pill.retry{color:var(--amber);background:rgba(217,161,58,.10);border:1px solid rgba(217,161,58,.35);}
+
+  /* ---- error banner ---- */
+  .err-banner{align-self:stretch;display:flex;gap:10px;align-items:flex-start;padding:11px 13px;border-radius:12px;background:rgba(241,112,122,.08);border:1px solid rgba(241,112,122,.40);color:#f5a3a9;font-size:13px;line-height:1.5;}
+  .err-banner .ic{color:var(--rose);margin-top:1px;}
+  .err-banner b{color:#ffd2d5;font-weight:600;}
+
+  /* ---- turn footer metrics ---- */
+  .turn-meta{align-self:flex-start;display:flex;gap:12px;font-size:10.5px;color:var(--faint);font-family:"Geist Mono",ui-monospace,monospace;padding-left:2px;}
+  .turn-meta span{display:inline-flex;align-items:center;gap:4px;}
+
+  /* ---- "later" section ---- */
+  .later-wrap{opacity:.5;}
+  .later-tag{align-self:center;font-family:"Instrument Sans",sans-serif;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);border:1px dashed var(--border-strong);border-radius:999px;padding:3px 11px;margin:6px 0;}
+  .subagent{align-self:flex-start;width:100%;border:1px solid var(--border-strong);border-radius:12px;background:var(--surface-2);overflow:hidden;}
+  .subagent-head{display:flex;align-items:center;gap:8px;padding:9px 12px;font-family:"Instrument Sans",sans-serif;font-size:12px;color:var(--blue-100);border-bottom:1px solid var(--border);}
+  .subagent-head .badge{margin-left:auto;font-size:10px;color:var(--faint);}
+  .subagent-body{padding:6px 0;}
+  .elicit{align-self:flex-start;width:100%;border:1px solid rgba(59,130,246,.4);border-radius:12px;background:rgba(37,99,235,.08);padding:12px 13px;font-size:13px;color:var(--blue-100);}
+  .elicit .btn{margin-top:9px;font-family:"Instrument Sans",sans-serif;font-size:13px;background:var(--blue);border:1px solid var(--blue-500);color:var(--blue-100);border-radius:7px;padding:8px 14px;cursor:pointer;}
+
+  /* composer */
+  .ctrl{flex:none;padding:12px 14px;border-top:1px solid var(--border);}
+  .input{width:100%;background:var(--input);border:1px solid var(--border-strong);border-radius:9px;padding:11px 13px;color:var(--text);font-family:"Geist",sans-serif;font-size:14px;}
+  .input::placeholder{color:var(--faint);}
+
+  /* legend */
+  .legend{width:300px;max-width:100%;font-size:12.5px;color:var(--muted);line-height:1.55;}
+  .legend h2{font-family:"Instrument Sans",sans-serif;font-size:13px;color:var(--text);margin:0 0 10px;letter-spacing:-.01em;}
+  .legend ul{list-style:none;margin:0 0 18px;padding:0;display:flex;flex-direction:column;gap:9px;}
+  .legend li{display:flex;gap:9px;align-items:flex-start;}
+  .legend .k{flex:none;width:13px;height:13px;border-radius:4px;margin-top:2px;}
+  .legend .lbl{color:var(--text);font-weight:600;}
+  .swatch-blue{background:var(--blue);} .swatch-ag{background:var(--surface-2);border:1px solid var(--border);}
+  .swatch-step{background:transparent;border:1px dashed var(--border-strong);} .swatch-think{background:rgba(110,231,183,.12);border:1px solid var(--border);}
+  .swatch-todo{background:rgba(52,211,153,.18);border:1px solid rgba(52,211,153,.4);} .swatch-sys{background:var(--surface-2);border:1px solid var(--border);}
+  .swatch-err{background:rgba(241,112,122,.2);border:1px solid rgba(241,112,122,.5);}
+  .legend p.note{color:var(--faint);font-size:11.5px;}
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <h1>Vault agent — new chat timeline</h1>
+  <p class="sub">One assistant turn = thinking ▸ grouped tool-steps ▸ answer. System events are quiet dividers/pills. Click any chevron to expand.</p>
+
+  <div class="col chat">
+    <div class="colhead">
+      <svg class="topo" viewBox="0 0 400 48" preserveAspectRatio="none" fill="none" stroke="rgba(155,188,176,.13)" stroke-width="1" aria-hidden="true">
+        <path d="M0 38 C70 26 130 44 200 32 S330 22 400 36" />
+        <path d="M0 30 C70 18 130 36 200 24 S330 14 400 28" />
+        <path d="M0 22 C70 10 130 28 200 16 S330 6 400 20" />
+        <path d="M0 14 C70 2 130 20 200 8 S330 -2 400 12" />
+        <path d="M0 46 C70 34 130 52 200 40 S330 30 400 44" />
+      </svg>
+      <span class="colhead-title">Vault agent</span>
+      <span class="colhead-actions"><button class="ghost sm">Clear</button></span>
+    </div>
+
+    <div class="msgs">
+
+      <!-- session init as a quiet divider -->
+      <div class="divider">opus-4.8 · 14 tools · vault ready</div>
+
+      <!-- user turn -->
+      <div class="row me">
+        <div class="bubble me">Add my notes from the standup about the pricing experiment, and link it to the roadmap.</div>
+        <span class="msg-time">today · 14:32</span>
+      </div>
+
+      <!-- recalled from memory -->
+      <div class="sys-chip">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M5 8a4 4 0 0 1 7-2 4 4 0 0 1 7 2v8a4 4 0 0 1-7 2 4 4 0 0 1-7-2z"/></svg>
+        Recalled from memory · pricing-experiment context
+      </div>
+
+      <!-- assistant turn: thinking -->
+      <div class="thought open" data-toggle>
+        <div class="thought-row">
+          <svg class="brain ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"/></svg>
+          <span>Thought for 6s</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto"><path d="m9 6 6 6-6 6"/></svg>
+        </div>
+        <div class="thought-body">The vault already has a pricing.md under experiments/. I should append the standup notes there rather than create a new file, then add a cross-link from roadmap.md. Let me check the existing structure first.</div>
+      </div>
+
+      <!-- activity group: tool steps, with a summary header -->
+      <div class="activity" data-toggle>
+        <div class="activity-head">
+          <svg class="tic ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 3 14h7l-1 8 10-12h-7z"/></svg>
+          <span class="lbl">Filed standup notes</span>
+          <span class="count">· 4 actions</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+        </div>
+        <div class="activity-body">
+
+          <!-- read (expandable) -->
+          <div class="step" data-toggle>
+            <div class="step-row">
+              <svg class="tic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+              <span class="step-name">read</span>
+              <span class="step-arg">experiments/pricing.md</span>
+              <span class="step-dur">0.2s</span>
+              <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+            </div>
+            <pre class="step-detail"># Pricing experiment
+Status: running since May. Variant B (+€2) at 4.1% conversion vs control 3.8%.
+Owner: Robbert. Next review: end of June.</pre>
+          </div>
+
+          <!-- grep (expandable) -->
+          <div class="step" data-toggle>
+            <div class="step-row">
+              <svg class="tic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+              <span class="step-name">grep</span>
+              <span class="step-arg">"pricing" in roadmap.md</span>
+              <span class="step-dur">0.1s</span>
+              <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+            </div>
+            <pre class="step-detail">roadmap.md:18:  - [ ] Decide on pricing tiers (Q3)</pre>
+          </div>
+
+          <!-- edit (expandable, diff) -->
+          <div class="step open" data-toggle>
+            <div class="step-row">
+              <svg class="tic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+              <span class="step-name">edited</span>
+              <span class="step-arg">experiments/pricing.md</span>
+              <span class="step-dur">0.3s</span>
+              <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+            </div>
+<pre class="step-detail"><span class="dim">@@ standup notes 2026-06-23 @@</span>
+<span class="add">+ ## Standup 2026-06-23</span>
+<span class="add">+ Variant B winning by +0.3pt; keep running through June.</span>
+<span class="add">+ Action: confirm tiers with finance before Q3 roadmap item.</span></pre>
+          </div>
+
+          <!-- bash running -->
+          <div class="step running noexp">
+            <div class="step-row">
+              <svg class="tic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m4 17 6-6-6-6"/><path d="M12 19h8"/></svg>
+              <span class="step-name">ran</span>
+              <span class="step-arg">git add experiments/pricing.md</span>
+              <span class="run-pill"><span class="spin"></span>running… 2s</span>
+              <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 6 6 6-6 6"/></svg>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- live todo card -->
+      <div class="todo">
+        <div class="todo-head">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>
+          Plan <span class="tcount">2 / 3</span>
+        </div>
+        <ul class="todo-list">
+          <li class="done"><span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width:9px;height:9px"><path d="M20 6 9 17l-5-5"/></svg></span>Read existing pricing notes</li>
+          <li class="done"><span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width:9px;height:9px"><path d="M20 6 9 17l-5-5"/></svg></span>Append standup notes</li>
+          <li class="active"><span class="box"><span class="spin"></span></span>Cross-link to roadmap.md</li>
+        </ul>
+      </div>
+
+      <!-- final answer -->
+      <div class="row ag">
+        <div class="bubble ag md">
+          <p>Done. I appended your standup notes to <code>experiments/pricing.md</code> under a dated heading and added a cross-link from the <strong>pricing tiers</strong> item in <code>roadmap.md</code>.</p>
+          <p>The notes are staged but <strong>not committed</strong> — review the diff and hit Commit when you're happy.</p>
+        </div>
+        <span class="msg-time">today · 14:32</span>
+      </div>
+
+      <!-- turn footer metrics -->
+      <div class="turn-meta">
+        <span>⏱ 4.6s</span><span>◇ 3.1k tokens</span><span>$ 0.012</span>
+      </div>
+
+      <!-- transient API retry pill -->
+      <div class="pill retry"><span class="spin"></span>Model overloaded — retrying (attempt 2)…</div>
+
+      <!-- context compacted divider -->
+      <div class="divider">context compacted · 41k → 9k tokens</div>
+
+      <!-- error banner -->
+      <div class="err-banner">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+        <div><b>Run stopped — max turns reached.</b> The agent hit its turn budget before finishing. Nothing was committed; your vault is unchanged.</div>
+      </div>
+
+      <!-- LATER: subagent + elicitation (out of current scope, shown faded) -->
+      <div class="later-tag">later increment — subagents &amp; OAuth</div>
+      <div class="later-wrap" style="display:flex;flex-direction:column;gap:12px;">
+        <div class="subagent">
+          <div class="subagent-head">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M12 2a4 4 0 0 1 4 4v2a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>
+            Subagent · research <span class="badge">running · 12 tool uses</span>
+          </div>
+          <div class="subagent-body">
+            <div class="step noexp"><div class="step-row"><svg class="tic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><span class="step-name">searched</span><span class="step-arg">competitor pricing pages</span><span class="step-dur">1.2s</span><svg class="chev" viewBox="0 0 24 24"></svg></div></div>
+          </div>
+        </div>
+        <div class="elicit">
+          <strong>GitHub wants to connect.</strong> Authorize Geode to read your repos to finish installing this integration.
+          <div><button class="btn">Open authorization link ↗</button></div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="ctrl"><input class="input" placeholder="Talk to your vault…" /></div>
+  </div>
+</div>
+
+<aside class="legend">
+  <h2>How each event maps</h2>
+  <ul>
+    <li><span class="k swatch-blue"></span><span><span class="lbl">Your message</span> — full bubble, right.</span></li>
+    <li><span class="k swatch-ag"></span><span><span class="lbl">Agent answer</span> — full bubble, left, markdown, streams in.</span></li>
+    <li><span class="k swatch-think"></span><span><span class="lbl">Thinking</span> — dimmed thought, auto-collapses to "Thought for Ns".</span></li>
+    <li><span class="k swatch-step"></span><span><span class="lbl">Tool steps</span> — grouped under the turn; expand for diff/output; live "running… Ns".</span></li>
+    <li><span class="k swatch-todo"></span><span><span class="lbl">TodoWrite</span> — one live checklist, updates in place.</span></li>
+    <li><span class="k swatch-sys"></span><span><span class="lbl">Lifecycle</span> — init / compact / memory / retry as quiet dividers, chips &amp; pills.</span></li>
+    <li><span class="k swatch-err"></span><span><span class="lbl">Errors</span> — distinct red banner, never a chat bubble.</span></li>
+  </ul>
+  <p class="note">Subagents (Task) and OAuth/elicitation are shown faded — they're the next increment, not built now.</p>
+</aside>
+
+<script>
+  document.querySelectorAll('[data-toggle]').forEach(function(el){
+    el.addEventListener('click', function(e){
+      // toggle only when clicking the element's own header row, not nested toggles
+      var head = el.querySelector('.step-row, .thought-row, .activity-head');
+      if (head && (e.target === head || head.contains(e.target))) {
+        el.classList.toggle('open');
+        el.classList.toggle('closed');
+      }
+    });
+  });
+</script>
+</body>
+</html>

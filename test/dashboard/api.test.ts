@@ -17,8 +17,8 @@ async function boot() {
   const app = express(); app.use(express.json());
   app.use("/api", createApiRouter({
     sessionKey: KEY, dashboardPassword: "pw", secure: false, workspace: ws,
-    runQuery: async (instruction, onProgress) => { onProgress("thinking"); writeFileSync(join(root, "note.md"), "x"); return { runId: "r1", text: "ok: " + instruction, commit: null, filesTouched: ["note.md"] }; },
-    runRemember: async (_args, onProgress) => { onProgress("filing"); return { runId: "r2", text: "filed", commit: null, filesTouched: [] }; },
+    runQuery: async (instruction, onProgress) => { onProgress({ type: "text", text: "thinking" }); writeFileSync(join(root, "note.md"), "x"); return { runId: "r1", text: "ok: " + instruction, commit: null, filesTouched: ["note.md"] }; },
+    runRemember: async (_args, onProgress) => { onProgress({ type: "text", text: "filing" }); return { runId: "r2", text: "filed", commit: null, filesTouched: [] }; },
     linkKey: KEY,
     secrets: { list: async () => [], delete: async () => {}, set: async () => {} } as any,
     artifacts: {} as any,

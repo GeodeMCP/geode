@@ -32,7 +32,7 @@ function fakeLog() {
 function deps(over: Partial<QueryDeps>): QueryDeps {
   return {
     workspace: fakeWorkspace() as any,
-    engine: fakeEngine([{ type: "progress", text: "p1" }, { type: "result", text: "done" }]) as any,
+    engine: fakeEngine([{ type: "text", text: "p1" }, { type: "result", text: "done" }]) as any,
     runManager: createRunManager({ maxRuntimeMs: 1000, queueLimit: 4 }),
     eventLog: fakeLog() as any,
     systemPrompt: "SYS",
@@ -43,7 +43,7 @@ function deps(over: Partial<QueryDeps>): QueryDeps {
 test("on success: streams progress, commits agent changes AND the log, logs ok, returns result + files", async () => {
   const progress: string[] = [];
   const d = deps({});
-  const res = await query(d, "do X", (m) => progress.push(m));
+  const res = await query(d, "do X", (ev) => progress.push((ev as any).text));
   expect(progress).toEqual(["p1"]);
   expect(res.text).toBe("done");
   expect(res.commit).toBe("COMMIT1");
@@ -56,7 +56,7 @@ test("on success: streams progress, commits agent changes AND the log, logs ok, 
 
 test("on engine failure: resets, logs error, COMMITS the error entry, rethrows (no agent commit)", async () => {
   const ws = fakeWorkspace();
-  const boom = async function* () { yield { type: "progress", text: "p" }; throw new Error("boom"); };
+  const boom = async function* () { yield { type: "text", text: "p" }; throw new Error("boom"); };
   const log = fakeLog();
   const d = deps({ workspace: ws as any, engine: boom as any, eventLog: log as any });
   await expect(query(d, "do Y")).rejects.toThrow("boom");
