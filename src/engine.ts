@@ -61,8 +61,11 @@ export function buildQueryOptions(opts: EngineRunOptions): Record<string, unknow
 // Live engine backed by the Claude Agent SDK. Integration-only (not unit-tested).
 export const claudeAgentEngine: Engine = async function* (opts: EngineRunOptions): AsyncIterable<EngineEvent> {
   const { query } = await import("@anthropic-ai/claude-agent-sdk");
-  // Show vault-relative paths in step detail, not the absolute cwd.
-  const strip = (s: string) => (opts.cwd ? s.split(`${opts.cwd}/`).join("").split(opts.cwd).join("") : s);
+  // Show vault-relative paths in step detail, not the absolute cwd. Handle the macOS
+  // /tmp → /private/tmp symlink: strip the full "<cwd>/" prefix (optionally /private-prefixed).
+  const esc = opts.cwd.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = opts.cwd ? new RegExp(`(?:/private)?${esc}/`, "g") : null;
+  const strip = (s: string) => (re ? s.replace(re, "") : s);
   for await (const message of query({ prompt: opts.instruction, options: buildQueryOptions(opts) } as any)) {
     for (const ev of mapMessage(message)) yield { type: ev.type, text: strip(ev.text) };
   }
