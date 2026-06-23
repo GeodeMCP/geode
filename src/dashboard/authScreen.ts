@@ -1,6 +1,6 @@
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
 
-const SHELL = (body: string) => `<!doctype html><html lang="nl"><head><meta charset="utf-8">
+const SHELL = (body: string) => `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>Geode — secret</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Instrument+Sans:wght@400;500;600;700&family=Onest:wght@500&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -23,21 +23,21 @@ input{width:100%;background:var(--input);border:1px solid var(--border-strong);b
 export function renderAuthScreen(opts: { ref: string; action: string; minutesLeft: number; error?: string }): string {
   const ref = esc(opts.ref);
   return SHELL(`<form class="card" method="post" action="${esc(opts.action)}">
-    <span class="eyebrow">Secret toevoegen</span>
+    <span class="eyebrow">Add secret</span>
     <h2>${ref}</h2>
-    <div class="validity">Verloopt over ${opts.minutesLeft} min · eenmalig bruikbaar</div>
+    <div class="validity">Expires in ${opts.minutesLeft} min · single use</div>
     <label class="label">${ref}</label>
-    <input type="password" name="value" placeholder="Plak de waarde…" autocomplete="off" autofocus>
+    <input type="password" name="value" placeholder="Paste the value…" autocomplete="off" autofocus>
     ${opts.error ? `<p class="err">${esc(opts.error)}</p>` : ""}
-    <div class="note">Gaat rechtstreeks de broker in en wordt versleuteld opgeslagen. De agent ziet deze waarde nooit — alleen de referentie ${ref}.</div>
-    <button class="btn" type="submit">Opslaan in broker</button>
+    <div class="note">Goes straight into the broker, encrypted at rest. The agent never sees this value — only the reference ${ref}.</div>
+    <button class="btn" type="submit">Save to broker</button>
   </form>`);
 }
 
 export function renderAuthResult(opts: { ok: boolean; ref: string; message: string }): string {
   return SHELL(`<div class="card">
-    <span class="eyebrow">${opts.ok ? "Gelukt" : "Niet gelukt"}</span>
-    <h2 class="${opts.ok ? "ok" : ""}">${opts.ok ? esc(opts.ref) : "Link ongeldig"}</h2>
+    <span class="eyebrow">${opts.ok ? "Done" : "Failed"}</span>
+    <h2 class="${opts.ok ? "ok" : ""}">${opts.ok ? esc(opts.ref) : "Invalid link"}</h2>
     <p style="color:var(--muted);font-size:14px">${esc(opts.message)}</p>
   </div>`);
 }

@@ -18,7 +18,7 @@ export function mountDashboard(app: Express, deps: DashboardDeps): void {
   const authRouter = express.Router();
   authRouter.use(express.urlencoded({ extended: false }));
   const consumed = new Set<string>();
-  const expired = () => ({ html: renderAuthResult({ ok: false, ref: "", message: "Deze link is verlopen of al gebruikt." }) });
+  const expired = () => ({ html: renderAuthResult({ ok: false, ref: "", message: "This link has expired or was already used." }) });
   authRouter.get("/s/:token", (req, res) => {
     const c = verifySecretLink(deps.linkKey, req.params.token);
     if (!c || consumed.has(c.nonce)) { res.status(410).type("html").send(expired().html); return; }
@@ -29,11 +29,11 @@ export function mountDashboard(app: Express, deps: DashboardDeps): void {
     const c = verifySecretLink(deps.linkKey, req.params.token);
     if (!c || consumed.has(c.nonce)) { res.status(410).type("html").send(expired().html); return; }
     const value = String((req.body as { value?: string })?.value ?? "");
-    if (!value) { res.type("html").send(renderAuthScreen({ ref: c.ref, action: req.originalUrl, minutesLeft: 1, error: "Voer een waarde in." })); return; }
+    if (!value) { res.type("html").send(renderAuthScreen({ ref: c.ref, action: req.originalUrl, minutesLeft: 1, error: "Enter a value." })); return; }
       // Consume AFTER a successful write → "single successful use" (a transient set() failure leaves the link usable for a retry).
     await deps.secrets.set(c.ref, value);
     consumed.add(c.nonce);
-    res.type("html").send(renderAuthResult({ ok: true, ref: c.ref, message: `${c.ref} is opgeslagen in de broker.` }));
+    res.type("html").send(renderAuthResult({ ok: true, ref: c.ref, message: `${c.ref} was saved to the broker.` }));
   });
   app.use("/auth", authRouter);
 

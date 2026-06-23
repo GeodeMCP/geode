@@ -14,11 +14,12 @@ export function App() {
   const [hasTools, setHasTools] = useState(false);
   useEffect(() => { api.tree().then(() => setAuthed(true)).catch(() => setAuthed(false)); }, []);
   useEffect(() => { if (authed) api.integrations().then((l) => setHasTools(l.length > 0)).catch(() => {}); }, [authed]);
+  const logout = async () => { await api.logout().catch(() => {}); setHasTools(false); setView("Vault"); setAuthed(false); };
   if (authed === null) return null;
   if (!authed) return <Login onIn={() => setAuthed(true)} />;
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
-      <TopBar view={view} onNav={setView} hasTools={hasTools} />
+      <TopBar view={view} onNav={setView} hasTools={hasTools} onLogout={logout} />
       {view === "Vault" && <VaultHome />}
       {view === "Capabilities" && <Capabilities />}
       {view === "Integrations" && <Integrations />}

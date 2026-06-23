@@ -11,6 +11,7 @@ export function VaultHome() {
   const [content, setContent] = useState("");
   const [diff, setDiff] = useState("");
   const [running, setRunning] = useState(false);
+  const [compose, setCompose] = useState<{ path: string; draft: string } | null>(null);
 
   const refresh = useCallback(async () => { setTree(await api.tree()); setStatus(await api.status()); }, []);
   useEffect(() => { refresh(); }, [refresh]);
@@ -32,22 +33,23 @@ export function VaultHome() {
     } finally { setRunning(false); }
   };
   const commit = async () => { await api.commit(); await refresh(); setDiff(""); };
-  const discard = async () => { await api.discard(); await refresh(); setDiff(""); setSelected(null); };
-  const save = async (text: string) => { if (!selected) return; await api.writeFile(selected, text); await refresh(); };
-  const newNote = async () => {
-    const name = window.prompt("Naam van de notitie")?.trim();
-    if (!name) return;
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "notitie";
-    const path = `notes/${slug}.md`;
-    await api.writeFile(path, `---\ntype: note\ntitle: ${name}\n---\n\n`);
-    await refresh(); setSelected(path);
+  const discard = async () => { await api.discard(); await refresh(); setDiff(""); setSelected(null); setCompose(null); };
+  const save = async (text: string) => { if (!selected) return; await api.writeFile(selected, text); setCompose(null); await refresh(); };
+  const create = (input: string) => {
+    let p = input.trim().replace(/^\/+/, "");
+    if (!p) return;
+    if (!/\.[a-z0-9]+$/i.test(p)) p += ".md";
+    const title = p.replace(/\.[^.]+$/, "").split("/").pop() || "note";
+    setCompose({ path: p, draft: `---\ntype: note\ntitle: ${title}\n---\n\n` });
+    setSelected(p);
   };
+  const select = (p: string) => { setCompose(null); setSelected(p); };
 
   return (
     <div className="main">
       <Chat onSend={send} running={running} dirty={dirty} onCommit={commit} onDiscard={discard} />
-      <FileTree tree={tree} status={status} selected={selected} onSelect={setSelected} onNew={newNote} />
-      <Viewer path={selected} content={content} diff={diff} dirty={selectedDirty} onCommit={commit} onDiscard={discard} onSave={save} />
+      <FileTree tree={tree} status={status} selected={selected} onSelect={select} onCreate={create} />
+      <Viewer path={selected} content={content} diff={diff} dirty={selectedDirty} compose={compose} onCommit={commit} onDiscard={discard} onSave={save} />
     </div>
   );
 }
