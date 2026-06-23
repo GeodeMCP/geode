@@ -1,19 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import type { SseEvent } from "../api";
+import { api, type SseEvent } from "../api";
 import { renderMarkdown } from "../markdown";
 import { ColHead } from "./ColHead";
 import { applyProgress, applyResult, buildFromHistory, type Item, type Metrics, type Step } from "../timeline";
-
-const STORE = "geode.chat.v2"; // v2: structured timeline items (v1 was flat who/text bubbles)
-const loadMsgs = (): Item[] => {
-  try {
-    return (JSON.parse(localStorage.getItem(STORE) || "[]") as Item[]).map((m) => {
-      if (m.kind === "agent") return { ...m, ts: m.ts ?? Date.now(), animate: false };
-      if (m.kind === "activity") return { ...m, steps: m.steps.map((s) => ({ ...s, running: false })) };
-      return { ...m, ts: m.ts ?? Date.now() };
-    });
-  } catch { return []; }
-};
 
 const fmtTime = (ts: number) => {
   const d = new Date(ts), t = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -180,15 +169,11 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard }: {
   onSend: (instruction: string, onEvent: (e: SseEvent) => void) => Promise<void>;
   running: boolean; dirty: boolean; onCommit: () => void; onDiscard: () => void;
 }) {
-  const [msgs, setMsgs] = useState<Item[]>(loadMsgs);
+  const [msgs, setMsgs] = useState<Item[]>([]);
+  useEffect(() => { api.history().then((h) => setMsgs(buildFromHistory(h))).catch(() => {}); }, []);
   const [text, setText] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
   useEffect(() => { endRef.current?.scrollIntoView({ block: "end" }); }, [msgs, running]);
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORE, JSON.stringify(msgs.map((m) => (m.kind === "agent" ? (({ animate, ...r }) => r)(m) : m))));
-    } catch { /* quota/private mode */ }
-  }, [msgs]);
 
   const submit = async () => {
     const instruction = text.trim();
@@ -206,7 +191,7 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard }: {
   return (
     <div className="col chat">
       <ColHead title="Vault agent">
-        {msgs.length > 0 && <button className="ghost sm" style={{ textTransform: "none", letterSpacing: 0 }} onClick={() => setMsgs([])}>Clear</button>}
+        {msgs.length > 0 && <button className="ghost sm" style={{ textTransform: "none", letterSpacing: 0 }} onClick={() => { api.clearHistory().catch(() => {}); setMsgs([]); }}>Clear</button>}
       </ColHead>
       {dirty && (
         <div className="dirty-banner">
