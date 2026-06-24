@@ -31,6 +31,7 @@ async function boot() {
     transcripts: createTranscriptStore(join(root, ".transcripts")),
     artifactsDir: root,
     baseUrl: "http://h",
+    authToken: "test-token",
     invoke: async () => ({ status: 200, body: {} }),
   }));
   await new Promise<void>((r) => { server = app.listen(0, () => { url = `http://localhost:${(server.address() as any).port}`; r(); }); });
@@ -107,6 +108,15 @@ test("records each query run and serves it via GET /api/history; DELETE clears i
 
 test("GET /api/history requires a session", async () => {
   expect((await fetch(`${url}/api/history`)).status).toBe(401);
+});
+
+test("GET /api/connect requires a session and returns mcpUrl, token, and the tool catalog", async () => {
+  expect((await fetch(`${url}/api/connect`)).status).toBe(401);
+  const cookie = await login();
+  const body = await (await fetch(`${url}/api/connect`, { headers: { cookie } })).json();
+  expect(body.mcpUrl).toMatch(/\/mcp$/);
+  expect(body.authToken).toBe("test-token");
+  expect(body.tools.map((t: any) => t.name)).toEqual(["query", "remember", "list_capabilities", "invoke"]);
 });
 
 test("an errored query run is still recorded with error + a generated runId", async () => {

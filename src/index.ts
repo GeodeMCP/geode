@@ -70,6 +70,7 @@ async function main() {
       transcripts,
       artifactsDir: config.artifactsDir,
       baseUrl: config.baseUrl,
+      authToken: config.authToken,
       invoke: (args) => invoke({ root: workspace.root, secrets }, args),
       linkKey: loadOrCreateKey(join(config.secretsDir, "link"), process.env.GEODE_LINK_KEY),
     });

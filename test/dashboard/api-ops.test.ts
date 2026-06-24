@@ -27,7 +27,7 @@ async function boot() {
     runRemember: async () => ({ runId: "r", text: "", commit: null, filesTouched: [] }),
     secrets: { list: async () => secretRefs, get: async () => null, set: async () => {}, delete: async (r: string) => { const i = secretRefs.indexOf(r); if (i >= 0) secretRefs.splice(i, 1); } } as any,
     artifacts: { mintPublicUrl: (p: string) => `http://h/artifacts/${p}?sig=x&exp=1`, resolve: (p: string) => join(artDir, p) } as any,
-    artifactsDir: artDir, baseUrl: "http://h",
+    artifactsDir: artDir, baseUrl: "http://h", authToken: "test-token",
     invoke: async (a: any) => ({ status: 200, body: { echoed: a.action } }),
   }));
   await new Promise<void>((r) => { server = app.listen(0, () => { url = `http://localhost:${(server.address() as any).port}`; r(); }); });

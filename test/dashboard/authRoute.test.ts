@@ -21,7 +21,7 @@ async function boot() {
     runQuery: async () => ({ runId: "r", text: "", commit: null, filesTouched: [] }),
     runRemember: async () => ({ runId: "r", text: "", commit: null, filesTouched: [] }),
     secrets: { list: async () => Object.keys(stored), get: async () => null, set: async (r: string, v: string) => { stored[r] = v; }, delete: async () => {} } as any,
-    artifacts: {} as any, artifactsDir: root, baseUrl: "http://h",
+    artifacts: {} as any, artifactsDir: root, baseUrl: "http://h", authToken: "test-token",
     invoke: async () => ({ status: 200, body: {} }),
   });
   await new Promise<void>((r) => { server = app.listen(0, () => { url = `http://localhost:${(server.address() as any).port}`; r(); }); });

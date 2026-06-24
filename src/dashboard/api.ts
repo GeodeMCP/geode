@@ -13,6 +13,7 @@ import { openSse } from "./sse.js";
 import { deriveCapabilities } from "../capabilities.js";
 import { listIntegrations, getIntegration, listSecrets, listArtifacts } from "./ops.js";
 import { mintSecretLink } from "./secretLinks.js";
+import { TOOL_CATALOG } from "../toolCatalog.js";
 
 export interface ApiDeps {
   sessionKey: Buffer;
@@ -27,6 +28,7 @@ export interface ApiDeps {
   transcripts: TranscriptStore;
   artifactsDir: string;
   baseUrl: string;
+  authToken: string;
   invoke: (args: { integration: string; action: string; params?: Record<string, unknown> }) => Promise<{ status: number; body: unknown }>;
 }
 
@@ -111,6 +113,10 @@ export function createApiRouter(deps: ApiDeps): Router {
 
   router.get("/history", async (_req, res) => { res.json(await deps.transcripts.list()); });
   router.delete("/history", async (_req, res) => { await deps.transcripts.clear(); res.json({ ok: true }); });
+
+  router.get("/connect", (_req, res) => {
+    res.json({ mcpUrl: `${deps.baseUrl}/mcp`, authToken: deps.authToken, tools: TOOL_CATALOG });
+  });
 
   router.get("/capabilities", async (_req, res) => { res.json(await deriveCapabilities(deps.workspace.root)); });
 
