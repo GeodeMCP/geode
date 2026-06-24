@@ -79,6 +79,8 @@ test("buildQueryOptions appends the constitution to the claude_code preset (so t
   expect(o.systemPrompt).toEqual({ type: "preset", preset: "claude_code", append: "RULES" });
   expect(o.tools).toEqual({ type: "preset", preset: "claude_code" });
   expect(o.permissionMode).toBe("bypassPermissions");
+  // non-interactive: the agent must not reach for the interactive question tool
+  expect(o.disallowedTools).toContain("AskUserQuestion");
 });
 
 test("buildQueryOptions includes model only when provided", () => {

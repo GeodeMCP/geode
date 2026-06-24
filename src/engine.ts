@@ -148,6 +148,10 @@ export function buildQueryOptions(opts: EngineRunOptions): Record<string, unknow
     cwd: opts.cwd,
     systemPrompt: { type: "preset", preset: "claude_code", append: opts.systemPrompt },
     tools: { type: "preset", preset: "claude_code" },
+    // The vault agent runs non-interactively: there is no channel to answer a question mid-run, so
+    // AskUserQuestion would just fail and the agent narrates a confusing "you skipped the question".
+    // Remove it — the agent proceeds with a stated assumption instead (reinforced in the constitution).
+    disallowedTools: ["AskUserQuestion"],
     permissionMode: "bypassPermissions",
     allowDangerouslySkipPermissions: true,
     settingSources: ["project"],
