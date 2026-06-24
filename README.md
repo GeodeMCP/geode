@@ -20,4 +20,4 @@ npm start
 ```
 
 Connect any MCP client to `http://localhost:8787/mcp` with header `Authorization: Bearer $GEODE_AUTH_TOKEN`.
-Tools: `find` (cheap retrieval) and `delegate` (the agent).
+Tools: `query` (ask the vault — returns an answer or an executable `invoke` plan), `remember` (file a distilled note), `list_capabilities` (the derived menu of recipes + integrations), and `invoke` (the caller runs one integration action; the server injects the secret). The vault prepares and explains; the caller executes via `invoke`.
