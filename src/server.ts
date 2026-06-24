@@ -10,6 +10,7 @@ import { deriveCapabilities } from "./capabilities.js";
 import { invoke, type InvokeArgs, type InvokeResult } from "./invoke.js";
 import type { SecretStore } from "./secrets.js";
 import type { ArtifactStore } from "./artifacts.js";
+import { toolDescription } from "./toolCatalog.js";
 
 export function checkAuth(header: string | undefined, token: string): boolean {
   const expected = `Bearer ${token}`;
@@ -104,7 +105,7 @@ export function buildMcpServer(queryDeps: QueryDeps, opts?: { secrets?: SecretSt
   server.registerTool(
     "query",
     {
-      description: "Ask your Geode vault — it searches your context, recipes and SOPs and returns a synthesized answer, OR an executable plan (the exact `invoke` calls to run). It prepares; you execute via `invoke`.",
+      description: toolDescription("query"),
       inputSchema: { instruction: z.string(), workspace: z.string().optional() },
     },
     queryHandler,
@@ -116,7 +117,7 @@ export function buildMcpServer(queryDeps: QueryDeps, opts?: { secrets?: SecretSt
   server.registerTool(
     "remember",
     {
-      description: "Save a distilled learning, fact, or note in your Geode vault. Give the essence — not a whole conversation; the vault agent integrates, dedups, and files it. Example — content: 'Client X wants invoices on the 1st, net-30.', source: 'call 2026-06-17'.",
+      description: toolDescription("remember"),
       inputSchema: {
         content: z.string().describe("The knowledge to save — a distilled, self-contained learning, fact, or note (not a raw transcript); one idea is fine."),
         source: z.string().optional().describe("Where it came from, for provenance (e.g. 'Claude chat 2026-06-17', a URL, a person)."),
@@ -131,7 +132,7 @@ export function buildMcpServer(queryDeps: QueryDeps, opts?: { secrets?: SecretSt
   server.registerTool(
     "list_capabilities",
     {
-      description: "List what your Geode vault offers — recipes/skills and integrations with their actions. Cheap; call this to learn what the vault can do before delegating.",
+      description: toolDescription("list_capabilities"),
       inputSchema: {},
     },
     listCapabilitiesHandler,
@@ -145,7 +146,7 @@ export function buildMcpServer(queryDeps: QueryDeps, opts?: { secrets?: SecretSt
     server.registerTool(
       "invoke",
       {
-        description: "Run one action of an integration in your Geode vault — you (the caller) execute it; the server injects the required secret. First ask `query` for the plan (or read the integration manifest) to learn the action + params.",
+        description: toolDescription("invoke"),
         inputSchema: { integration: z.string(), action: z.string(), params: z.record(z.string(), z.any()).optional(), workspace: z.string().optional() },
       },
       invokeHandler,
