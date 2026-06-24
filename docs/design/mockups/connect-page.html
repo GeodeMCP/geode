@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connect — GeodeMCP (sub-project A mockup)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Instrument+Sans:wght@400;500;600;700&family=Onest:wght@500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0f0e; --surface:#141917; --surface-2:#191e1c; --input:#080b0a;
+    --text:#f2f2f2; --neutral-200:#e5e5e5; --muted:#a3a3a3; --faint:#777;
+    --border:rgba(255,255,255,.07); --border-strong:rgba(255,255,255,.12);
+    --green:#34d399; --emerald-300:#6ee7b7; --emerald-500:#10b981;
+    --blue:#2563eb; --blue-500:#3b82f6; --blue-100:#dbeafe; --amber:#d9a13a;
+    --ease:cubic-bezier(.4,0,.2,1);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:"Geist",system-ui,sans-serif;-webkit-font-smoothing:antialiased;display:flex;flex-direction:column;overflow:hidden;}
+  .ic{width:17px;height:17px;flex:none;vertical-align:middle;}
+  .glow{position:fixed;top:-160px;left:50%;transform:translateX(-50%);width:820px;height:380px;background:radial-gradient(closest-side,rgba(38,77,76,.5),transparent);filter:blur(30px);pointer-events:none;z-index:0;}
+  /* TOPBAR */
+  .topbar{position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;height:64px;padding:0 24px;border-bottom:1px solid var(--border);background:rgba(20,25,23,.72);backdrop-filter:blur(12px);}
+  .brand{display:flex;align-items:center;gap:11px;}
+  .name{font-family:"Onest",sans-serif;font-weight:500;font-size:21px;letter-spacing:-.02em;}
+  .ws{display:flex;align-items:center;gap:6px;font-family:"Instrument Sans",sans-serif;font-size:13.5px;color:var(--muted);border:1px solid var(--border-strong);border-radius:999px;padding:6px 12px;margin-left:8px;}
+  nav{display:flex;align-self:stretch;align-items:center;gap:24px;}
+  nav a{font-family:"Instrument Sans",sans-serif;font-weight:500;font-size:13.5px;color:var(--muted);text-decoration:none;height:100%;display:flex;align-items:center;position:relative;transition:color .15s var(--ease);cursor:pointer;}
+  nav a:hover{color:var(--text);}
+  nav a.active{color:var(--text);}
+  nav a.active::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--green);}
+  .tb-right{display:flex;align-items:center;gap:18px;color:var(--faint);}
+  .chip{font-family:"Instrument Sans",sans-serif;font-weight:600;font-size:12.5px;border-radius:999px;border:1px solid var(--border-strong);color:var(--muted);padding:5px 11px;display:inline-flex;align-items:center;gap:7px;}
+  .chip.live{color:var(--green);background:rgba(52,211,153,.10);border-color:rgba(52,211,153,.45);}
+  .pulse{width:7px;height:7px;border-radius:999px;background:var(--green);box-shadow:0 0 8px var(--green);}
+  .avatar{width:30px;height:30px;border-radius:10px;background:var(--surface-2);border:1px solid var(--border-strong);}
+  /* LAYOUT: two full-height columns */
+  .main{position:relative;z-index:1;flex:1;display:flex;min-height:0;}
+  .actions{flex:1;min-width:0;overflow:auto;padding:32px 40px 80px;}
+  .about{flex:0 0 36%;min-width:380px;overflow:auto;border-left:1px solid var(--border);background:var(--surface);padding:30px 30px 80px;}
+  .eyebrow{font-family:"Instrument Sans",sans-serif;font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.17em;color:var(--green);}
+  h1{font-family:"Instrument Sans",sans-serif;font-weight:700;font-size:26px;letter-spacing:-.02em;margin:9px 0 7px;}
+  .lede{color:var(--muted);font-size:14px;line-height:1.55;max-width:64ch;margin:0;}
+  /* ACTION — two alternative method cards (not steps) */
+  .methods{margin-top:26px;}
+  .ordiv{display:flex;align-items:center;gap:14px;margin:16px 2px;color:var(--faint);}
+  .ordiv::before,.ordiv::after{content:"";flex:1;height:1px;background:var(--border);}
+  .ordiv span{font-family:"Instrument Sans",sans-serif;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.16em;}
+  /* METHOD CARD */
+  .method{border:1px solid var(--border);border-radius:14px;background:var(--surface);padding:18px 18px 20px;}
+  .method .m-top{display:flex;align-items:flex-start;gap:12px;}
+  .method .m-ic{width:34px;height:34px;flex:none;border-radius:9px;background:var(--surface-2);border:1px solid var(--border-strong);display:flex;align-items:center;justify-content:center;color:var(--neutral-200);}
+  .method h3{font-family:"Instrument Sans",sans-serif;font-weight:600;font-size:15px;margin:0;}
+  .method .m-sub{color:var(--muted);font-size:13px;line-height:1.5;margin:3px 0 0;max-width:60ch;}
+  .works{display:inline-flex;align-items:center;gap:6px;font-family:"Instrument Sans",sans-serif;font-size:11.5px;font-weight:600;color:var(--green);background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.4);border-radius:999px;padding:4px 10px;margin-left:auto;flex:none;}
+  .soon{display:inline-flex;align-items:center;gap:6px;font-family:"Instrument Sans",sans-serif;font-size:11.5px;font-weight:600;color:var(--amber);background:rgba(217,161,58,.1);border:1px solid rgba(217,161,58,.4);border-radius:999px;padding:4px 10px;margin-left:auto;flex:none;}
+  /* CODE */
+  .code{position:relative;margin-top:15px;background:var(--input);border:1px solid var(--border-strong);border-radius:10px;overflow:hidden;}
+  .codebar{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--border);}
+  .codebar .lbl{font-family:"Geist Mono",monospace;font-size:11.5px;color:var(--faint);}
+  .copy{margin-left:auto;font-family:"Instrument Sans",sans-serif;font-size:12.5px;background:transparent;border:1px solid var(--border-strong);color:var(--neutral-200);border-radius:6px;padding:5px 11px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
+  .copy:hover{border-color:var(--green);color:var(--green);}
+  .copy .ic{width:13px;height:13px;}
+  pre{margin:0;padding:14px 15px;font-family:"Geist Mono",monospace;font-size:12.5px;line-height:1.75;color:var(--text);overflow:auto;}
+  .k{color:var(--emerald-300);}
+  .s{color:#9fd1c2;}
+  .muted{color:var(--faint);}
+  .tok{color:var(--amber);}
+  .reveal{font-family:"Instrument Sans",sans-serif;font-size:12px;color:var(--faint);background:transparent;border:none;cursor:pointer;text-decoration:underline;padding:0 0 0 6px;}
+  .cli{margin-top:11px;}
+  .cli .lbl{font-family:"Instrument Sans",sans-serif;font-size:12.5px;color:var(--faint);margin-bottom:6px;}
+  .divnote{display:flex;gap:9px;align-items:flex-start;margin-top:14px;color:var(--faint);font-size:12.5px;line-height:1.5;}
+  .divnote .ic{width:15px;height:15px;color:var(--amber);margin-top:1px;}
+  code.inl{font-family:"Geist Mono",monospace;font-size:12px;color:var(--emerald-300);}
+  /* METHOD 2 preview */
+  .preview .m-body{opacity:.62;}
+  .urlbar{display:flex;align-items:center;gap:10px;margin-top:15px;background:var(--input);border:1px dashed var(--border-strong);border-radius:10px;padding:12px 14px;color:var(--faint);font-family:"Geist Mono",monospace;font-size:13px;}
+  .urlbar .lock{color:var(--amber);}
+  .steps{counter-reset:s;list-style:none;margin:15px 0 0;padding:0;}
+  .steps li{position:relative;padding:0 0 11px 30px;color:var(--muted);font-size:13.5px;line-height:1.5;}
+  .steps li::before{counter-increment:s;content:counter(s);position:absolute;left:0;top:0;width:20px;height:20px;border-radius:6px;background:var(--surface-2);border:1px solid var(--border-strong);color:var(--faint);font-family:"Geist Mono",monospace;font-size:11px;display:flex;align-items:center;justify-content:center;}
+  .cta-row{display:flex;align-items:center;gap:12px;margin-top:18px;flex-wrap:wrap;}
+  .btn{font-family:"Instrument Sans",sans-serif;font-weight:500;font-size:14px;background:var(--blue);border:1px solid var(--blue-500);color:var(--blue-100);border-radius:8px;padding:10px 17px;cursor:pointer;}
+  .btn.disabled{background:var(--surface-2);border-color:var(--border-strong);color:var(--faint);cursor:not-allowed;}
+  .cta-note{color:var(--faint);font-size:12.5px;max-width:42ch;}
+  /* ABOUT RAIL */
+  .about .eyebrow{display:block;}
+  .about h2{font-family:"Instrument Sans",sans-serif;font-weight:600;font-size:18px;letter-spacing:-.01em;margin:9px 0 8px;}
+  .about .intro{color:var(--muted);font-size:13.5px;line-height:1.6;margin:0 0 6px;}
+  .about .rail-lbl{font-family:"Instrument Sans",sans-serif;font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.16em;color:var(--faint);margin:26px 0 12px;}
+  .tool{display:flex;gap:12px;padding:13px 14px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2);margin-bottom:9px;}
+  .tool .tic{width:28px;height:28px;flex:none;border-radius:8px;background:var(--surface);border:1px solid var(--border-strong);display:flex;align-items:center;justify-content:center;color:var(--emerald-300);}
+  .tool .tic .ic{width:14px;height:14px;}
+  .tool .body{flex:1;min-width:0;}
+  .tname{font-family:"Geist Mono",monospace;font-size:13px;color:var(--emerald-300);font-weight:500;}
+  .tdesc{color:var(--muted);font-size:12.5px;line-height:1.5;margin:3px 0 0;}
+  .params{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px;}
+  .pchip{font-family:"Geist Mono",monospace;font-size:11px;color:var(--faint);border:1px solid var(--border);border-radius:6px;padding:2px 7px;}
+  .pchip b{color:var(--neutral-200);font-weight:500;}
+  .pchip.opt{opacity:.7;}
+  .trust{display:flex;gap:10px;align-items:flex-start;margin-top:18px;padding:13px 14px;border:1px solid rgba(52,211,153,.3);border-radius:12px;background:rgba(52,211,153,.06);}
+  .trust .ic{width:16px;height:16px;color:var(--emerald-300);margin-top:1px;}
+  .trust span{color:var(--muted);font-size:12.5px;line-height:1.55;}
+  .trust b{color:var(--neutral-200);font-weight:500;}
+</style>
+</head>
+<body>
+  <div class="glow"></div>
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><polygon points="12,2 22,9 12,22" fill="#3FCFA1"/><polygon points="12,2 2,9 12,22" fill="#86ECCB"/><polygon points="2,9 12,22 22,9" fill="#4C7DF4" opacity=".85"/></svg>
+      <span class="name">Geode</span>
+      <span class="ws">personal-vault</span>
+    </div>
+    <nav>
+      <a>Vault</a>
+      <a>Capabilities</a>
+      <a class="active">Connect</a>
+      <a>Integrations</a>
+      <a>Secrets</a>
+      <a>Artifacts</a>
+    </nav>
+    <div class="tb-right">
+      <span class="chip live"><span class="pulse"></span>live</span>
+      <span class="avatar"></span>
+    </div>
+  </div>
+
+  <!-- MAIN: left = action, right = explanation -->
+  <div class="main">
+
+    <!-- LEFT — ACTION -->
+    <div class="actions">
+      <div class="eyebrow">Connect</div>
+      <h1>Connect your vault to an AI client</h1>
+      <p class="lede">Two ways to plug in an MCP client — these are alternatives, so pick the one that matches where your AI runs.</p>
+
+      <div class="methods">
+
+      <!-- OPTION — JSON -->
+        <div class="method">
+          <div class="m-top">
+            <div class="m-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 18 22 12 16 6"/><path d="M8 6 2 12 8 18"/></svg></div>
+            <div>
+              <h3>Add with a config (JSON)</h3>
+              <p class="m-sub">For clients on this machine — Claude Code, Claude Desktop and other local MCP clients reach this kernel directly.</p>
+            </div>
+            <span class="works"><span class="pulse" style="box-shadow:none"></span>Works now</span>
+          </div>
+
+          <div class="code">
+            <div class="codebar">
+              <span class="lbl">mcp.json</span>
+              <button class="copy"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button>
+            </div>
+<pre>{
+  <span class="k">"mcpServers"</span>: {
+    <span class="k">"geode"</span>: {
+      <span class="k">"type"</span>: <span class="s">"http"</span>,
+      <span class="k">"url"</span>: <span class="s">"http://localhost:8794/mcp"</span>,
+      <span class="k">"headers"</span>: {
+        <span class="k">"Authorization"</span>: <span class="s">"Bearer <span class="tok">••••••••••••••••</span>"</span>  <span class="muted">// </span><button class="reveal">reveal token</button>
+      }
+    }
+  }
+}</pre>
+          </div>
+
+          <div class="cli">
+            <div class="lbl">…or one line in Claude Code</div>
+            <div class="code">
+              <div class="codebar"><span class="lbl">terminal</span><button class="copy"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button></div>
+<pre><span class="muted">$</span> claude mcp add --transport http geode \
+    http://localhost:8794/mcp \
+    --header <span class="s">"Authorization: Bearer <span class="tok">••••••••</span>"</span></pre>
+            </div>
+          </div>
+
+          <div class="divnote">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg>
+            <span>This is your kernel's bearer token — anyone with it can use your vault. It's shown only inside this signed-in dashboard. Cloud clients (claude.ai, mobile) can't reach <code class="inl">localhost</code> — for those, use the URL option below.</span>
+          </div>
+        </div>
+
+        <div class="ordiv"><span>or</span></div>
+
+      <!-- OPTION — URL -->
+        <div class="method preview">
+          <div class="m-top">
+            <div class="m-ic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg></div>
+            <div>
+              <h3>Add with a URL</h3>
+              <p class="m-sub">Paste one URL into Claude and sign in — no token to copy. Works from any Claude client, including claude.ai and mobile.</p>
+            </div>
+            <span class="soon"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Setup required</span>
+          </div>
+
+          <div class="m-body">
+            <div class="urlbar"><svg class="ic lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>https://&lt;your-vault&gt;.geodemcp.com/mcp</div>
+            <ol class="steps">
+              <li>In Claude → <b>Settings → Connectors → Add custom connector</b></li>
+              <li>Paste the URL above and click <b>Add</b></li>
+              <li>Click <b>Connect</b> and sign in to authorize Geode <code class="inl">(OAuth)</code></li>
+            </ol>
+          </div>
+
+          <div class="cta-row">
+            <button class="btn disabled">Set up a public tunnel →</button>
+            <span class="cta-note">A public URL + sign-in connector aren't enabled yet. Turn on a tunnel to activate this.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT — EXPLANATION -->
+    <div class="about">
+      <span class="eyebrow">What it does</span>
+      <h2>Your AI works against your vault</h2>
+      <p class="intro">Geode speaks the <b style="color:var(--neutral-200);font-weight:500">Model Context Protocol</b> (MCP). Once a client is connected, it gains the tools below and works directly against your context vault — read it, add to it, and run integrations on your behalf.</p>
+
+      <div class="rail-lbl">Tools a connected client can call</div>
+
+      <div class="tool">
+        <div class="tic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></div>
+        <div class="body">
+          <span class="tname">query</span>
+          <p class="tdesc">Ask your vault. It searches your context, recipes and SOPs and returns a synthesized answer — or an executable plan (the exact <code class="inl" style="font-size:11px">invoke</code> calls to run).</p>
+          <div class="params"><span class="pchip"><b>instruction</b> string</span></div>
+        </div>
+      </div>
+
+      <div class="tool">
+        <div class="tic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>
+        <div class="body">
+          <span class="tname">remember</span>
+          <p class="tdesc">Save a distilled learning, fact or note. The vault agent integrates it, dedups against what's there, and files it in the right place.</p>
+          <div class="params"><span class="pchip"><b>content</b> string</span><span class="pchip opt"><b>source</b> string?</span><span class="pchip opt"><b>title</b> string?</span></div>
+        </div>
+      </div>
+
+      <div class="tool">
+        <div class="tic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg></div>
+        <div class="body">
+          <span class="tname">list_capabilities</span>
+          <p class="tdesc">List what your vault offers — recipes / skills and integrations with their actions. Cheap; a client calls this to learn what the vault can do.</p>
+          <div class="params"><span class="pchip muted">no parameters</span></div>
+        </div>
+      </div>
+
+      <div class="tool">
+        <div class="tic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m13 2-3 7h5l-3 7"/><circle cx="12" cy="12" r="9" opacity=".35"/></svg></div>
+        <div class="body">
+          <span class="tname">invoke</span>
+          <p class="tdesc">Run one action of an integration — the client executes it; the kernel injects the required secret server-side, so the secret never reaches the AI.</p>
+          <div class="params"><span class="pchip"><b>integration</b> string</span><span class="pchip"><b>action</b> string</span><span class="pchip opt"><b>params</b> object?</span></div>
+        </div>
+      </div>
+
+      <div class="trust">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>
+        <span><b>Secrets stay server-side.</b> The agent never reads them and never calls integrations itself — it returns a plan, your client runs <code class="inl" style="font-size:11px">invoke</code>, and the kernel injects the secret into the outbound request.</span>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>
