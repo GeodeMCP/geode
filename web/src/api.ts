@@ -1,6 +1,8 @@
 export interface TreeNode { name: string; path: string; type: "file" | "dir"; children?: TreeNode[] }
 export interface IntegrationView { name: string; type: string; description: string; actions: { name: string; method: string; url: string; description?: string }[]; requiredSecrets: { ref: string; set: boolean }[] }
 export interface SseEvent { event: string; data: any }
+export interface ToolDoc { name: string; description: string; params: { name: string; type: string; required: boolean }[] }
+export interface ConnectInfo { mcpUrl: string; authToken: string; tools: ToolDoc[] }
 export interface TranscriptRecord {
   runId: string;
   ts: number;
@@ -42,6 +44,7 @@ export const api = {
   commit: (message?: string) => json<{ commit: string | null }>("/api/commit", { method: "POST", body: JSON.stringify({ message }) }),
   discard: () => json<{ ok: true }>("/api/discard", { method: "POST" }),
   history: () => json<TranscriptRecord[]>("/api/history"),
+  connect: () => json<ConnectInfo>("/api/connect"),
   clearHistory: () => json<{ ok: true }>("/api/history", { method: "DELETE" }),
   capabilities: () => json<{ integrations: { name: string; description: string; actions: string[] }[]; recipes: { title: string; description: string; path: string }[] }>("/api/capabilities"),
   integrations: () => json<IntegrationView[]>("/api/integrations"),
