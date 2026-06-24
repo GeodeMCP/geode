@@ -32,3 +32,9 @@ Needs a reachable model (`ANTHROPIC_API_KEY` or local Ollama). Build the SPA fir
 16. Click **+ New** in the Vault column → name it → a `notes/<slug>.md` OKF stub opens; edit + Save + Commit → it appears in the tree.
 17. With **no integrations** in the vault, the top-bar shows only **Vault** and **Capabilities** (Integrations/Secrets/Artifacts hidden). Add an integration manifest → reload → the tool nav appears.
 18. A write to a forbidden path is rejected (e.g. via devtools `POST /api/file {path:"../x"}` → 400).
+
+## Connect page (manual)
+
+19. Click **Connect** (always visible in the nav, between Capabilities and Integrations). Left column shows two alternative methods separated by an "or" divider: **Add with a config (JSON)** ("Works now") and **Add with a URL** ("Setup required", disabled). Right rail lists the 4 tools (query / remember / list_capabilities / invoke) + a server-side secret-injection note.
+20. The JSON shows the bearer token masked; click **reveal token** → the real token appears; **Copy** copies the full config with the real token. The CLI one-liner copies likewise.
+21. The "Set up a public tunnel →" button is disabled (wires to sub-project C).

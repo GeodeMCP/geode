@@ -203,6 +203,7 @@
 .connect{flex:1;display:flex;min-height:0;}
 .connect .actions{flex:1;min-width:0;overflow:auto;padding:32px 40px 80px;}
 .connect .about{flex:0 0 36%;min-width:380px;overflow:auto;border-left:1px solid var(--border);background:var(--surface);padding:30px 30px 80px;}
+.connect .eyebrow{padding:0;}
 .connect h1{font-family:"Instrument Sans",sans-serif;font-weight:700;font-size:26px;letter-spacing:-.02em;margin:9px 0 7px;}
 .connect .lede{color:var(--muted);font-size:14px;line-height:1.55;max-width:64ch;margin:0;}
 .connect .methods{margin-top:26px;}
