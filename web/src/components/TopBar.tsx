@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { GemMark } from "./Logo";
 
-export const VIEWS = ["Vault", "Capabilities", "Integrations", "Secrets", "Artifacts"] as const;
+export const VIEWS = ["Vault", "Capabilities", "Connect", "Integrations", "Secrets", "Artifacts"] as const;
 export type View = typeof VIEWS[number];
-const ALWAYS = new Set<View>(["Vault", "Capabilities"]);
+const ALWAYS = new Set<View>(["Vault", "Capabilities", "Connect"]);
 
 export function TopBar({ view, onNav, hasTools, onLogout }: {
   view: View; onNav: (v: View) => void; hasTools: boolean; onLogout: () => void;

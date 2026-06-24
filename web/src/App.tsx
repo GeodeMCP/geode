@@ -4,6 +4,7 @@ import { Login } from "./views/Login";
 import { TopBar, type View } from "./components/TopBar";
 import { VaultHome } from "./views/VaultHome";
 import { Capabilities } from "./views/Capabilities";
+import { Connect } from "./views/Connect";
 import { Integrations } from "./views/Integrations";
 import { Secrets } from "./views/Secrets";
 import { Artifacts } from "./views/Artifacts";
@@ -22,6 +23,7 @@ export function App() {
       <TopBar view={view} onNav={setView} hasTools={hasTools} onLogout={logout} />
       {view === "Vault" && <VaultHome />}
       {view === "Capabilities" && <Capabilities />}
+      {view === "Connect" && <Connect />}
       {view === "Integrations" && <Integrations />}
       {view === "Secrets" && <Secrets />}
       {view === "Artifacts" && <Artifacts />}

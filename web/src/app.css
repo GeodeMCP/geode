@@ -198,3 +198,51 @@
   .avatar{cursor:pointer;}
   /* toast */
   .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:20;background:var(--surface);border:1px solid var(--border-strong);border-radius:10px;padding:9px 16px;font-size:13px;color:var(--neutral-200);box-shadow:0 12px 30px -12px rgba(0,0,0,.7);}
+
+/* Connect page */
+.connect{flex:1;display:flex;min-height:0;}
+.connect .actions{flex:1;min-width:0;overflow:auto;padding:32px 40px 80px;}
+.connect .about{flex:0 0 36%;min-width:380px;overflow:auto;border-left:1px solid var(--border);background:var(--surface);padding:30px 30px 80px;}
+.connect h1{font-family:"Instrument Sans",sans-serif;font-weight:700;font-size:26px;letter-spacing:-.02em;margin:9px 0 7px;}
+.connect .lede{color:var(--muted);font-size:14px;line-height:1.55;max-width:64ch;margin:0;}
+.connect .methods{margin-top:26px;}
+.connect .ordiv{display:flex;align-items:center;gap:14px;margin:16px 2px;color:var(--faint);}
+.connect .ordiv::before,.connect .ordiv::after{content:"";flex:1;height:1px;background:var(--border);}
+.connect .ordiv span{font-family:"Instrument Sans",sans-serif;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.16em;}
+.connect .method{border:1px solid var(--border);border-radius:14px;background:var(--surface);padding:18px;}
+.connect .m-top{display:flex;align-items:flex-start;gap:12px;}
+.connect .m-body{flex:1;min-width:0;}
+.connect .method h3{font-family:"Instrument Sans",sans-serif;font-weight:600;font-size:15px;margin:0;}
+.connect .m-sub{color:var(--muted);font-size:13px;line-height:1.5;margin:3px 0 0;}
+.connect .works{display:inline-flex;align-items:center;gap:6px;font-family:"Instrument Sans",sans-serif;font-size:11.5px;font-weight:600;color:var(--green);background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.4);border-radius:999px;padding:4px 10px;flex:none;}
+.connect .soon{display:inline-flex;align-items:center;gap:6px;font-family:"Instrument Sans",sans-serif;font-size:11.5px;font-weight:600;color:#d9a13a;background:rgba(217,161,58,.1);border:1px solid rgba(217,161,58,.4);border-radius:999px;padding:4px 10px;flex:none;}
+.connect .code{margin-top:15px;background:var(--input);border:1px solid var(--border-strong);border-radius:10px;overflow:hidden;}
+.connect .codebar{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--border);}
+.connect .codebar .lbl{font-family:"Geist Mono",monospace;font-size:11.5px;color:var(--faint);}
+.connect .copy{margin-left:auto;font-family:"Instrument Sans",sans-serif;font-size:12.5px;background:transparent;border:1px solid var(--border-strong);color:var(--neutral-200);border-radius:6px;padding:5px 11px;cursor:pointer;}
+.connect .copy:hover{border-color:var(--green);color:var(--green);}
+.connect .code pre{margin:0;padding:14px 15px;font-family:"Geist Mono",monospace;font-size:12.5px;line-height:1.75;color:var(--text);overflow:auto;white-space:pre-wrap;word-break:break-all;}
+.connect .cli{margin-top:11px;}
+.connect .cli .lbl{font-family:"Instrument Sans",sans-serif;font-size:12.5px;color:var(--faint);margin-bottom:6px;}
+.connect .divnote{margin-top:14px;color:var(--faint);font-size:12.5px;line-height:1.5;}
+.connect .reveal{font-family:"Instrument Sans",sans-serif;font-size:12px;color:var(--emerald-300);background:transparent;border:none;cursor:pointer;text-decoration:underline;padding:0 0 0 6px;}
+.connect .preview .m-preview{opacity:.62;}
+.connect .urlbar{margin-top:15px;background:var(--input);border:1px dashed var(--border-strong);border-radius:10px;padding:12px 14px;color:var(--faint);font-family:"Geist Mono",monospace;font-size:13px;}
+.connect .steps{counter-reset:s;list-style:none;margin:15px 0 0;padding:0;}
+.connect .steps li{position:relative;padding:0 0 11px 30px;color:var(--muted);font-size:13.5px;line-height:1.5;}
+.connect .steps li::before{counter-increment:s;content:counter(s);position:absolute;left:0;top:0;width:20px;height:20px;border-radius:6px;background:var(--surface-2);border:1px solid var(--border-strong);color:var(--faint);font-family:"Geist Mono",monospace;font-size:11px;display:flex;align-items:center;justify-content:center;}
+.connect .cta-row{display:flex;align-items:center;gap:12px;margin-top:18px;flex-wrap:wrap;}
+.connect .btn.disabled{background:var(--surface-2);border-color:var(--border-strong);color:var(--faint);cursor:not-allowed;}
+.connect .cta-note{color:var(--faint);font-size:12.5px;max-width:42ch;}
+.connect .about h2{font-family:"Instrument Sans",sans-serif;font-weight:600;font-size:18px;letter-spacing:-.01em;margin:9px 0 8px;}
+.connect .about .intro{color:var(--muted);font-size:13.5px;line-height:1.6;margin:0;}
+.connect .rail-lbl{font-family:"Instrument Sans",sans-serif;font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.16em;color:var(--faint);margin:26px 0 12px;}
+.connect .tool{padding:13px 14px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2);margin-bottom:9px;}
+.connect .tname{font-family:"Geist Mono",monospace;font-size:13px;color:var(--emerald-300);font-weight:500;}
+.connect .tdesc{color:var(--muted);font-size:12.5px;line-height:1.5;margin:3px 0 0;}
+.connect .params{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px;}
+.connect .pchip{font-family:"Geist Mono",monospace;font-size:11px;color:var(--faint);border:1px solid var(--border);border-radius:6px;padding:2px 7px;}
+.connect .pchip b{color:var(--neutral-200);font-weight:500;}
+.connect .pchip.opt{opacity:.7;}
+.connect .trust{margin-top:18px;padding:13px 14px;border:1px solid rgba(52,211,153,.3);border-radius:12px;background:rgba(52,211,153,.06);color:var(--muted);font-size:12.5px;line-height:1.55;}
+.connect .trust code{font-family:"Geist Mono",monospace;font-size:11px;color:var(--emerald-300);}
