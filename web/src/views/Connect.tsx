@@ -60,26 +60,42 @@ export function Connect() {
 
           <div className="ordiv"><span>or</span></div>
 
-          <div className="method preview">
+          <div className={`method${info.publicBaseUrl ? "" : " preview"}`}>
             <div className="m-top">
               <div className="m-body">
                 <h3>Add with a URL</h3>
                 <p className="m-sub">Paste one URL into Claude and sign in — no token to copy. Works from any Claude client, including claude.ai and mobile.</p>
               </div>
-              <span className="soon">Setup required</span>
+              <span className={info.publicBaseUrl ? "works" : "soon"}>{info.publicBaseUrl ? "Ready" : "Setup required"}</span>
             </div>
-            <div className="m-preview">
-              <div className="urlbar">https://&lt;your-vault&gt;.geodemcp.com/mcp</div>
-              <ol className="steps">
-                <li>In Claude → <b>Settings → Connectors → Add custom connector</b></li>
-                <li>Paste the URL above and click <b>Add</b></li>
-                <li>Click <b>Connect</b> and sign in to authorize Geode (OAuth)</li>
-              </ol>
-            </div>
-            <div className="cta-row">
-              <button className="btn disabled" disabled>Set up a public tunnel →</button>
-              <span className="cta-note">A public URL + sign-in connector aren't enabled yet. Turn on a tunnel to activate this.</span>
-            </div>
+            {info.publicBaseUrl ? (
+              <>
+                <div className="code">
+                  <div className="codebar"><span className="lbl">connector URL</span><CopyButton text={`${info.publicBaseUrl}/mcp`} /></div>
+                  <pre>{`${info.publicBaseUrl}/mcp`}</pre>
+                </div>
+                <ol className="steps">
+                  <li>In Claude → <b>Settings → Connectors → Add custom connector</b></li>
+                  <li>Paste the URL above and click <b>Add</b></li>
+                  <li>Click <b>Connect</b> and sign in to authorize Geode (OAuth)</li>
+                </ol>
+              </>
+            ) : (
+              <>
+                <div className="m-preview">
+                  <div className="urlbar">https://&lt;your-vault&gt;.geodemcp.com/mcp</div>
+                  <ol className="steps">
+                    <li>In Claude → <b>Settings → Connectors → Add custom connector</b></li>
+                    <li>Paste the URL above and click <b>Add</b></li>
+                    <li>Click <b>Connect</b> and sign in to authorize Geode (OAuth)</li>
+                  </ol>
+                </div>
+                <div className="cta-row">
+                  <button className="btn disabled" disabled>Use GeodeMCP's managed tunnel (premium)</button>
+                  <span className="cta-note">Running on localhost — connect from claude.ai with our managed tunnel (coming soon), or set a public <code>GEODE_BASE_URL</code>.</span>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
