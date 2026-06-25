@@ -14,14 +14,14 @@ export function App() {
   const [auth, setAuth] = useState<AuthInfo | null>(null);
   const [view, setView] = useState<View>("Vault");
   const [hasTools, setHasTools] = useState(false);
-  const refresh = useCallback(() => api.authInfo().then(setAuth).catch(() => setAuth({ mode: "login", method: "password", authed: false })), []);
+  const refresh = useCallback(() => api.authInfo().then(setAuth).catch(() => setAuth({ mode: "login", authed: false })), []);
   useEffect(() => { refresh(); }, [refresh]);
   useEffect(() => { if (auth?.authed) api.integrations().then((l) => setHasTools(l.length > 0)).catch(() => {}); }, [auth?.authed]);
   const logout = async () => { await api.logout().catch(() => {}); setHasTools(false); setView("Vault"); refresh(); };
   if (!auth) return null;
   if (!auth.authed) return auth.mode === "setup"
     ? <Setup onIn={refresh} />
-    : <Login method={auth.method} onIn={refresh} />;
+    : <Login onIn={refresh} />;
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
       <TopBar view={view} onNav={setView} hasTools={hasTools} onLogout={logout} />

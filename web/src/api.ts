@@ -3,7 +3,7 @@ export interface IntegrationView { name: string; type: string; description: stri
 export interface SseEvent { event: string; data: any }
 export interface ToolDoc { name: string; description: string; params: { name: string; type: string; required: boolean }[] }
 export interface ConnectInfo { mcpUrl: string; authToken: string; tools: ToolDoc[] }
-export interface AuthInfo { mode: "setup" | "login"; method: "account" | "password"; authed: boolean }
+export interface AuthInfo { mode: "setup" | "login"; authed: boolean }
 export interface TranscriptRecord {
   runId: string;
   ts: number;
@@ -38,7 +38,7 @@ async function json<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   authInfo: () => json<AuthInfo>("/api/auth-info"),
   setup: (email: string, password: string) => json<{ ok: true }>("/api/setup", { method: "POST", body: JSON.stringify({ email, password }) }),
-  login: (password: string, email?: string) => json<{ ok: true }>("/api/login", { method: "POST", body: JSON.stringify({ password, email }) }),
+  login: (email: string, password: string) => json<{ ok: true }>("/api/login", { method: "POST", body: JSON.stringify({ email, password }) }),
   logout: () => json("/api/logout", { method: "POST" }),
   tree: () => json<TreeNode[]>("/api/tree"),
   file: (path: string) => json<{ content: string }>(`/api/file?path=${encodeURIComponent(path)}`),
