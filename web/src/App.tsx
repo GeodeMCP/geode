@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
-import { api } from "./api";
+import { useCallback, useEffect, useState } from "react";
+import { api, type AuthInfo } from "./api";
 import { Login } from "./views/Login";
+import { Setup } from "./views/Setup";
 import { TopBar, type View } from "./components/TopBar";
 import { VaultHome } from "./views/VaultHome";
 import { Capabilities } from "./views/Capabilities";
@@ -10,14 +11,17 @@ import { Secrets } from "./views/Secrets";
 import { Artifacts } from "./views/Artifacts";
 
 export function App() {
-  const [authed, setAuthed] = useState<boolean | null>(null);
+  const [auth, setAuth] = useState<AuthInfo | null>(null);
   const [view, setView] = useState<View>("Vault");
   const [hasTools, setHasTools] = useState(false);
-  useEffect(() => { api.tree().then(() => setAuthed(true)).catch(() => setAuthed(false)); }, []);
-  useEffect(() => { if (authed) api.integrations().then((l) => setHasTools(l.length > 0)).catch(() => {}); }, [authed]);
-  const logout = async () => { await api.logout().catch(() => {}); setHasTools(false); setView("Vault"); setAuthed(false); };
-  if (authed === null) return null;
-  if (!authed) return <Login onIn={() => setAuthed(true)} />;
+  const refresh = useCallback(() => api.authInfo().then(setAuth).catch(() => setAuth({ mode: "login", method: "password", authed: false })), []);
+  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => { if (auth?.authed) api.integrations().then((l) => setHasTools(l.length > 0)).catch(() => {}); }, [auth?.authed]);
+  const logout = async () => { await api.logout().catch(() => {}); setHasTools(false); setView("Vault"); refresh(); };
+  if (!auth) return null;
+  if (!auth.authed) return auth.mode === "setup"
+    ? <Setup onIn={refresh} />
+    : <Login method={auth.method} onIn={refresh} />;
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
       <TopBar view={view} onNav={setView} hasTools={hasTools} onLogout={logout} />
