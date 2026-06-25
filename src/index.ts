@@ -17,6 +17,9 @@ import { invoke } from "./invoke.js";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { mountDashboard } from "./dashboard/index.js";
+import { createOAuth } from "./oauth/tokens.js";
+import { createOAuthRouter } from "./oauth/router.js";
+import { createRateLimiter } from "./dashboard/rateLimit.js";
 
 async function main() {
   const config = loadConfig();
@@ -53,7 +56,13 @@ async function main() {
     baseUrl: config.baseUrl,
   };
 
-  const app = buildHttpApp(() => buildMcpServer(queryDeps, { secrets, artifacts }), config.authToken, artifacts);
+  const oauth = createOAuth({ signKey: loadOrCreateKey(join(config.secretsDir, "oauth"), process.env.GEODE_OAUTH_KEY), baseUrl: config.baseUrl });
+  const app = buildHttpApp(
+    () => buildMcpServer(queryDeps, { secrets, artifacts }),
+    config.authToken,
+    artifacts,
+    { verify: (t) => !!oauth.verifyAccessToken(t), resourceMetadataUrl: `${config.baseUrl}/.well-known/oauth-protected-resource` },
+  );
 
   const sessionKey = loadOrCreateKey(join(config.secretsDir, "session"), process.env.GEODE_SESSION_KEY);
   const accounts = createAccountStore(config.accountDir);
@@ -61,6 +70,9 @@ async function main() {
     try { accounts.createOwner({ email: config.ownerEmail, password: config.ownerPassword }); console.log(`Owner account bootstrapped: ${config.ownerEmail}`); }
     catch (e) { console.error("owner bootstrap failed:", e instanceof Error ? e.message : String(e)); }
   }
+  // Mount the OAuth routes BEFORE the dashboard so /authorize, /token, /register, /.well-known/* are not
+  // swallowed by the dashboard SPA fallback (which catches non-/api,/auth,/mcp,/artifacts GETs).
+  app.use(createOAuthRouter({ oauth, accounts, sessionKey, baseUrl: config.baseUrl, secure: config.baseUrl.startsWith("https://"), rateLimit: createRateLimiter({ limit: 10, windowMs: 60_000 }) }));
   const webDir = join(dirname(fileURLToPath(import.meta.url)), "..", "web", "dist");
   mountDashboard(app, {
     sessionKey,

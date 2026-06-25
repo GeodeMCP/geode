@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { checkAuth, makeQueryHandler, buildMcpServer, makeInvokeHandler } from "../src/server.js";
+import { checkAuth, checkMcpAuth, makeQueryHandler, buildMcpServer, makeInvokeHandler } from "../src/server.js";
 import { makeRememberHandler, makeListCapabilitiesHandler } from "../src/server.js";
 
 test("checkAuth accepts the correct bearer token and rejects others", () => {
@@ -7,6 +7,14 @@ test("checkAuth accepts the correct bearer token and rejects others", () => {
   expect(checkAuth("Bearer wrong", "secret")).toBe(false);
   expect(checkAuth(undefined, "secret")).toBe(false);
   expect(checkAuth("secret", "secret")).toBe(false);
+});
+
+test("checkMcpAuth accepts the static bearer OR a valid OAuth token, rejects others", () => {
+  const verify = (t: string) => t === "good-oauth";
+  expect(checkMcpAuth("Bearer secret", "secret", verify)).toBe(true);     // static bearer
+  expect(checkMcpAuth("Bearer good-oauth", "secret", verify)).toBe(true); // oauth
+  expect(checkMcpAuth("Bearer nope", "secret", verify)).toBe(false);
+  expect(checkMcpAuth(undefined, "secret", verify)).toBe(false);
 });
 
 test("buildMcpServer returns a fresh server instance per call (no shared transport reuse)", () => {
