@@ -12,6 +12,7 @@ export function signSession(key: Buffer, ttlMs: number, sub: string, now: () => 
   return `${payload}.${sign(key, payload)}`;
 }
 
+/** Verifies a signed session token and returns the subject if valid and unexpired, or null otherwise. */
 export function verifySession(key: Buffer, token: string, now: () => number = Date.now): { sub: string } | null {
   const i = token.indexOf("."); if (i < 0) return null;
   const j = token.indexOf(".", i + 1); if (j < 0) return null;
@@ -22,11 +23,13 @@ export function verifySession(key: Buffer, token: string, now: () => number = Da
   return a.length === b.length && timingSafeEqual(a, b) ? { sub } : null;
 }
 
+/** Extracts and verifies the session token from the raw Cookie header, returning the session subject or null. */
 export function sessionFromCookie(key: Buffer, cookieHeader: string | undefined, now: () => number = Date.now): { sub: string } | null {
   const tok = parseCookie(cookieHeader, COOKIE);
   return tok ? verifySession(key, tok, now) : null;
 }
 
+/** Parses a single named cookie value from a raw Cookie header string, returning null when absent. */
 export function parseCookie(header: string | undefined, name: string): string | null {
   if (!header) return null;
   for (const part of header.split(";")) {
@@ -37,12 +40,14 @@ export function parseCookie(header: string | undefined, name: string): string | 
   return null;
 }
 
+/** Appends a Set-Cookie header for the session token with HttpOnly, SameSite=Lax, and optional Secure flags. */
 export function setSessionCookie(res: Response, token: string, secure: boolean): void {
   const attrs = [`${COOKIE}=${token}`, "HttpOnly", "Path=/", "SameSite=Lax", "Max-Age=86400"];
   if (secure) attrs.push("Secure");
   res.append("Set-Cookie", attrs.join("; "));
 }
 
+/** Clears the session cookie by setting it to an empty value with Max-Age=0. */
 export function clearSessionCookie(res: Response): void {
   res.append("Set-Cookie", `${COOKIE}=; HttpOnly; Path=/; Max-Age=0`);
 }

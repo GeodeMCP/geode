@@ -1,7 +1,9 @@
+/** Serialises agent runs in a queue, enforcing a per-run timeout and a maximum queue depth. */
 export interface RunManager {
   run<T>(fn: (abortController: AbortController, runId: string) => Promise<T>): Promise<T>;
 }
 
+/** Creates a RunManager that chains runs sequentially, aborts them after maxRuntimeMs, and rejects new runs when the queue exceeds queueLimit. */
 export function createRunManager(opts: { maxRuntimeMs: number; queueLimit: number }): RunManager {
   let tail: Promise<unknown> = Promise.resolve();
   let queued = 0;

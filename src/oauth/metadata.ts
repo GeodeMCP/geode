@@ -1,6 +1,8 @@
+/** Returns the RFC 9728 protected resource metadata document advertising the MCP resource and its authorization server. */
 export function protectedResourceMetadata(baseUrl: string) {
   return { resource: `${baseUrl}/mcp`, authorization_servers: [baseUrl], scopes_supported: ["vault"], bearer_methods_supported: ["header"] };
 }
+/** Returns the RFC 8414 authorization server metadata document describing all supported endpoints and capabilities. */
 export function authorizationServerMetadata(baseUrl: string) {
   return {
     issuer: baseUrl,

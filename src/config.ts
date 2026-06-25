@@ -1,6 +1,7 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 
+/** All runtime configuration values resolved from environment variables. */
 export interface Config {
   authToken: string;
   workspaceRoot: string;
@@ -23,6 +24,7 @@ function required(env: Record<string, string | undefined>, key: string): string 
   return v;
 }
 
+/** Reads environment variables and returns a fully resolved Config, throwing if any required variable is absent. */
 export function loadConfig(env: Record<string, string | undefined> = process.env): Config {
   return {
     authToken: required(env, "GEODE_AUTH_TOKEN"),

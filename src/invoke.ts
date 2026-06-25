@@ -1,9 +1,12 @@
 import type { SecretStore } from "./secrets.js";
 import { loadIntegration, resolveTemplate } from "./integrations.js";
 
+/** Arguments required to call a single integration action by name. */
 export interface InvokeArgs { integration: string; action: string; params?: Record<string, unknown>; workspace?: string }
+/** HTTP status code and parsed (or raw text) response body returned from an integration action call. */
 export interface InvokeResult { status: number; body: unknown }
 
+/** Loads the named integration manifest, resolves secrets and template variables, and executes the HTTP action, returning its status and body. */
 export async function invoke(
   deps: { root: string; secrets: Pick<SecretStore, "get">; fetchFn?: typeof fetch },
   args: InvokeArgs,

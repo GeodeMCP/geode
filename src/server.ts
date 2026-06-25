@@ -12,12 +12,14 @@ import type { SecretStore } from "./secrets.js";
 import type { ArtifactStore } from "./artifacts.js";
 import { toolDescription } from "./toolCatalog.js";
 
+/** Verifies that an Authorization header exactly matches the expected Bearer token using a timing-safe comparison. */
 export function checkAuth(header: string | undefined, token: string): boolean {
   const expected = `Bearer ${token}`;
   if (typeof header !== "string" || header.length !== expected.length) return false;
   return timingSafeEqual(Buffer.from(header), Buffer.from(expected));
 }
 
+/** Verifies an Authorization header against either the static Bearer token or an optional OAuth verifier callback. */
 export function checkMcpAuth(header: string | undefined, token: string, verifyOAuth?: (t: string) => boolean): boolean {
   if (checkAuth(header, token)) return true;
   if (!verifyOAuth || typeof header !== "string" || !header.startsWith("Bearer ")) return false;
@@ -57,35 +59,43 @@ async function runAgenticTool(
   }
 }
 
+/** Dependencies required by the query tool handler. */
 export interface QueryHandlerDeps {
   runQuery: (instruction: string, onProgress?: (m: string) => void) => Promise<QueryResult>;
 }
+/** Creates the MCP tool handler for the query tool, wiring progress notifications through the agentic runner. */
 export function makeQueryHandler(deps: QueryHandlerDeps) {
   return async (args: { instruction: string; workspace?: string }, extra: any) =>
     runAgenticTool(extra, (op) => deps.runQuery(args.instruction, op), "query");
 }
 
+/** Dependencies required by the remember tool handler. */
 export interface RememberHandlerDeps {
   runRemember: (args: RememberArgs, onProgress?: (m: string) => void) => Promise<QueryResult>;
 }
+/** Creates the MCP tool handler for the remember tool, wiring progress notifications through the agentic runner. */
 export function makeRememberHandler(deps: RememberHandlerDeps) {
   return async (args: RememberArgs, extra: any) =>
     runAgenticTool(extra, (op) => deps.runRemember(args, op), "remember");
 }
 
+/** Dependencies required by the list_capabilities tool handler. */
 export interface ListCapabilitiesHandlerDeps {
   root: string;
   derive: (root: string) => Promise<{ text: string }>;
 }
+/** Creates the MCP tool handler for list_capabilities, which derives and returns workspace capability text. */
 export function makeListCapabilitiesHandler(deps: ListCapabilitiesHandlerDeps) {
   return async (_args: unknown, _extra: unknown) => ({
     content: [{ type: "text" as const, text: (await deps.derive(deps.root)).text }],
   });
 }
 
+/** Dependencies required by the invoke tool handler. */
 export interface InvokeHandlerDeps {
   invoke: (args: InvokeArgs) => Promise<InvokeResult>;
 }
+/** Creates the MCP tool handler for the invoke tool, which calls an integration action and returns its JSON result. */
 export function makeInvokeHandler(deps: InvokeHandlerDeps) {
   return async (args: InvokeArgs, _extra: any) => {
     try {
@@ -102,6 +112,7 @@ export function makeInvokeHandler(deps: InvokeHandlerDeps) {
 
 // --- Server assembly (integration) ---
 
+/** Assembles and returns an MCP server with query, remember, list_capabilities, and optionally invoke tools registered. */
 export function buildMcpServer(queryDeps: QueryDeps, opts?: { secrets?: SecretStore; artifacts?: ArtifactStore }): McpServer {
   const server = new McpServer({ name: "geode-kernel", version: "0.1.0" });
 
@@ -162,6 +173,7 @@ export function buildMcpServer(queryDeps: QueryDeps, opts?: { secrets?: SecretSt
   return server;
 }
 
+/** Builds an Express app that serves the MCP endpoint with Bearer auth, optional artifact file serving, and optional OAuth support. */
 export function buildHttpApp(makeServer: () => McpServer, authToken: string, artifacts?: ArtifactStore, oauth?: { verify: (t: string) => boolean; resourceMetadataUrl: string }) {
   const app = express();
   app.use(express.json({ limit: "8mb" }));

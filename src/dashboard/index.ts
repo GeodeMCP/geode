@@ -6,6 +6,7 @@ import { createApiRouter, type ApiDeps } from "./api.js";
 import { verifySecretLink } from "./secretLinks.js";
 import { renderAuthScreen, renderAuthResult } from "./authScreen.js";
 
+/** Dependencies for the dashboard mount point, extending ApiDeps with the SPA directory and an optional secure flag. */
 export interface DashboardDeps extends Omit<ApiDeps, "secure"> {
   webDir: string;   // absolute path to the built SPA (web/dist)
   secure?: boolean;

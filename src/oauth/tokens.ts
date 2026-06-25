@@ -3,11 +3,16 @@ import { createHmac, randomBytes, timingSafeEqual, createHash } from "node:crypt
 const enc = (obj: unknown): string => Buffer.from(JSON.stringify(obj)).toString("base64url");
 const dec = (s: string): any => JSON.parse(Buffer.from(s, "base64url").toString("utf8"));
 
+/** Minimal registration data for an OAuth client, including allowed redirect URIs and a display name. */
 export interface ClientReg { redirect_uris: string[]; name: string }
+/** Payload embedded in a short-lived authorization code, capturing all parameters needed for token exchange. */
 export interface CodePayload { client_id: string; redirect_uri: string; code_challenge: string; resource: string; scope: string; sub: string }
+/** Parameters captured from the initial authorization request, preserved for the consent form POST. */
 export interface AuthRequest { client_id: string; redirect_uri: string; code_challenge: string; resource: string; scope: string; state: string }
+/** Subject and scope extracted from a verified access or refresh token. */
 export interface TokenClaims { sub: string; scope: string }
 
+/** Full OAuth 2.0 + PKCE server interface covering client registration, auth codes, access tokens, and refresh tokens. */
 export interface OAuth {
   readonly resource: string;
   registerClient(reg: ClientReg): string;
@@ -26,6 +31,7 @@ export interface OAuth {
 const ACCESS_TTL = 3_600_000, REFRESH_TTL = 30 * 86_400_000, CODE_TTL = 60_000, AREQ_TTL = 600_000;
 
 // Stateless HMAC-signed blobs: "<kind>.<base64url(json)>.<sig>". Single-use codes tracked in a nonce set.
+/** Creates a stateless OAuth 2.0 + PKCE service backed by HMAC-signed tokens, with single-use authorization codes enforced via an in-memory nonce set. */
 export function createOAuth(opts: { signKey: Buffer; baseUrl: string; now?: () => number }): OAuth {
   const now = opts.now ?? (() => Date.now());
   const resource = `${opts.baseUrl}/mcp`;

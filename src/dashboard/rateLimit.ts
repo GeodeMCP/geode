@@ -1,6 +1,8 @@
+/** Contract for a key-based rate limiter that returns whether a call is allowed and how long to wait if not. */
 export interface RateLimiter { check(key: string): { ok: boolean; retryAfter: number } }
 
 // Fixed-window in-memory limiter: at most `limit` calls per `windowMs` per key.
+/** Creates a fixed-window in-memory rate limiter that allows at most `limit` calls per `windowMs` per key. */
 export function createRateLimiter(opts: { limit: number; windowMs: number; now?: () => number }): RateLimiter {
   const now = opts.now ?? (() => Date.now());
   const hits = new Map<string, { count: number; start: number }>();

@@ -1,6 +1,9 @@
+/** Represents a single to-do item tracked by the agent during a run. */
 export interface Todo { content: string; status: string }
+/** Timing, cost, and token usage collected at the end of a run. */
 export interface Metrics { durationMs: number; costUsd: number; tokens: number }
 
+/** Discriminated union of all streaming events the agent emits during a run, rendered distinctly by the dashboard. */
 // Structured events the agent emits during a run. The dashboard renders each kind
 // distinctly (prose bubble, thinking, grouped tool steps, live todo list, system notice);
 // the MCP layer flattens them back to text via `eventText`.
@@ -12,9 +15,12 @@ export type ProgressEvent =
   | { type: "notice"; kind: "compact" | "memory" | "retry"; text: string }
   | { type: "text"; text: string };
 
+/** Terminal event emitted once when the agent produces a final result, optionally with run metrics. */
 export type ResultEvent = { type: "result"; text: string; metrics?: Metrics };
+/** Union of all events the engine can emit during or at the end of a run. */
 export type EngineEvent = ProgressEvent | ResultEvent;
 
+/** Options passed to an engine to start a single agent run. */
 export interface EngineRunOptions {
   instruction: string;
   cwd: string;
@@ -23,12 +29,14 @@ export interface EngineRunOptions {
   abortController: AbortController;
 }
 
+/** Callable that starts an agent run and yields engine events as the agent makes progress. */
 export type Engine = (opts: EngineRunOptions) => AsyncIterable<EngineEvent>;
 
 // A tool use → a short summary (what file/command, shown collapsed) + an optional input-derived
 // detail to reveal on expand. detail is set only when the *input* carries the meaningful content
 // (Write body, Edit diff); for Read/Bash/Grep the meaningful content is the OUTPUT, captured
 // separately from the tool_result.
+/** Derives a human-readable summary and optional expanded detail from a tool call's name and input. */
 export function toolInfo(name: string, input: any): { summary: string; detail: string } {
   const i = input ?? {};
   const oneLine = (s: string, n = 64) => { const t = s.replace(/\s+/g, " ").trim(); return t.length > n ? t.slice(0, n) + "…" : t; };
@@ -66,6 +74,7 @@ function extractMetrics(message: any): Metrics | undefined {
   return { durationMs: Number(message.duration_ms) || 0, costUsd: Number(message.total_cost_usd) || 0, tokens };
 }
 
+/** Maps a single Agent SDK message object to zero or more typed engine events. */
 // Pure mapping from an Agent SDK message to engine events (unit-tested).
 export function mapMessage(message: any): EngineEvent[] {
   const t = message?.type;
@@ -127,6 +136,7 @@ export function mapMessage(message: any): EngineEvent[] {
   return [];
 }
 
+/** Converts a progress event to a single text line suitable for the MCP transcript, returning an empty string for event types that should be skipped. */
 // Flatten a progress event back to a single line for the MCP progress channel (text-only).
 // Returns "" for events the MCP transcript should skip (tool results, todos, thinking).
 export function eventText(ev: ProgressEvent): string {
@@ -143,6 +153,7 @@ export function eventText(ev: ProgressEvent): string {
 // systemPrompt replaces Claude Code's built-in prompt, which includes the agent's working
 // directory; without it the agent guesses its cwd (e.g. the home dir) and writes files to
 // the wrong place, so nothing lands in the vault. (Diagnosed 2026-06-17.)
+/** Builds the Agent SDK query options object from run options, attaching the claude_code preset system prompt, tool set, and permission settings. */
 export function buildQueryOptions(opts: EngineRunOptions): Record<string, unknown> {
   return {
     cwd: opts.cwd,
@@ -160,6 +171,7 @@ export function buildQueryOptions(opts: EngineRunOptions): Record<string, unknow
   };
 }
 
+/** Live engine that streams events from the Claude Agent SDK, stripping vault-absolute path prefixes from all emitted strings. */
 // Live engine backed by the Claude Agent SDK. Integration-only (not unit-tested).
 export const claudeAgentEngine: Engine = async function* (opts: EngineRunOptions): AsyncIterable<EngineEvent> {
   const { query } = await import("@anthropic-ai/claude-agent-sdk");

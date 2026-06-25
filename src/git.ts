@@ -3,6 +3,7 @@ import { promisify } from "node:util";
 
 const pexec = promisify(execFile);
 
+/** Runs a git command in the given directory and returns its trimmed stdout. */
 export async function runGit(cwd: string, args: string[]): Promise<string> {
   const { stdout } = await pexec("git", args, { cwd, maxBuffer: 10 * 1024 * 1024 });
   return stdout.trim();

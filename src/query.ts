@@ -5,6 +5,7 @@ import type { EventLog } from "./eventLog.js";
 import type { RunManager } from "./runManager.js";
 import type { Workspace } from "./workspace.js";
 
+/** Dependencies injected into a query call, including the workspace, engine, and supporting services. */
 export interface QueryDeps {
   workspace: Workspace;
   engine: Engine;
@@ -16,6 +17,7 @@ export interface QueryDeps {
   baseUrl?: string;
 }
 
+/** Result returned by a completed query run, including the agent's text output and commit metadata. */
 export interface QueryResult {
   runId: string;
   text: string;
@@ -41,6 +43,7 @@ function listArtifacts(dir: string): string[] {
 
 const truncate = (s: string, n = 200): string => (s.length > n ? `${s.slice(0, n)}…` : s);
 
+/** Runs an instruction through the engine inside a managed run, commits the result, and logs the outcome. */
 export async function query(
   deps: QueryDeps,
   instruction: string,

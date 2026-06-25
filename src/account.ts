@@ -2,9 +2,11 @@ import { randomUUID, randomBytes, scryptSync, timingSafeEqual } from "node:crypt
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
+/** The public identity of an authenticated account, safe to pass to callers without exposing credentials. */
 export interface Principal { id: string; email: string; createdAt: number }
 interface OwnerRecord { id: string; email: string; salt: string; hash: string; createdAt: number }
 
+/** Store interface for managing the single machine-local owner account. */
 export interface AccountStore {
   hasOwner(): boolean;
   getOwner(): Principal | null;
@@ -20,6 +22,7 @@ const hashPw = (password: string, salt: Buffer): Buffer => scryptSync(password, 
 
 // Single-owner account, machine-local (one record). The interface is deliberately store-shaped so a
 // future multi-account/DB implementation drops in without changing callers.
+/** Creates a file-backed account store that persists one owner record in the given directory using scrypt password hashing. */
 export function createAccountStore(dir: string): AccountStore {
   const file = join(dir, "account.json");
   const read = (): OwnerRecord | null => (existsSync(file) ? (JSON.parse(readFileSync(file, "utf8")) as OwnerRecord) : null);

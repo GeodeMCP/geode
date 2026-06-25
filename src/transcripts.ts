@@ -2,6 +2,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } fr
 import { join } from "node:path";
 import type { ProgressEvent, Metrics } from "./engine.js";
 
+/** Shape of a single persisted run record stored in the transcript log. */
 export interface TranscriptRecord {
   runId: string;
   ts: number;                 // server time (ms epoch) when written
@@ -11,6 +12,7 @@ export interface TranscriptRecord {
   error?: string;
 }
 
+/** Interface for appending, listing, and clearing transcript records in a persistent JSONL store. */
 export interface TranscriptStore {
   append(record: TranscriptRecord): Promise<void>;
   list(): Promise<TranscriptRecord[]>;
@@ -19,6 +21,7 @@ export interface TranscriptStore {
 
 // JSONL, one record per line. Machine-local; not in the vault git. Runs are serialized by the
 // runManager queue, so synchronous appends never interleave (mirrors eventLog.ts).
+/** Creates a TranscriptStore backed by a JSONL file in the given directory, skipping corrupt lines on read. */
 export function createTranscriptStore(dir: string): TranscriptStore {
   const file = join(dir, "transcript.jsonl");
   const ensureDir = () => { if (!existsSync(dir)) mkdirSync(dir, { recursive: true }); };

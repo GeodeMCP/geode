@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+/** Map of filename to default content for the files written into a new vault during seeding. */
 export const SCAFFOLD: Record<string, string> = {
   "AGENTS.md": `---
 type: schema

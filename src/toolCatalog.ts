@@ -1,9 +1,12 @@
+/** Describes a single parameter of an MCP tool. */
 export interface ToolParam { name: string; type: string; required: boolean }
+/** Full documentation entry for one MCP tool including its description and parameter list. */
 export interface ToolDoc { name: string; description: string; params: ToolParam[] }
 
 // Single source of truth for the MCP tool surface. `server.ts` registers each tool with the
 // description here (so the dashboard copy and the MCP description are the same string), and the
 // dashboard reads the whole catalog via GET /api/connect.
+/** The authoritative list of all MCP tools exposed by the Geode kernel, used for both server registration and dashboard display. */
 export const TOOL_CATALOG: ToolDoc[] = [
   {
     name: "query",
@@ -39,6 +42,7 @@ export const TOOL_CATALOG: ToolDoc[] = [
   },
 ];
 
+/** Looks up and returns the description string for a named tool from the catalog, throwing if the tool is not found. */
 export const toolDescription = (name: string): string => {
   const t = TOOL_CATALOG.find((d) => d.name === name);
   if (!t) throw new Error(`tool not in catalog: ${name}`);

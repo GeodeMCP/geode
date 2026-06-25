@@ -1,10 +1,12 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 
+/** Represents a single node in the workspace file tree, either a file or a directory with optional children. */
 export interface TreeNode { name: string; path: string; type: "file" | "dir"; children?: TreeNode[] }
 
 const HIDDEN = new Set([".git", "integrations", "artifacts", ".gitignore", "node_modules"]);
 
+/** Recursively reads the workspace directory and returns a sorted tree of files and folders, excluding hidden/system entries. */
 export async function buildKnowledgeTree(root: string, rel = ""): Promise<TreeNode[]> {
   const dir = rel ? join(root, rel) : root;
   const entries = await readdir(dir, { withFileTypes: true });

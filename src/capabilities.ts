@@ -1,7 +1,9 @@
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 
+/** Parsed YAML frontmatter fields extracted from a Markdown document. */
 export interface Frontmatter { type?: string; title?: string; description?: string; tags?: string[] }
+/** Aggregated summary of a vault's recipes, skills, and integrations. */
 export interface CapabilitySummary {
   integrations: { name: string; description: string; actions: string[] }[];
   recipes: { title: string; description: string; path: string }[];
@@ -10,6 +12,7 @@ export interface CapabilitySummary {
 
 const RECIPE_TYPES = new Set(["recipe", "skill", "sop"]);
 
+/** Parses YAML frontmatter from a Markdown string, returning the recognized fields. */
 export function parseFrontmatter(md: string): Frontmatter {
   const m = /^---\n([\s\S]*?)\n---/.exec(md);
   if (!m) return {};
@@ -38,6 +41,7 @@ async function walkMd(dir: string, out: string[]): Promise<void> {
   }
 }
 
+/** Scans a vault root directory to derive a summary of its integrations and Markdown-based recipes and skills. */
 export async function deriveCapabilities(root: string): Promise<CapabilitySummary> {
   const integrations: CapabilitySummary["integrations"] = [];
   let intDirs: string[] = [];

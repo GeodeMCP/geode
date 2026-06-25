@@ -10,6 +10,7 @@ import { renderConsent } from "./consentScreen.js";
 const SESSION_TTL = 86_400_000; // matches dashboard SESSION_TTL
 const ipKey = (req: Request) => String(req.headers["x-forwarded-for"] ?? "").split(",")[0].trim() || req.socket.remoteAddress || "unknown";
 
+/** Dependencies injected into the OAuth router, including the token service, account store, and rate limiter. */
 export interface OAuthRouterDeps {
   oauth: OAuth;
   accounts: AccountStore;
@@ -19,6 +20,7 @@ export interface OAuthRouterDeps {
   rateLimit: RateLimiter;
 }
 
+/** Builds and returns an Express Router implementing the full OAuth 2.0 authorization code + PKCE flow, including dynamic client registration and token endpoints. */
 export function createOAuthRouter(deps: OAuthRouterDeps): Router {
   const router = Router();
   router.use(express.urlencoded({ extended: false }));   // for the POST /authorize form (JSON parsed app-level)

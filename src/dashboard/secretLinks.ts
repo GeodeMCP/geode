@@ -1,5 +1,6 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
+/** The decoded payload of a secret-link token, containing the secret ref, expiry timestamp, and a single-use nonce. */
 export interface SecretLinkClaims { ref: string; exp: number; nonce: string }
 
 const sign = (key: Buffer, payload: string) => createHmac("sha256", key).update(payload).digest("base64url");
@@ -11,6 +12,7 @@ export function mintSecretLink(key: Buffer, ref: string, ttlMs: number, now: () 
   return `${payload}.${sign(key, payload)}`;
 }
 
+/** Verifies an HMAC-signed secret-link token and returns its claims if the signature is valid and it has not expired. */
 export function verifySecretLink(key: Buffer, token: string, now: () => number = Date.now): SecretLinkClaims | null {
   const dot = token.lastIndexOf(".");
   if (dot <= 0) return null;

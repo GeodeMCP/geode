@@ -20,6 +20,7 @@ input{width:100%;background:var(--input);border:1px solid var(--border-strong);b
 .ok{color:var(--green)}
 </style></head><body><div class="name">Geode</div>${body}</body></html>`;
 
+/** Renders the HTML form that lets a user paste a secret value for the given ref into the broker. */
 export function renderAuthScreen(opts: { ref: string; action: string; minutesLeft: number; error?: string }): string {
   const ref = esc(opts.ref);
   return SHELL(`<form class="card" method="post" action="${esc(opts.action)}">
@@ -34,6 +35,7 @@ export function renderAuthScreen(opts: { ref: string; action: string; minutesLef
   </form>`);
 }
 
+/** Renders an HTML confirmation page indicating whether the secret was saved successfully or the link was invalid. */
 export function renderAuthResult(opts: { ok: boolean; ref: string; message: string }): string {
   return SHELL(`<div class="card">
     <span class="eyebrow">${opts.ok ? "Done" : "Failed"}</span>

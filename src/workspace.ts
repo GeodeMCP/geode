@@ -2,6 +2,7 @@ import { readFile, realpath, writeFile as fsWriteFile, mkdir, lstat, rm } from "
 import { dirname, resolve, sep } from "node:path";
 import { runGit } from "./git.js";
 
+/** Interface for interacting with a vault's Git-backed file system with path-safety enforcement. */
 export interface Workspace {
   root: string;
   init(): Promise<void>;
@@ -18,6 +19,7 @@ export interface Workspace {
   deletePath(relPath: string): Promise<void>;
 }
 
+/** Creates a Workspace backed by a Git repository at the given root, with symlink-safe path resolution that blocks traversal outside the vault. */
 export function createWorkspace(root: string): Workspace {
   const HIDDEN_FIRST = new Set([".git", "integrations", "artifacts", "node_modules"]);
   // Resolve a vault-relative path safely: reject traversal + machinery dirs, and

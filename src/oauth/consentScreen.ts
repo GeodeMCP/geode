@@ -16,6 +16,7 @@ input{width:100%;background:var(--input);border:1px solid var(--border-strong);b
 .err{color:#eaa;font-size:13px;margin:6px 0}.note{color:var(--faint);font-size:12.5px;line-height:1.5;margin:12px 0 0}
 </style></head><body><div class="name">Geode</div>${body}</body></html>`;
 
+/** Renders the OAuth consent HTML page, optionally including login fields and an error message when credentials are required or invalid. */
 export function renderConsent(opts: { clientName: string; scope: string; action: string; req: string; needsLogin: boolean; error?: string }): string {
   const login = opts.needsLogin
     ? `<label>Email</label><input type="email" name="email" autocomplete="username" autofocus>

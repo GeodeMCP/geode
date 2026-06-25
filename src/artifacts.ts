@@ -1,7 +1,8 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve, sep } from "node:path";
+import { dirname, resolve, sep } from "node:path";
 
+/** Store interface for saving binary artifacts and issuing signed time-limited public URLs to them. */
 export interface ArtifactStore {
   dir: string;
   save(relPath: string, data: Buffer): Promise<{ path: string; url: string }>;
@@ -10,6 +11,7 @@ export interface ArtifactStore {
   verifyPublic(relPath: string, exp: string, sig: string): boolean;
 }
 
+/** Creates a directory-backed artifact store that saves files, enforces path confinement, and signs public URLs with HMAC-SHA256. */
 export function createArtifactStore(opts: { dir: string; baseUrl: string; signKey: Buffer; now?: () => number }): ArtifactStore {
   mkdirSync(opts.dir, { recursive: true });
   const now = opts.now ?? (() => Date.now());

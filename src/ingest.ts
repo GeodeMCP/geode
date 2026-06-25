@@ -1,6 +1,7 @@
 import { query, type QueryDeps, type QueryResult } from "./query.js";
 import type { ProgressEvent } from "./engine.js";
 
+/** Arguments accepted by the remember function for ingesting content into the vault. */
 export interface RememberArgs {
   content: string;
   source?: string;
@@ -8,6 +9,7 @@ export interface RememberArgs {
   workspace?: string;
 }
 
+/** Builds the natural-language instruction string that tells the engine how to integrate content into the vault. */
 export function buildIngestInstruction(content: string, source?: string, title?: string): string {
   const lines = [
     "Integrate the following into the vault: find or create the right page for it, dedup against existing content, add cross-references, update index.md and capabilities.md if relevant, and keep it tidy. Then summarize what you filed and where.",
@@ -18,6 +20,7 @@ export function buildIngestInstruction(content: string, source?: string, title?:
   return lines.join("\n");
 }
 
+/** Validates that content is non-empty, then runs a vault-ingest query via the engine. */
 export async function remember(
   deps: QueryDeps,
   args: RememberArgs,

@@ -2,6 +2,7 @@ import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
+/** Interface for reading and writing named secrets in an encrypted store. */
 export interface SecretStore {
   set(ref: string, value: string): Promise<void>;
   get(ref: string): Promise<string | null>;
@@ -22,6 +23,7 @@ function dec(key: Buffer, blob: Buffer): string {
   return Buffer.concat([d.update(data), d.final()]).toString("utf8");
 }
 
+/** Loads a 32-byte AES key from an env variable or a key file, creating the file if it does not yet exist. */
 export function loadOrCreateKey(dir: string, envKey?: string): Buffer {
   if (envKey) {
     const b = Buffer.from(envKey, envKey.length === 64 ? "hex" : "base64");
@@ -37,6 +39,7 @@ export function loadOrCreateKey(dir: string, envKey?: string): Buffer {
   return k;
 }
 
+/** Creates a SecretStore that encrypts all values with AES-256-GCM and persists them to a single file. */
 export function createSecretStore(opts: { dir: string; key: Buffer }): SecretStore {
   mkdirSync(opts.dir, { recursive: true });
   const file = join(opts.dir, "secrets.enc");

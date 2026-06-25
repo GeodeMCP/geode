@@ -17,6 +17,7 @@ import { listIntegrations, getIntegration, listSecrets, listArtifacts } from "./
 import { mintSecretLink } from "./secretLinks.js";
 import { TOOL_CATALOG } from "../toolCatalog.js";
 
+/** Dependencies injected into the API router, covering auth, workspace, query execution, and storage. */
 export interface ApiDeps {
   sessionKey: Buffer;
   secure: boolean;
@@ -37,6 +38,7 @@ export interface ApiDeps {
 const SAFE_NAME = /^[A-Za-z0-9_-]+$/;
 const SESSION_TTL = 86_400_000; // 24h
 
+/** Builds and returns the Express router that handles all /api endpoints for the dashboard. */
 export function createApiRouter(deps: ApiDeps): Router {
   const router = Router();
   const loginLimiter = createRateLimiter({ limit: 8, windowMs: 60_000 });
