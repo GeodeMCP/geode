@@ -11,7 +11,9 @@
     "build": "tsc",
     "start": "tsx src/index.ts",
     "secret": "tsx src/secretCli.ts",
-    "owner": "tsx src/ownerCli.ts"
+    "owner": "tsx src/ownerCli.ts",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [],
   "author": "",
