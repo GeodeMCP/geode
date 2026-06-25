@@ -40,7 +40,7 @@ The dashboard resolves one of three states via a public `GET /api/auth-info` →
 ## Security
 
 - **scrypt** (Node's built-in `crypto.scryptSync`, per-record random salt) — no new dependency; constant-time hash comparison.
-- **Rate-limiting** (`src/dashboard/rateLimit.ts`, small in-memory per-IP sliding-window + exponential backoff) on `POST /api/login` and `POST /api/setup` (and reused by `/authorize` in B). Returns `429` when tripped.
+- **Rate-limiting** (`src/dashboard/rateLimit.ts`, small in-memory per-IP fixed-window limiter) on `POST /api/login` and `POST /api/setup` (and reused by `/authorize` in B). Returns `429` when tripped.
 - **Strong password**: minimum length (≥ 10) enforced at setup/setPassword; trivially-weak rejected.
 - Session cookie stays HMAC-signed, HttpOnly, SameSite=Lax, 24h, `Secure` when the base URL is https.
 - The static `GEODE_AUTH_TOKEN` remains the `/mcp` bearer (unchanged here; dual-auth with OAuth lands in B).

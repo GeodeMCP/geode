@@ -38,3 +38,9 @@ Needs a reachable model (`ANTHROPIC_API_KEY` or local Ollama). Build the SPA fir
 19. Click **Connect** (always visible in the nav, between Capabilities and Integrations). Left column shows two alternative methods separated by an "or" divider: **Add with a config (JSON)** ("Works now") and **Add with a URL** ("Setup required", disabled). Right rail lists the 4 tools (query / remember / list_capabilities / invoke) + a server-side secret-injection note.
 20. The JSON shows the bearer token masked; click **reveal token** → the real token appears; **Copy** copies the full config with the real token. The CLI one-liner copies likewise.
 21. The "Set up a public tunnel →" button is disabled (wires to sub-project C).
+
+## Owner account & first-run (manual)
+
+22. Fresh vault, no `GEODE_DASHBOARD_PASSWORD` → open `/` → "Create your vault" (email + password). Submit → logged in. Restart → email+password login works; wrong password trips a 429 after ~8 tries.
+23. Env-fallback: set `GEODE_DASHBOARD_PASSWORD`, delete `~/.geode/account.json` → login is password-only (as before). While logged in, run setup (email + password) → an account is created and supersedes the env password on next login.
+24. `npm run owner -- show` prints the owner email; `npm run owner -- reset` returns to first-run.
