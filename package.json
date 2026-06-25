@@ -10,7 +10,8 @@
     "test": "vitest run",
     "build": "tsc",
     "start": "tsx src/index.ts",
-    "secret": "tsx src/secretCli.ts"
+    "secret": "tsx src/secretCli.ts",
+    "owner": "tsx src/ownerCli.ts"
   },
   "keywords": [],
   "author": "",
