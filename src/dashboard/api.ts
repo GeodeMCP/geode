@@ -7,7 +7,9 @@ import type { RememberArgs } from "../ingest.js";
 import type { SecretStore } from "../secrets.js";
 import type { ArtifactStore } from "../artifacts.js";
 import type { TranscriptStore, TranscriptRecord } from "../transcripts.js";
-import { signSession, requireSession, setSessionCookie, clearSessionCookie } from "./session.js";
+import type { AccountStore } from "../account.js";
+import { signSession, requireSession, setSessionCookie, clearSessionCookie, sessionFromCookie } from "./session.js";
+import { createRateLimiter } from "./rateLimit.js";
 import { buildKnowledgeTree, parseStatus } from "./knowledge.js";
 import { openSse } from "./sse.js";
 import { deriveCapabilities } from "../capabilities.js";
@@ -29,6 +31,7 @@ export interface ApiDeps {
   artifactsDir: string;
   baseUrl: string;
   authToken: string;
+  accounts: AccountStore;
   invoke: (args: { integration: string; action: string; params?: Record<string, unknown> }) => Promise<{ status: number; body: unknown }>;
 }
 
@@ -37,13 +40,46 @@ const SESSION_TTL = 86_400_000; // 24h
 
 export function createApiRouter(deps: ApiDeps): Router {
   const router = Router();
+  const loginLimiter = createRateLimiter({ limit: 8, windowMs: 60_000 });
+  const ipKey = (req: Request) => (String(req.headers["x-forwarded-for"] ?? "").split(",")[0].trim()) || req.socket.remoteAddress || "unknown";
 
-  router.post("/login", (req: Request, res: Response) => {
+  router.get("/auth-info", (req, res) => {
+    const hasOwner = deps.accounts.hasOwner();
+    res.json({
+      mode: hasOwner || deps.dashboardPassword ? "login" : "setup",
+      method: hasOwner ? "account" : "password",
+      authed: !!sessionFromCookie(deps.sessionKey, req.headers.cookie),
+    });
+  });
+
+  router.post("/setup", (req, res) => {
+    if (deps.accounts.hasOwner()) { res.status(409).json({ error: "owner already exists" }); return; }
+    // On an env-protected (possibly public) kernel, only a logged-in operator may claim the owner.
+    if (deps.dashboardPassword && !sessionFromCookie(deps.sessionKey, req.headers.cookie)) { res.status(403).json({ error: "log in first" }); return; }
+    const lim = loginLimiter.check(ipKey(req)); if (!lim.ok) { res.status(429).json({ error: "too many attempts", retryAfter: lim.retryAfter }); return; }
+    try {
+      const p = deps.accounts.createOwner({ email: String(req.body?.email ?? ""), password: String(req.body?.password ?? "") });
+      setSessionCookie(res, signSession(deps.sessionKey, SESSION_TTL, p.id), deps.secure);
+      res.json({ ok: true });
+    } catch (e) { res.status(400).json({ error: e instanceof Error ? e.message : String(e) }); }
+  });
+
+  router.post("/login", (req, res) => {
+    const lim = loginLimiter.check(ipKey(req)); if (!lim.ok) { res.status(429).json({ error: "too many attempts", retryAfter: lim.retryAfter }); return; }
     const password = String(req.body?.password ?? "");
-    const a = Buffer.from(password), b = Buffer.from(deps.dashboardPassword);
-    if (a.length !== b.length || !timingSafeEqual(a, b)) { res.status(401).json({ error: "invalid password" }); return; }
-    setSessionCookie(res, signSession(deps.sessionKey, SESSION_TTL, "env-owner"), deps.secure);
-    res.json({ ok: true });
+    if (deps.accounts.hasOwner()) {
+      const p = deps.accounts.verify(String(req.body?.email ?? ""), password);
+      if (!p) { res.status(401).json({ error: "invalid credentials" }); return; }
+      setSessionCookie(res, signSession(deps.sessionKey, SESSION_TTL, p.id), deps.secure);
+      res.json({ ok: true }); return;
+    }
+    if (deps.dashboardPassword) {
+      const a = Buffer.from(password), b = Buffer.from(deps.dashboardPassword);
+      if (a.length !== b.length || !timingSafeEqual(a, b)) { res.status(401).json({ error: "invalid password" }); return; }
+      setSessionCookie(res, signSession(deps.sessionKey, SESSION_TTL, "env-owner"), deps.secure);
+      res.json({ ok: true }); return;
+    }
+    res.status(403).json({ error: "no owner configured; complete setup" });
   });
   router.post("/logout", (_req, res) => { clearSessionCookie(res); res.json({ ok: true }); });
 

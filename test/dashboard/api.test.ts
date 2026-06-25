@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { createApiRouter } from "../../src/dashboard/api.js";
 import { createWorkspace } from "../../src/workspace.js";
 import { createTranscriptStore } from "../../src/transcripts.js";
+import { createAccountStore } from "../../src/account.js";
 
 let server: Server; let url: string; let root: string;
 const KEY = Buffer.from("k".repeat(32));
@@ -32,6 +33,7 @@ async function boot() {
     artifactsDir: root,
     baseUrl: "http://h",
     authToken: "test-token",
+    accounts: createAccountStore(join(root, ".accounts")),
     invoke: async () => ({ status: 200, body: {} }),
   }));
   await new Promise<void>((r) => { server = app.listen(0, () => { url = `http://localhost:${(server.address() as any).port}`; r(); }); });
@@ -132,7 +134,7 @@ test("an errored query run is still recorded with error + a generated runId", as
     secrets: { list: async () => [], delete: async () => {}, set: async () => {} } as any,
     artifacts: {} as any,
     transcripts: createTranscriptStore(join(root2, ".transcripts")),
-    artifactsDir: root2, baseUrl: "http://h", invoke: async () => ({ status: 200, body: {} }),
+    artifactsDir: root2, baseUrl: "http://h", accounts: createAccountStore(join(root2, ".accounts")), invoke: async () => ({ status: 200, body: {} }),
   }));
   const srv2 = await new Promise<Server>((r) => { const s = app2.listen(0, () => r(s)); });
   try {
@@ -148,4 +150,34 @@ test("an errored query run is still recorded with error + a generated runId", as
   } finally {
     srv2.close(); rmSync(root2, { recursive: true, force: true });
   }
+});
+
+test("auth-info reports env-password mode before an owner exists", async () => {
+  const info = await (await fetch(`${url}/api/auth-info`)).json();
+  expect(info).toMatchObject({ mode: "login", method: "password", authed: false });
+});
+
+test("setup is forbidden on an env-protected kernel without a session, allowed with one, then login uses the account", async () => {
+  // no session → forbidden
+  const noSess = await fetch(`${url}/api/setup`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "me@example.com", password: "correct-horse" }) });
+  expect(noSess.status).toBe(403);
+  // log in via env, then claim the owner
+  const cookie = await login();
+  const ok = await fetch(`${url}/api/setup`, { method: "POST", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ email: "me@example.com", password: "correct-horse" }) });
+  expect((await ok.json()).ok).toBe(true);
+  const info = await (await fetch(`${url}/api/auth-info`)).json();
+  expect(info).toMatchObject({ mode: "login", method: "account" });
+  // account login now works with email + password; wrong password fails
+  const good = await fetch(`${url}/api/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "me@example.com", password: "correct-horse" }) });
+  expect(good.status).toBe(200);
+  const bad = await fetch(`${url}/api/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "me@example.com", password: "nope" }) });
+  expect(bad.status).toBe(401);
+});
+
+test("login is rate-limited after repeated failures", async () => {
+  let last = 200;
+  for (let i = 0; i < 12; i++) {
+    last = (await fetch(`${url}/api/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password: "wrong" }) })).status;
+  }
+  expect(last).toBe(429);
 });

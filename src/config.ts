@@ -13,6 +13,7 @@ export interface Config {
   transcriptsDir: string;
   baseUrl: string;
   dashboardPassword?: string;
+  accountDir: string;
 }
 
 function required(env: Record<string, string | undefined>, key: string): string {
@@ -34,5 +35,6 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     transcriptsDir: env.GEODE_TRANSCRIPTS_DIR || join(homedir(), ".geode", "transcripts"),
     baseUrl: env.GEODE_BASE_URL || `http://localhost:${env.GEODE_PORT ? Number(env.GEODE_PORT) : 8787}`,
     dashboardPassword: env.GEODE_DASHBOARD_PASSWORD || undefined,
+    accountDir: env.GEODE_ACCOUNT_DIR || join(homedir(), ".geode"),
   };
 }

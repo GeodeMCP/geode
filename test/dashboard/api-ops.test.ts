@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createApiRouter } from "../../src/dashboard/api.js";
 import { createWorkspace } from "../../src/workspace.js";
+import { createAccountStore } from "../../src/account.js";
 
 let server: Server; let url: string; let root: string; let artDir: string;
 const KEY = Buffer.from("k".repeat(32));
@@ -28,6 +29,7 @@ async function boot() {
     secrets: { list: async () => secretRefs, get: async () => null, set: async () => {}, delete: async (r: string) => { const i = secretRefs.indexOf(r); if (i >= 0) secretRefs.splice(i, 1); } } as any,
     artifacts: { mintPublicUrl: (p: string) => `http://h/artifacts/${p}?sig=x&exp=1`, resolve: (p: string) => join(artDir, p) } as any,
     artifactsDir: artDir, baseUrl: "http://h", authToken: "test-token",
+    accounts: createAccountStore(join(root, ".accounts")),
     invoke: async (a: any) => ({ status: 200, body: { echoed: a.action } }),
   }));
   await new Promise<void>((r) => { server = app.listen(0, () => { url = `http://localhost:${(server.address() as any).port}`; r(); }); });

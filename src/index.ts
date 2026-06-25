@@ -12,6 +12,7 @@ import { seedVault, ensureArtifactsIgnored } from "./seed.js";
 import { createSecretStore, loadOrCreateKey } from "./secrets.js";
 import { createArtifactStore } from "./artifacts.js";
 import { createTranscriptStore } from "./transcripts.js";
+import { createAccountStore } from "./account.js";
 import { invoke } from "./invoke.js";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -56,10 +57,12 @@ async function main() {
 
   if (config.dashboardPassword) {
     const sessionKey = loadOrCreateKey(join(config.secretsDir, "session"), process.env.GEODE_SESSION_KEY);
+    const accounts = createAccountStore(config.accountDir);
     const webDir = join(dirname(fileURLToPath(import.meta.url)), "..", "web", "dist");
     mountDashboard(app, {
       sessionKey,
       dashboardPassword: config.dashboardPassword,
+      accounts,
       secure: config.baseUrl.startsWith("https://"),
       workspace,
       webDir,

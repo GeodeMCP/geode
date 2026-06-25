@@ -48,3 +48,8 @@ test("dashboardPassword is read from env and is undefined by default", () => {
   expect(loadConfig({ ...base }).dashboardPassword).toBeUndefined();
   expect(loadConfig({ ...base, GEODE_DASHBOARD_PASSWORD: "hunter2" }).dashboardPassword).toBe("hunter2");
 });
+
+test("accountDir defaults to ~/.geode and can be overridden", () => {
+  expect(loadConfig(base).accountDir).toMatch(/\/.geode$/);
+  expect(loadConfig({ ...base, GEODE_ACCOUNT_DIR: "/run/geode" }).accountDir).toBe("/run/geode");
+});
