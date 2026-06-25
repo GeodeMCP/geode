@@ -26,6 +26,10 @@ export default tseslint.config(
     rules: {
       'jsdoc/require-jsdoc': ['error', {
         publicOnly: true,
+        // Do NOT auto-insert empty JSDoc stubs on `eslint --fix`; a missing doc
+        // block must stay a hard error that blocks the commit, forcing a real
+        // description to be written by hand.
+        enableFixer: false,
         require: {
           FunctionDeclaration: true,
           ClassDeclaration: true,
