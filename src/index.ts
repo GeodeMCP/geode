@@ -57,10 +57,13 @@ async function main() {
 
   const sessionKey = loadOrCreateKey(join(config.secretsDir, "session"), process.env.GEODE_SESSION_KEY);
   const accounts = createAccountStore(config.accountDir);
+  if (!accounts.hasOwner() && config.ownerEmail && config.ownerPassword) {
+    try { accounts.createOwner({ email: config.ownerEmail, password: config.ownerPassword }); console.log(`Owner account bootstrapped: ${config.ownerEmail}`); }
+    catch (e) { console.error("owner bootstrap failed:", e instanceof Error ? e.message : String(e)); }
+  }
   const webDir = join(dirname(fileURLToPath(import.meta.url)), "..", "web", "dist");
   mountDashboard(app, {
     sessionKey,
-    dashboardPassword: config.dashboardPassword ?? "",
     accounts,
     secure: config.baseUrl.startsWith("https://"),
     workspace,

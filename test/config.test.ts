@@ -43,10 +43,13 @@ test("env overrides for artifactsDir, baseUrl and secretsDir", () => {
   expect(cfg.secretsDir).toBe("/run/secrets");
 });
 
-test("dashboardPassword is read from env and is undefined by default", () => {
+test("ownerEmail/ownerPassword are undefined by default and read from env", () => {
   const base = { GEODE_AUTH_TOKEN: "t", GEODE_WORKSPACE: "/tmp/x" };
-  expect(loadConfig({ ...base }).dashboardPassword).toBeUndefined();
-  expect(loadConfig({ ...base, GEODE_DASHBOARD_PASSWORD: "hunter2" }).dashboardPassword).toBe("hunter2");
+  expect(loadConfig({ ...base }).ownerEmail).toBeUndefined();
+  expect(loadConfig({ ...base }).ownerPassword).toBeUndefined();
+  const cfg = loadConfig({ ...base, GEODE_OWNER_EMAIL: "owner@example.com", GEODE_OWNER_PASSWORD: "owner-password-1" });
+  expect(cfg.ownerEmail).toBe("owner@example.com");
+  expect(cfg.ownerPassword).toBe("owner-password-1");
 });
 
 test("accountDir defaults to ~/.geode and can be overridden", () => {

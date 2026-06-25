@@ -12,7 +12,8 @@ export interface Config {
   artifactsDir: string;
   transcriptsDir: string;
   baseUrl: string;
-  dashboardPassword?: string;
+  ownerEmail?: string;
+  ownerPassword?: string;
   accountDir: string;
 }
 
@@ -34,7 +35,8 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     artifactsDir: env.GEODE_ARTIFACTS_DIR || join(required(env, "GEODE_WORKSPACE"), "artifacts"),
     transcriptsDir: env.GEODE_TRANSCRIPTS_DIR || join(homedir(), ".geode", "transcripts"),
     baseUrl: env.GEODE_BASE_URL || `http://localhost:${env.GEODE_PORT ? Number(env.GEODE_PORT) : 8787}`,
-    dashboardPassword: env.GEODE_DASHBOARD_PASSWORD || undefined,
+    ownerEmail: env.GEODE_OWNER_EMAIL || undefined,
+    ownerPassword: env.GEODE_OWNER_PASSWORD || undefined,
     accountDir: env.GEODE_ACCOUNT_DIR || join(homedir(), ".geode"),
   };
 }

@@ -18,7 +18,7 @@ async function boot() {
   const ws = createWorkspace(root); await ws.init();
   const app = express(); app.use(express.json());
   mountDashboard(app, {
-    sessionKey: KEY, dashboardPassword: "pw", workspace: ws, webDir: "/nonexistent", linkKey: KEY,
+    sessionKey: KEY, workspace: ws, webDir: "/nonexistent", linkKey: KEY,
     runQuery: async () => ({ runId: "r", text: "", commit: null, filesTouched: [] }),
     runRemember: async () => ({ runId: "r", text: "", commit: null, filesTouched: [] }),
     secrets: { list: async () => Object.keys(stored), get: async () => null, set: async (r: string, v: string) => { stored[r] = v; }, delete: async () => {} } as any,

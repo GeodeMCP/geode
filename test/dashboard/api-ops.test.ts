@@ -22,19 +22,21 @@ async function boot() {
     name: "demo", type: "connection", description: "d", requires: ["DEMO_KEY"], actions: { ping: { method: "GET", url: "https://h/p" } },
   }));
   const app = express(); app.use(express.json());
+  const accounts = createAccountStore(join(root, ".accounts"));
+  accounts.createOwner({ email: "owner@test.dev", password: "owner-password-1" });
   app.use("/api", createApiRouter({
-    sessionKey: KEY, dashboardPassword: "pw", secure: false, workspace: ws, linkKey: KEY,
+    sessionKey: KEY, secure: false, workspace: ws, linkKey: KEY,
     runQuery: async () => ({ runId: "r", text: "", commit: null, filesTouched: [] }),
     runRemember: async () => ({ runId: "r", text: "", commit: null, filesTouched: [] }),
     secrets: { list: async () => secretRefs, get: async () => null, set: async () => {}, delete: async (r: string) => { const i = secretRefs.indexOf(r); if (i >= 0) secretRefs.splice(i, 1); } } as any,
     artifacts: { mintPublicUrl: (p: string) => `http://h/artifacts/${p}?sig=x&exp=1`, resolve: (p: string) => join(artDir, p) } as any,
     artifactsDir: artDir, baseUrl: "http://h", authToken: "test-token",
-    accounts: createAccountStore(join(root, ".accounts")),
+    accounts,
     invoke: async (a: any) => ({ status: 200, body: { echoed: a.action } }),
   }));
   await new Promise<void>((r) => { server = app.listen(0, () => { url = `http://localhost:${(server.address() as any).port}`; r(); }); });
 }
-const login = async () => (await fetch(`${url}/api/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password: "pw" }) })).headers.get("set-cookie")!.split(";")[0];
+const login = async () => (await fetch(`${url}/api/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "owner@test.dev", password: "owner-password-1" }) })).headers.get("set-cookie")!.split(";")[0];
 
 beforeEach(async () => { secretRefs.length = 0; await boot(); });
 afterEach(() => { server.close(); rmSync(root, { recursive: true, force: true }); rmSync(artDir, { recursive: true, force: true }); });

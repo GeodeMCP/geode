@@ -17,8 +17,10 @@ async function boot() {
   const ws = createWorkspace(root); await ws.init();
   writeFileSync(join(root, "index.md"), "# Index\n"); await ws.commitAll("seed");
   const app = express(); app.use(express.json());
+  const accounts = createAccountStore(join(root, ".accounts"));
+  accounts.createOwner({ email: "owner@test.dev", password: "owner-password-1" });
   app.use("/api", createApiRouter({
-    sessionKey: KEY, dashboardPassword: "pw", secure: false, workspace: ws,
+    sessionKey: KEY, secure: false, workspace: ws,
     runQuery: async (instruction, onProgress) => {
       onProgress({ type: "tool", toolId: "t1", name: "Write", summary: "note.md", detail: "x" } as any);
       onProgress({ type: "tool_result", toolId: "t1", ok: true, output: "ok" } as any);
@@ -33,13 +35,13 @@ async function boot() {
     artifactsDir: root,
     baseUrl: "http://h",
     authToken: "test-token",
-    accounts: createAccountStore(join(root, ".accounts")),
+    accounts,
     invoke: async () => ({ status: 200, body: {} }),
   }));
   await new Promise<void>((r) => { server = app.listen(0, () => { url = `http://localhost:${(server.address() as any).port}`; r(); }); });
 }
 const login = async () => {
-  const res = await fetch(`${url}/api/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password: "pw" }) });
+  const res = await fetch(`${url}/api/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "owner@test.dev", password: "owner-password-1" }) });
   return res.headers.get("set-cookie")!.split(";")[0];
 };
 
@@ -48,7 +50,7 @@ afterEach(() => { server.close(); rmSync(root, { recursive: true, force: true })
 
 test("guards /api/tree until logged in; login sets a cookie", async () => {
   expect((await fetch(`${url}/api/tree`)).status).toBe(401);
-  expect((await fetch(`${url}/api/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password: "wrong" }) })).status).toBe(401);
+  expect((await fetch(`${url}/api/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "owner@test.dev", password: "wrong" }) })).status).toBe(401);
   const cookie = await login();
   const res = await fetch(`${url}/api/tree`, { headers: { cookie } });
   expect(res.status).toBe(200);
@@ -126,20 +128,22 @@ test("an errored query run is still recorded with error + a generated runId", as
   const root2 = mkdtempSync(join(tmpdir(), "geode-api-err-"));
   const ws2 = createWorkspace(root2); await ws2.init();
   const app2 = express(); app2.use(express.json());
+  const accounts2 = createAccountStore(join(root2, ".accounts"));
+  accounts2.createOwner({ email: "owner@test.dev", password: "owner-password-1" });
   app2.use("/api", createApiRouter({
-    sessionKey: KEY, dashboardPassword: "pw", secure: false, workspace: ws2,
+    sessionKey: KEY, secure: false, workspace: ws2,
     runQuery: async () => { throw new Error("engine boom"); },
     runRemember: async () => ({ runId: "r", text: "", commit: null, filesTouched: [] }),
     linkKey: KEY,
     secrets: { list: async () => [], delete: async () => {}, set: async () => {} } as any,
     artifacts: {} as any,
     transcripts: createTranscriptStore(join(root2, ".transcripts")),
-    artifactsDir: root2, baseUrl: "http://h", accounts: createAccountStore(join(root2, ".accounts")), invoke: async () => ({ status: 200, body: {} }),
+    artifactsDir: root2, baseUrl: "http://h", accounts: accounts2, invoke: async () => ({ status: 200, body: {} }),
   }));
   const srv2 = await new Promise<Server>((r) => { const s = app2.listen(0, () => r(s)); });
   try {
     const u2 = `http://localhost:${(srv2.address() as any).port}`;
-    const cookie = (await fetch(`${u2}/api/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password: "pw" }) })).headers.get("set-cookie")!.split(";")[0];
+    const cookie = (await fetch(`${u2}/api/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "owner@test.dev", password: "owner-password-1" }) })).headers.get("set-cookie")!.split(";")[0];
     await fetch(`${u2}/api/query`, { method: "POST", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ instruction: "do X" }) }).then((r) => r.text());
     const hist = await (await fetch(`${u2}/api/history`, { headers: { cookie } })).json();
     expect(hist).toHaveLength(1);
@@ -152,35 +156,26 @@ test("an errored query run is still recorded with error + a generated runId", as
   }
 });
 
-test("auth-info reports env-password mode before an owner exists", async () => {
+test("auth-info reports login mode (owner exists) and reflects the session", async () => {
   const info = await (await fetch(`${url}/api/auth-info`)).json();
-  expect(info).toMatchObject({ mode: "login", method: "password", authed: false });
-});
-
-test("setup is forbidden on an env-protected kernel without a session, allowed with one, then login uses the account", async () => {
-  // no session → forbidden
-  const noSess = await fetch(`${url}/api/setup`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "me@example.com", password: "correct-horse" }) });
-  expect(noSess.status).toBe(403);
-  // log in via env, then claim the owner
+  expect(info).toMatchObject({ mode: "login", authed: false });
   const cookie = await login();
-  const ok = await fetch(`${url}/api/setup`, { method: "POST", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ email: "me@example.com", password: "correct-horse" }) });
-  expect((await ok.json()).ok).toBe(true);
-  const info = await (await fetch(`${url}/api/auth-info`)).json();
-  expect(info).toMatchObject({ mode: "login", method: "account" });
-  // account login now works with email + password; wrong password fails
-  const good = await fetch(`${url}/api/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "me@example.com", password: "correct-horse" }) });
-  expect(good.status).toBe(200);
-  const bad = await fetch(`${url}/api/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "me@example.com", password: "nope" }) });
-  expect(bad.status).toBe(401);
+  const authed = await (await fetch(`${url}/api/auth-info`, { headers: { cookie } })).json();
+  expect(authed).toMatchObject({ mode: "login", authed: true });
 });
 
-test("no-password kernel: setup needs no cookie, then login switches to the account", async () => {
-  // Self-contained app with no env password and an empty accounts store — the first-run flow.
+test("setup is forbidden once an owner exists (409)", async () => {
+  const res = await fetch(`${url}/api/setup`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "me@example.com", password: "correct-horse" }) });
+  expect(res.status).toBe(409);
+});
+
+test("no-owner kernel: setup needs no cookie, then login switches to the account", async () => {
+  // Self-contained app with an empty accounts store — the first-run flow.
   const root3 = mkdtempSync(join(tmpdir(), "geode-api-setup-"));
   const ws3 = createWorkspace(root3); await ws3.init();
   const app3 = express(); app3.use(express.json());
   app3.use("/api", createApiRouter({
-    sessionKey: KEY, dashboardPassword: "", secure: false, workspace: ws3,
+    sessionKey: KEY, secure: false, workspace: ws3,
     runQuery: async () => ({ runId: "r", text: "", commit: null, filesTouched: [] }),
     runRemember: async () => ({ runId: "r", text: "", commit: null, filesTouched: [] }),
     linkKey: KEY,
@@ -192,12 +187,12 @@ test("no-password kernel: setup needs no cookie, then login switches to the acco
   const srv3 = await new Promise<Server>((r) => { const s = app3.listen(0, () => r(s)); });
   try {
     const u3 = `http://localhost:${(srv3.address() as any).port}`;
-    expect(await (await fetch(`${u3}/api/auth-info`)).json()).toMatchObject({ mode: "setup", method: "password" });
-    // No env password to guard against → setup is allowed without a session.
+    expect(await (await fetch(`${u3}/api/auth-info`)).json()).toMatchObject({ mode: "setup" });
+    // No owner yet → setup is allowed without a session.
     const ok = await fetch(`${u3}/api/setup`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "me@example.com", password: "correct-horse" }) });
     expect(ok.status).toBe(200);
     expect((await ok.json()).ok).toBe(true);
-    expect(await (await fetch(`${u3}/api/auth-info`)).json()).toMatchObject({ mode: "login", method: "account" });
+    expect(await (await fetch(`${u3}/api/auth-info`)).json()).toMatchObject({ mode: "login" });
   } finally {
     srv3.close(); rmSync(root3, { recursive: true, force: true });
   }
@@ -206,7 +201,7 @@ test("no-password kernel: setup needs no cookie, then login switches to the acco
 test("login is rate-limited after repeated failures", async () => {
   let last = 200;
   for (let i = 0; i < 12; i++) {
-    last = (await fetch(`${url}/api/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password: "wrong" }) })).status;
+    last = (await fetch(`${url}/api/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "owner@test.dev", password: "wrong" }) })).status;
   }
   expect(last).toBe(429);
 });
