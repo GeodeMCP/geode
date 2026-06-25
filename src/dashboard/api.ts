@@ -134,7 +134,8 @@ export function createApiRouter(deps: ApiDeps): Router {
   router.delete("/history", async (_req, res) => { await deps.transcripts.clear(); res.json({ ok: true }); });
 
   router.get("/connect", (_req, res) => {
-    res.json({ mcpUrl: `${deps.baseUrl}/mcp`, authToken: deps.authToken, tools: TOOL_CATALOG });
+    const isLoopback = /(^https?:\/\/)?(localhost|127\.0\.0\.1|\[::1\])(:|\/|$)/.test(deps.baseUrl);
+    res.json({ mcpUrl: `${deps.baseUrl}/mcp`, authToken: deps.authToken, tools: TOOL_CATALOG, publicBaseUrl: isLoopback ? null : deps.baseUrl });
   });
 
   router.get("/capabilities", async (_req, res) => { res.json(await deriveCapabilities(deps.workspace.root)); });

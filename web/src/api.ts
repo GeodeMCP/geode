@@ -2,7 +2,7 @@ export interface TreeNode { name: string; path: string; type: "file" | "dir"; ch
 export interface IntegrationView { name: string; type: string; description: string; actions: { name: string; method: string; url: string; description?: string }[]; requiredSecrets: { ref: string; set: boolean }[] }
 export interface SseEvent { event: string; data: any }
 export interface ToolDoc { name: string; description: string; params: { name: string; type: string; required: boolean }[] }
-export interface ConnectInfo { mcpUrl: string; authToken: string; tools: ToolDoc[] }
+export interface ConnectInfo { mcpUrl: string; authToken: string; tools: ToolDoc[]; publicBaseUrl: string | null }
 export interface AuthInfo { mode: "setup" | "login"; authed: boolean }
 export interface TranscriptRecord {
   runId: string;

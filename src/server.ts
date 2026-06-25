@@ -18,6 +18,12 @@ export function checkAuth(header: string | undefined, token: string): boolean {
   return timingSafeEqual(Buffer.from(header), Buffer.from(expected));
 }
 
+export function checkMcpAuth(header: string | undefined, token: string, verifyOAuth?: (t: string) => boolean): boolean {
+  if (checkAuth(header, token)) return true;
+  if (!verifyOAuth || typeof header !== "string" || !header.startsWith("Bearer ")) return false;
+  return verifyOAuth(header.slice(7));
+}
+
 // --- Tool handlers (unit-tested) ---
 
 // Shared runner for agentic tools (query, remember): streams progress and
@@ -156,7 +162,7 @@ export function buildMcpServer(queryDeps: QueryDeps, opts?: { secrets?: SecretSt
   return server;
 }
 
-export function buildHttpApp(makeServer: () => McpServer, authToken: string, artifacts?: ArtifactStore) {
+export function buildHttpApp(makeServer: () => McpServer, authToken: string, artifacts?: ArtifactStore, oauth?: { verify: (t: string) => boolean; resourceMetadataUrl: string }) {
   const app = express();
   app.use(express.json({ limit: "8mb" }));
   if (artifacts) {
@@ -182,7 +188,8 @@ export function buildHttpApp(makeServer: () => McpServer, authToken: string, art
     });
   }
   app.post("/mcp", async (req, res) => {
-    if (!checkAuth(req.headers.authorization, authToken)) {
+    if (!checkMcpAuth(req.headers.authorization, authToken, oauth?.verify)) {
+      if (oauth) res.setHeader("WWW-Authenticate", `Bearer resource_metadata="${oauth.resourceMetadataUrl}", scope="vault"`);
       res.status(401).json({ error: "unauthorized" });
       return;
     }

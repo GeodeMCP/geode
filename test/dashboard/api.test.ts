@@ -120,6 +120,7 @@ test("GET /api/connect requires a session and returns mcpUrl, token, and the too
   const body = await (await fetch(`${url}/api/connect`, { headers: { cookie } })).json();
   expect(body.mcpUrl).toMatch(/\/mcp$/);
   expect(body.authToken).toBe("test-token");
+  expect(body.publicBaseUrl).toBe("http://h");
   expect(body.tools.map((t: any) => t.name)).toEqual(["query", "remember", "list_capabilities", "invoke"]);
 });
 

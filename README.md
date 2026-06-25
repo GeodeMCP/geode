@@ -35,3 +35,17 @@ Once an owner exists, login is always email + password.
 - **Recovery (machine-local break-glass):** `npm run owner -- show | create <email> | set-password | reset` (`reset` removes the owner record so first-run setup runs again).
 
 **Security when exposing the kernel publicly:** the dashboard always mounts, so a fresh, ownerless, publicly-exposed kernel can be **claimed by the first visitor** via the "Create your vault" screen. Always **create the owner first** (CLI or `GEODE_OWNER_EMAIL`/`GEODE_OWNER_PASSWORD`) before exposing the kernel publicly. The dashboard login and the static `GEODE_AUTH_TOKEN` bearer both become internet-reachable once the kernel is public — use a strong password, and prefer exposing only the connector routes (`/mcp`, and later the OAuth routes) through your reverse proxy, keeping the dashboard private.
+
+### Connect from claude.ai (OAuth)
+
+To add your vault to claude.ai as a custom connector, the kernel needs a **public HTTPS URL** — claude.ai connects from Anthropic's cloud, so `localhost` is unreachable. Put the kernel behind your own reverse proxy or tunnel and set `GEODE_BASE_URL` to that public HTTPS URL:
+
+```bash
+export GEODE_BASE_URL="https://vault.example.com"
+```
+
+Then, in Claude → **Settings → Connectors → Add custom connector** → paste the URL → **Connect** → sign in with your **owner account** → **Approve**. Claude discovers the OAuth metadata, self-registers (DCR), runs the consent flow, and connects as the owner.
+
+Local clients (Claude Code / Claude Desktop) don't need this — they still use the JSON config shown on the dashboard's **Connect** page with the static `GEODE_AUTH_TOKEN` bearer. A **managed tunnel** for localhost users (so you can connect from claude.ai without running your own proxy) is coming later.
+
+**Security:** as above, **create the owner first** so a public, ownerless kernel can't be claimed by the first visitor, and expose only the connector routes (`/mcp`, `/.well-known/*`, `/register`, `/authorize`, `/token`) through your reverse proxy, keeping the dashboard private.
