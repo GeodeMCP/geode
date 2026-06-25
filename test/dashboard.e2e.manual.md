@@ -44,3 +44,10 @@ Needs a reachable model (`ANTHROPIC_API_KEY` or local Ollama). Build the SPA fir
 22. Fresh vault, no owner (`~/.geode/account.json` absent) → open `/` → "Create your vault" (email + password). Submit → logged in. Restart → email+password login works; wrong password trips a 429 after ~8 tries.
 23. Env bootstrap: with no owner, set `GEODE_OWNER_EMAIL` + `GEODE_OWNER_PASSWORD` and `npm start` → on first boot a hashed owner is created from them (then they're inert) → open `/` → the **login** screen → sign in with that email + password.
 24. `npm run owner -- show` prints the owner email; `npm run owner -- reset` removes the owner record and returns to first-run.
+
+## Remote OAuth connector (manual)
+
+25. `curl -s $BASE/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server` return the metadata; `$BASE` derives from `GEODE_BASE_URL`.
+26. `curl -i $BASE/mcp` with no auth → `401` + a `WWW-Authenticate: Bearer resource_metadata="…"` header. With `Authorization: Bearer $GEODE_AUTH_TOKEN` → not 401 (static bearer still works).
+27. End-to-end against claude.ai (needs a public URL — use a throwaway `cloudflared`/`ngrok` and set `GEODE_BASE_URL` to it; create the owner first): Claude → Connectors → Add custom connector → paste the URL → it discovers metadata + self-registers (DCR) → opens the consent page → sign in with the owner account → Approve → connected. Confirm the 4 tools appear and a `query` runs over the OAuth token.
+28. A forged/expired access token on `/mcp` → 401. Deny on the consent page → Claude shows the connection was declined.
