@@ -42,7 +42,7 @@ export function createApiRouter(deps: ApiDeps): Router {
     const password = String(req.body?.password ?? "");
     const a = Buffer.from(password), b = Buffer.from(deps.dashboardPassword);
     if (a.length !== b.length || !timingSafeEqual(a, b)) { res.status(401).json({ error: "invalid password" }); return; }
-    setSessionCookie(res, signSession(deps.sessionKey, SESSION_TTL), deps.secure);
+    setSessionCookie(res, signSession(deps.sessionKey, SESSION_TTL, "env-owner"), deps.secure);
     res.json({ ok: true });
   });
   router.post("/logout", (_req, res) => { clearSessionCookie(res); res.json({ ok: true }); });
