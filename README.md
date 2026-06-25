@@ -24,10 +24,14 @@ Tools: `query` (ask the vault — returns an answer or an executable `invoke` pl
 
 ### First run / account
 
-The dashboard (the management UI) mounts by default at `http://localhost:8787/`.
+The dashboard (the management UI) always mounts at `http://localhost:8787/`. Auth is **account-only**: a single owner account (email + password, scrypt-hashed). Create the owner one of three ways:
 
-- **No password, no owner yet:** if `GEODE_DASHBOARD_PASSWORD` is unset and no owner account exists, opening the dashboard shows a one-time **"Create your vault"** screen (email + password). The credential is stored scrypt-hashed at `~/.geode/account.json` (override the directory with `GEODE_ACCOUNT_DIR`). After that, sign in with email + password.
-- **Env-password login:** `GEODE_DASHBOARD_PASSWORD` remains a valid env-login. A logged-in operator can upgrade to a real account via the setup screen ("Create your vault"); once created, the account supersedes the env password on the next login.
+- **Interactive local install:** open the dashboard with no owner yet → a one-time **"Create your vault"** screen (email + password). The credential is stored scrypt-hashed at `~/.geode/account.json` (override the directory with `GEODE_ACCOUNT_DIR`). After that, sign in with email + password.
+- **Headless / fleet provisioning (env bootstrap):** set `GEODE_OWNER_EMAIL` and `GEODE_OWNER_PASSWORD`. On first boot with no owner, a hashed account is created from them; the variables are then inert (subsequent boots ignore them, since an owner now exists).
+- **CLI:** `npm run owner -- create <email>`.
+
+Once an owner exists, login is always email + password.
+
 - **Recovery (machine-local break-glass):** `npm run owner -- show | create <email> | set-password | reset` (`reset` removes the owner record so first-run setup runs again).
 
-**Security when exposing the kernel publicly:** the dashboard login and the static `GEODE_AUTH_TOKEN` bearer both become internet-reachable once the kernel is public. Use a strong password, and prefer exposing only the connector routes (`/mcp`, and later the OAuth routes) through your reverse proxy — keep the dashboard private.
+**Security when exposing the kernel publicly:** the dashboard always mounts, so a fresh, ownerless, publicly-exposed kernel can be **claimed by the first visitor** via the "Create your vault" screen. Always **create the owner first** (CLI or `GEODE_OWNER_EMAIL`/`GEODE_OWNER_PASSWORD`) before exposing the kernel publicly. The dashboard login and the static `GEODE_AUTH_TOKEN` bearer both become internet-reachable once the kernel is public — use a strong password, and prefer exposing only the connector routes (`/mcp`, and later the OAuth routes) through your reverse proxy, keeping the dashboard private.

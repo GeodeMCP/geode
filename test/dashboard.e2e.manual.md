@@ -2,9 +2,9 @@
 
 Needs a reachable model (`ANTHROPIC_API_KEY` or local Ollama). Build the SPA first: `cd web && npm run build && cd ..`.
 
-1. `export GEODE_AUTH_TOKEN=t GEODE_WORKSPACE=$(mktemp -d) GEODE_DASHBOARD_PASSWORD=pw`
+1. `export GEODE_AUTH_TOKEN=t GEODE_WORKSPACE=$(mktemp -d)`. The dashboard always mounts; on first open with no owner you complete the **"Create your vault"** screen (email + password), or set `GEODE_OWNER_EMAIL`/`GEODE_OWNER_PASSWORD` to bootstrap the owner headlessly.
 2. `npm start` → console shows "Dashboard enabled at http://localhost:8787/".
-3. Open `http://localhost:8787/` → the **login** screen. Wrong password → error; `pw` → the 3-pane Vault home.
+3. Open `http://localhost:8787/` → "Create your vault" (or, if an owner exists, the **login** screen). Complete setup / log in with your account email + password → the 3-pane Vault home.
 4. In the chat: "Create a note clients/test.md with one sentence about this vault."
    - Progress streams in the chat (SSE); a result change-card appears.
    - The new file appears in the tree with an emerald **new** badge; selecting it shows a green-add **diff** in the viewer; the viewer shows **uncommitted** + Commit/Discard.
@@ -41,6 +41,6 @@ Needs a reachable model (`ANTHROPIC_API_KEY` or local Ollama). Build the SPA fir
 
 ## Owner account & first-run (manual)
 
-22. Fresh vault, no `GEODE_DASHBOARD_PASSWORD` → open `/` → "Create your vault" (email + password). Submit → logged in. Restart → email+password login works; wrong password trips a 429 after ~8 tries.
-23. Env-fallback: set `GEODE_DASHBOARD_PASSWORD`, delete `~/.geode/account.json` → login is password-only (as before). While logged in, run setup (email + password) → an account is created and supersedes the env password on next login.
-24. `npm run owner -- show` prints the owner email; `npm run owner -- reset` returns to first-run.
+22. Fresh vault, no owner (`~/.geode/account.json` absent) → open `/` → "Create your vault" (email + password). Submit → logged in. Restart → email+password login works; wrong password trips a 429 after ~8 tries.
+23. Env bootstrap: with no owner, set `GEODE_OWNER_EMAIL` + `GEODE_OWNER_PASSWORD` and `npm start` → on first boot a hashed owner is created from them (then they're inert) → open `/` → the **login** screen → sign in with that email + password.
+24. `npm run owner -- show` prints the owner email; `npm run owner -- reset` removes the owner record and returns to first-run.

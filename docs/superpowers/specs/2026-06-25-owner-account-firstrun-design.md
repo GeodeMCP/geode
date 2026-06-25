@@ -6,7 +6,7 @@
 
 ## Problem
 
-Today auth is configured only via environment variables: `GEODE_AUTH_TOKEN` (bearer) and an optional `GEODE_DASHBOARD_PASSWORD` compared in plaintext at `/api/login`. There is no account, no in-browser setup, no password hashing, no rate-limiting. That's thin for a public deployment and unfriendly as onboarding. We want a **simple single-owner account created in the browser on first run** (hashed credential), while keeping the auth layer **abstract enough to grow into multi-user/multi-tenant later** (the B2B-reseller play — see `geode-business-model-licensing`). The current env-password user must migrate seamlessly.
+Today auth is configured only via the environment: `GEODE_AUTH_TOKEN` (the `/mcp` bearer). There is no dashboard account, no in-browser setup, no password hashing, no rate-limiting. That's thin for a public deployment and unfriendly as onboarding. We want a **simple single-owner account created in the browser on first run** (hashed credential), while keeping the auth layer **abstract enough to grow into multi-user/multi-tenant later** (the B2B-reseller play — see `geode-business-model-licensing`). Headless/fleet deployments must be able to provision the owner without a browser.
 
 ## Scope
 
@@ -14,7 +14,7 @@ In scope:
 - A `Principal` identity + `AccountStore` seam (single owner now; interface ready for many).
 - Sessions carry a **subject** (`sub` = principal id), not just "valid".
 - First-run **"Create your vault"** screen (email + password) → hashed owner; then email+password login.
-- **Env-password fallback** so headless/CI and the current deployment keep working; an authenticated upgrade path from env-mode to a real account.
+- **Env bootstrap** (`GEODE_OWNER_EMAIL`/`GEODE_OWNER_PASSWORD`) so headless/CI/fleet deployments can provision the owner without a browser.
 - scrypt password hashing, login/setup **rate-limiting**, strong-password minimum.
 - An owner CLI for reset/break-glass.
 
@@ -29,13 +29,14 @@ Explicitly **out of scope** (deferred): multiple accounts / roles / registration
 
 ## Auth modes & first-run flow
 
-The dashboard resolves one of three states via a public `GET /api/auth-info` → `{ mode: "setup" | "login", method: "account" | "password", authed: boolean }`:
+(Revised 2026-06-25: simplified from an env-password fallback to account-only + env bootstrap.)
 
-- **`setup`** — no owner account exists **and** no `GEODE_DASHBOARD_PASSWORD` is set → SPA shows **"Create your vault"** (email + password + confirm). `POST /api/setup` validates a strong password, `createOwner`, signs a session for the new `sub`, returns `{ ok: true }`. Allowed only when `!hasOwner()` **and** (no env password **or** a valid session) — so on an env-protected (already public) kernel, an attacker cannot create the owner; the logged-in operator can.
-- **`login` / `method: account`** — an owner exists → email + password, verified via `AccountStore.verify`.
-- **`login` / `method: password`** — env fallback (`GEODE_DASHBOARD_PASSWORD` set, no owner yet) → password-only login as the implicit single owner principal (synthetic stable `sub`, e.g. `"env-owner"`). Same UX as today.
+Auth is **account-only**. The dashboard resolves one of two states via a public `GET /api/auth-info` → `{ mode: "setup" | "login", authed: boolean }`:
 
-**Migration of the current user:** the running env-password deployment keeps working unchanged (password mode). When logged in via env, the dashboard offers **"Set up an account"** (email + password) → `POST /api/setup` (allowed: no owner + valid session) → creates the owner, which then takes precedence over the env password on the next login. No data migration; the vault itself is untouched.
+- **`setup`** — no owner account exists → SPA shows **"Create your vault"** (email + password + confirm). `POST /api/setup` validates a strong password, `createOwner`, signs a session for the new `sub`, returns `{ ok: true }`. Allowed only when `!hasOwner()`.
+- **`login`** — an owner exists → email + password, verified via `AccountStore.verify`.
+
+**Env bootstrap (headless / fleet):** set `GEODE_OWNER_EMAIL` + `GEODE_OWNER_PASSWORD`. On first boot with no owner, the kernel creates a hashed account from them (then they're inert — once an owner exists, the variables are ignored). Alternatively `npm run owner -- create <email>` creates the owner from the CLI. Either way, login is then always email + password.
 
 ## Security
 
@@ -44,6 +45,7 @@ The dashboard resolves one of three states via a public `GET /api/auth-info` →
 - **Strong password**: minimum length (≥ 10) enforced at setup/setPassword; trivially-weak rejected.
 - Session cookie stays HMAC-signed, HttpOnly, SameSite=Lax, 24h, `Secure` when the base URL is https.
 - The static `GEODE_AUTH_TOKEN` remains the `/mcp` bearer (unchanged here; dual-auth with OAuth lands in B).
+- **Create the owner before public exposure.** The dashboard always mounts, so a fresh, ownerless, publicly-exposed kernel can be claimed by the first visitor via the "Create your vault" screen. Always create the owner first — CLI (`npm run owner -- create <email>`) or env bootstrap (`GEODE_OWNER_EMAIL`/`GEODE_OWNER_PASSWORD`) — before exposing publicly, and prefer exposing only the connector routes through a reverse proxy.
 
 ## Components touched
 
@@ -52,27 +54,27 @@ The dashboard resolves one of three states via a public `GET /api/auth-info` →
 | `src/account.ts` (new) | `Principal`, `AccountStore`, `createAccountStore(dir)` (scrypt, JSON `0600`). Pure-ish, unit-tested. |
 | `src/dashboard/session.ts` | token carries `sub`; `signSession(key, ttl, sub)`, `verifySession → { sub } | null`, `requireSession` attaches the principal. |
 | `src/dashboard/rateLimit.ts` (new) | in-memory per-IP limiter; `limit(key)` → `{ ok, retryAfter }`. Unit-tested. |
-| `src/dashboard/api.ts` | `GET /api/auth-info`, `POST /api/setup`, reworked `POST /api/login` (account vs env), rate-limit wiring; `ApiDeps` gains `accounts: AccountStore`. |
-| `src/config.ts` | `accountDir` (default `~/.geode`); `dashboardPassword` kept as fallback. |
-| `src/index.ts` | construct `createAccountStore`, pass into the dashboard deps. |
-| `src/ownerCli.ts` (new) | `npm run owner -- reset | set-password | show` (machine-local break-glass). |
+| `src/dashboard/api.ts` | `GET /api/auth-info`, `POST /api/setup`, reworked `POST /api/login` (account), rate-limit wiring; `ApiDeps` gains `accounts: AccountStore`. |
+| `src/config.ts` | `accountDir` (default `~/.geode`); `ownerEmail`/`ownerPassword` env bootstrap. |
+| `src/index.ts` | construct `createAccountStore`, env-bootstrap the owner on first boot, pass into the dashboard deps. |
+| `src/ownerCli.ts` (new) | `npm run owner -- show | create <email> | set-password | reset` (machine-local break-glass). |
 | `web/src/views/Setup.tsx` (new) | the "Create your vault" screen. |
-| `web/src/views/Login.tsx` | email+password (account) or password-only (env), driven by `auth-info`. |
+| `web/src/views/Login.tsx` | email+password (account), driven by `auth-info`. |
 | `web/src/App.tsx` | route setup vs login vs app from `auth-info`. |
 | `web/src/api.ts` | `authInfo()`, `setup()`, updated `login()`. |
-| `README.md` / docs | document first-run, env fallback, and the owner CLI. |
+| `README.md` / docs | document first-run, env bootstrap, and the owner CLI. |
 
 ## Testing
 
 - `test/account.test.ts`: create → verify round-trip; wrong password rejected; `hasOwner` transitions; persistence across instances; scrypt salt differs per record; weak password rejected.
 - `test/dashboard/session.test.ts` (extend): token carries `sub`; `verifySession` returns it; tampered/expired/missing-`sub` rejected.
 - `test/dashboard/rateLimit.test.ts`: trips after N attempts, recovers after the window.
-- `test/dashboard/api.test.ts` (extend): `auth-info` returns the right mode/method in setup / account / env states; `/api/setup` happy path sets a session, `409` when an owner exists, `forbidden` when env-mode without a session; `/api/login` account-mode + password-mode; rate-limit → `429`; existing guarded routes still require a session.
-- Web: `Setup.test.tsx` (renders, validates, submits), `Login.test.tsx` (switches account vs password mode from `auth-info`).
+- `test/dashboard/api.test.ts` (extend): `auth-info` returns the right mode in setup / login states; `/api/setup` happy path sets a session, `409` when an owner exists; `/api/login` account verification; rate-limit → `429`; existing guarded routes still require a session.
+- Web: `Setup.test.tsx` (renders, validates, submits), `Login.test.tsx` (renders email+password, submits, driven by `auth-info`).
 
 ## Live validation
 
-Fresh vault, no env password → open `/` → "Create your vault" → set email + password → land logged in. Restart → email+password login works; wrong password rate-limited after several tries. Then the env-fallback path: set `GEODE_DASHBOARD_PASSWORD`, no account file → password login as today; while logged in, "Set up an account" creates the owner and supersedes the env password. Confirm the current 8794 demo (env `pw`) still logs in unchanged.
+Fresh vault, no owner → open `/` → "Create your vault" → set email + password → land logged in. Restart → email+password login works; wrong password rate-limited after several tries. Then the env-bootstrap path: with no owner, set `GEODE_OWNER_EMAIL`/`GEODE_OWNER_PASSWORD` and boot → a hashed owner is created from them (then inert) → `/` shows the login screen → sign in with that email + password. Confirm `npm run owner -- show` prints the owner and `reset` returns to first-run.
 
 ## Deferred
 
