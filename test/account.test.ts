@@ -31,6 +31,12 @@ test("rejects a second owner, weak passwords, and bad emails", () => {
   expect(() => s2.createOwner({ email: "not-an-email", password: "abcdefghij" })).toThrow(/email/);
 });
 
+test("email is normalized: created with mixed case, verifies lowercased", () => {
+  const s = createAccountStore(dir);
+  const p = s.createOwner({ email: "Me@Example.com", password: "correct-horse" });
+  expect(s.verify("me@example.com", "correct-horse")?.id).toBe(p.id);
+});
+
 test("setPassword changes the stored hash", () => {
   const s = createAccountStore(dir);
   s.createOwner({ email: "me@example.com", password: "correct-horse" });

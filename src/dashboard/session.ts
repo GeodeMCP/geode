@@ -7,6 +7,7 @@ const sign = (key: Buffer, payload: string) => createHmac("sha256", key).update(
 
 /** Token = "<exp>.<sub>.<sig>" where sig = HMAC(key, "<exp>.<sub>"). exp is ms-since-epoch; sub is dot-free. */
 export function signSession(key: Buffer, ttlMs: number, sub: string, now: () => number = Date.now): string {
+  if (sub.includes(".")) throw new Error("session subject must be dot-free");
   const payload = `${now() + ttlMs}.${sub}`;
   return `${payload}.${sign(key, payload)}`;
 }

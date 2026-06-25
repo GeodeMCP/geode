@@ -174,6 +174,35 @@ test("setup is forbidden on an env-protected kernel without a session, allowed w
   expect(bad.status).toBe(401);
 });
 
+test("no-password kernel: setup needs no cookie, then login switches to the account", async () => {
+  // Self-contained app with no env password and an empty accounts store — the first-run flow.
+  const root3 = mkdtempSync(join(tmpdir(), "geode-api-setup-"));
+  const ws3 = createWorkspace(root3); await ws3.init();
+  const app3 = express(); app3.use(express.json());
+  app3.use("/api", createApiRouter({
+    sessionKey: KEY, dashboardPassword: "", secure: false, workspace: ws3,
+    runQuery: async () => ({ runId: "r", text: "", commit: null, filesTouched: [] }),
+    runRemember: async () => ({ runId: "r", text: "", commit: null, filesTouched: [] }),
+    linkKey: KEY,
+    secrets: { list: async () => [], delete: async () => {}, set: async () => {} } as any,
+    artifacts: {} as any,
+    transcripts: createTranscriptStore(join(root3, ".transcripts")),
+    artifactsDir: root3, baseUrl: "http://h", accounts: createAccountStore(join(root3, ".accounts")), invoke: async () => ({ status: 200, body: {} }),
+  }));
+  const srv3 = await new Promise<Server>((r) => { const s = app3.listen(0, () => r(s)); });
+  try {
+    const u3 = `http://localhost:${(srv3.address() as any).port}`;
+    expect(await (await fetch(`${u3}/api/auth-info`)).json()).toMatchObject({ mode: "setup", method: "password" });
+    // No env password to guard against → setup is allowed without a session.
+    const ok = await fetch(`${u3}/api/setup`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "me@example.com", password: "correct-horse" }) });
+    expect(ok.status).toBe(200);
+    expect((await ok.json()).ok).toBe(true);
+    expect(await (await fetch(`${u3}/api/auth-info`)).json()).toMatchObject({ mode: "login", method: "account" });
+  } finally {
+    srv3.close(); rmSync(root3, { recursive: true, force: true });
+  }
+});
+
 test("login is rate-limited after repeated failures", async () => {
   let last = 200;
   for (let i = 0; i < 12; i++) {

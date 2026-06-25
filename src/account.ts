@@ -15,6 +15,7 @@ export interface AccountStore {
 
 const MIN_PASSWORD = 10;
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+const normEmail = (e: string) => e.trim().toLowerCase();
 const hashPw = (password: string, salt: Buffer): Buffer => scryptSync(password, salt, 32);
 
 // Single-owner account, machine-local (one record). The interface is deliberately store-shaped so a
@@ -34,21 +35,22 @@ export function createAccountStore(dir: string): AccountStore {
     getOwner: () => { const r = read(); return r ? toPrincipal(r) : null; },
     createOwner({ email, password }) {
       if (read()) throw new Error("owner already exists");
-      if (!EMAIL_RE.test(email)) throw new Error("invalid email");
-      const rec = recordFor(email, password);
+      const norm = normEmail(email);
+      if (!EMAIL_RE.test(norm)) throw new Error("invalid email");
+      const rec = recordFor(norm, password);
       write(rec);
       return toPrincipal(rec);
     },
     verify(email, password) {
       const r = read();
-      if (!r || r.email !== email) return null;
+      if (!r || r.email !== normEmail(email)) return null;
       const expected = Buffer.from(r.hash, "hex");
       const got = hashPw(password, Buffer.from(r.salt, "hex"));
       return got.length === expected.length && timingSafeEqual(got, expected) ? toPrincipal(r) : null;
     },
     setPassword(email, password) {
       const r = read();
-      if (!r || r.email !== email) throw new Error("no such owner");
+      if (!r || r.email !== normEmail(email)) throw new Error("no such owner");
       write(recordFor(email, password, r));
     },
   };

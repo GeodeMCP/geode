@@ -55,30 +55,28 @@ async function main() {
 
   const app = buildHttpApp(() => buildMcpServer(queryDeps, { secrets, artifacts }), config.authToken, artifacts);
 
-  if (config.dashboardPassword) {
-    const sessionKey = loadOrCreateKey(join(config.secretsDir, "session"), process.env.GEODE_SESSION_KEY);
-    const accounts = createAccountStore(config.accountDir);
-    const webDir = join(dirname(fileURLToPath(import.meta.url)), "..", "web", "dist");
-    mountDashboard(app, {
-      sessionKey,
-      dashboardPassword: config.dashboardPassword,
-      accounts,
-      secure: config.baseUrl.startsWith("https://"),
-      workspace,
-      webDir,
-      runQuery: (instruction, onProgress) => query(queryDeps, instruction, onProgress, { commit: false }),
-      runRemember: (args, onProgress) => remember(queryDeps, args, onProgress, { commit: false }),
-      secrets,
-      artifacts,
-      transcripts,
-      artifactsDir: config.artifactsDir,
-      baseUrl: config.baseUrl,
-      authToken: config.authToken,
-      invoke: (args) => invoke({ root: workspace.root, secrets }, args),
-      linkKey: loadOrCreateKey(join(config.secretsDir, "link"), process.env.GEODE_LINK_KEY),
-    });
-    console.log(`Dashboard enabled at ${config.baseUrl}/`);
-  }
+  const sessionKey = loadOrCreateKey(join(config.secretsDir, "session"), process.env.GEODE_SESSION_KEY);
+  const accounts = createAccountStore(config.accountDir);
+  const webDir = join(dirname(fileURLToPath(import.meta.url)), "..", "web", "dist");
+  mountDashboard(app, {
+    sessionKey,
+    dashboardPassword: config.dashboardPassword ?? "",
+    accounts,
+    secure: config.baseUrl.startsWith("https://"),
+    workspace,
+    webDir,
+    runQuery: (instruction, onProgress) => query(queryDeps, instruction, onProgress, { commit: false }),
+    runRemember: (args, onProgress) => remember(queryDeps, args, onProgress, { commit: false }),
+    secrets,
+    artifacts,
+    transcripts,
+    artifactsDir: config.artifactsDir,
+    baseUrl: config.baseUrl,
+    authToken: config.authToken,
+    invoke: (args) => invoke({ root: workspace.root, secrets }, args),
+    linkKey: loadOrCreateKey(join(config.secretsDir, "link"), process.env.GEODE_LINK_KEY),
+  });
+  console.log(`Dashboard enabled at ${config.baseUrl}/`);
 
   app.listen(config.port, () => {
     console.log(`Geode kernel listening on http://localhost:${config.port}/mcp (workspace: ${config.workspaceRoot})`);
