@@ -13,7 +13,8 @@
     "secret": "tsx src/secretCli.ts",
     "owner": "tsx src/ownerCli.ts",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepare": "husky"
   },
   "keywords": [],
   "author": "",
