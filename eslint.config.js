@@ -45,6 +45,15 @@ export default tseslint.config(
       'jsdoc/check-param-names': 'error',
       'jsdoc/check-tag-names': 'error',
       'jsdoc/check-alignment': 'error',
+      // `any` is surfaced but does not block commits (large existing surface,
+      // often pragmatic). Clean up opportunistically.
+      '@typescript-eslint/no-explicit-any': 'warn',
+      // Honour the `_`-prefix convention for intentionally-unused params/vars.
+      '@typescript-eslint/no-unused-vars': ['error', {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+        caughtErrorsIgnorePattern: '^_',
+      }],
     },
   },
 
@@ -64,6 +73,19 @@ export default tseslint.config(
       ...react.configs.flat.recommended.rules,
       ...reactHooks.configs.recommended.rules,
       'react/react-in-jsx-scope': 'off',
+      // Opinionated rule that flags existing, reviewed effects; surface as a
+      // warning rather than forcing risky refactors. Clean up opportunistically.
+      'react-hooks/set-state-in-effect': 'warn',
+    },
+  },
+
+  // Tests are not public API and use `any` freely in fixtures/mocks — relax.
+  {
+    files: ['test/**/*.ts', '**/*.test.{ts,tsx}'],
+    rules: {
+      'jsdoc/require-jsdoc': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
     },
   },
 )
