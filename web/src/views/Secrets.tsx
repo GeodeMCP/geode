@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
+/** Renders the Secrets view listing stored secret references (values never shown) with add-via-one-time-link and delete actions. */
 export function Secrets() {
   const [items, setItems] = useState<{ ref: string; requiredBy: string[] }[]>([]);
   const [link, setLink] = useState<string>("");

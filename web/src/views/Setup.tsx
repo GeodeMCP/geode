@@ -2,6 +2,7 @@ import { useState } from "react";
 import { api } from "../api";
 import { GemMark } from "../components/Logo";
 
+/** Renders the first-run Setup view where the owner creates their account by providing an email and password. */
 export function Setup({ onIn }: { onIn: () => void }) {
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");

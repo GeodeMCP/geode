@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
+/** Renders the Capabilities view listing available integrations and their actions alongside vault recipes and skills. */
 export function Capabilities() {
   const [cap, setCap] = useState<Awaited<ReturnType<typeof api.capabilities>> | null>(null);
   useEffect(() => { api.capabilities().then(setCap).catch(() => setCap({ integrations: [], recipes: [] })); }, []);

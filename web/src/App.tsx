@@ -10,6 +10,7 @@ import { Integrations } from "./views/Integrations";
 import { Secrets } from "./views/Secrets";
 import { Artifacts } from "./views/Artifacts";
 
+/** Root application component that handles authentication gating and top-level view routing. */
 export function App() {
   const [auth, setAuth] = useState<AuthInfo | null>(null);
   const [view, setView] = useState<View>("Vault");

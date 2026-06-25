@@ -2,6 +2,7 @@ import { useState } from "react";
 import { api } from "../api";
 import { GemMark } from "../components/Logo";
 
+/** Renders the Login view with an email and password form that authenticates the user and calls onIn on success. */
 export function Login({ onIn }: { onIn: () => void }) {
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");

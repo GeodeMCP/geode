@@ -1,7 +1,10 @@
 import type { TranscriptRecord } from "./api";
 
+/** Represents a single tool-call step within an activity block, tracking its running state and output. */
 export type Step = { toolId: string; name: string; summary?: string; detail?: string; output?: string; running?: boolean; ok?: boolean };
+/** Cost and performance metrics attached to a completed agent response. */
 export type Metrics = { durationMs: number; costUsd: number; tokens: number };
+/** A discriminated union of all timeline item variants rendered in the chat view. */
 export type Item =
   | { kind: "user"; text: string; ts: number }
   | { kind: "thinking"; text: string; ts: number }
@@ -11,6 +14,7 @@ export type Item =
   | { kind: "agent"; text: string; ts: number; animate?: boolean; meta?: Metrics }
   | { kind: "error"; text: string; ts: number };
 
+/** Appends or updates a timeline item in response to a single in-flight SSE progress event. */
 export function applyProgress(items: Item[], ev: any, ts: number): Item[] {
   const next = items.slice();
   const last = next[next.length - 1];
@@ -57,6 +61,7 @@ export function applyProgress(items: Item[], ev: any, ts: number): Item[] {
   }
 }
 
+/** Finalises the timeline after a run completes by clearing running steps and attaching the agent's answer and metrics. */
 export function applyResult(items: Item[], data: any, ts: number): Item[] {
   const text = (data.text || "").trim();
   const meta: Metrics | undefined = data.metrics;
@@ -74,6 +79,7 @@ export function applyResult(items: Item[], data: any, ts: number): Item[] {
 
 // Rebuild the full timeline from server-stored records. Each item in a run shares the record ts; the
 // final answer/steps render statically (animate stripped, running cleared) — same as a persisted reload.
+/** Reconstructs the full static timeline from an array of persisted transcript records. */
 export function buildFromHistory(records: TranscriptRecord[]): Item[] {
   let items: Item[] = [];
   for (const rec of records) {

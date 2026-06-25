@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
+/** Renders the Artifacts view listing vault artifact files with download and shareable public link actions. */
 export function Artifacts() {
   const [items, setItems] = useState<{ path: string }[]>([]);
   const [shared, setShared] = useState<Record<string, string>>({});

@@ -4,6 +4,7 @@ import { Chat } from "../components/Chat";
 import { FileTree } from "../components/FileTree";
 import { Viewer } from "../components/Viewer";
 
+/** Renders the main vault view with a chat panel, file tree, and file viewer/editor for browsing and editing vault context files. */
 export function VaultHome() {
   const [tree, setTree] = useState<TreeNode[]>([]);
   const [status, setStatus] = useState<{ modified: string[]; created: string[] }>({ modified: [], created: [] });

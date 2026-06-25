@@ -1,9 +1,16 @@
+/** Represents a node in the vault file tree, either a file or a directory. */
 export interface TreeNode { name: string; path: string; type: "file" | "dir"; children?: TreeNode[] }
+/** Describes an integration including its available actions and required secrets. */
 export interface IntegrationView { name: string; type: string; description: string; actions: { name: string; method: string; url: string; description?: string }[]; requiredSecrets: { ref: string; set: boolean }[] }
+/** A single Server-Sent Event with an event type name and parsed data payload. */
 export interface SseEvent { event: string; data: any }
+/** Documents a single MCP tool with its name, description, and parameter schema. */
 export interface ToolDoc { name: string; description: string; params: { name: string; type: string; required: boolean }[] }
+/** Connection details returned by the kernel including the MCP URL, auth token, and available tools. */
 export interface ConnectInfo { mcpUrl: string; authToken: string; tools: ToolDoc[]; publicBaseUrl: string | null }
+/** Authentication state indicating whether the server needs setup or login, and whether the user is currently authenticated. */
 export interface AuthInfo { mode: "setup" | "login"; authed: boolean }
+/** A persisted agent run record including the instruction, SSE events, result, and optional error. */
 export interface TranscriptRecord {
   runId: string;
   ts: number;
@@ -35,6 +42,7 @@ async function json<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+/** Namespace of typed API helpers that communicate with the kernel's HTTP endpoints. */
 export const api = {
   authInfo: () => json<AuthInfo>("/api/auth-info"),
   setup: (email: string, password: string) => json<{ ok: true }>("/api/setup", { method: "POST", body: JSON.stringify({ email, password }) }),

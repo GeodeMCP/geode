@@ -11,6 +11,7 @@ function CopyButton({ text }: { text: string }) {
   return <button className="copy" onClick={copy}>{done ? "Copied" : "Copy"}</button>;
 }
 
+/** Renders the Connect view showing the kernel's bearer token, JSON config snippet, and optional URL-based connector for remote MCP clients. */
 export function Connect() {
   const [info, setInfo] = useState<ConnectInfo | null>(null);
   const [revealed, setRevealed] = useState(false);
@@ -53,7 +54,7 @@ export function Connect() {
               </div>
             </div>
             <div className="divnote">
-              This is your kernel's bearer token — anyone with it can use your vault, so it's shown only here.
+              This is your kernel&apos;s bearer token — anyone with it can use your vault, so it&apos;s shown only here.
               <button className="reveal" onClick={() => setRevealed((r) => !r)}>{revealed ? "hide token" : "reveal token"}</button>
             </div>
           </div>
@@ -91,7 +92,7 @@ export function Connect() {
                   </ol>
                 </div>
                 <div className="cta-row">
-                  <button className="btn disabled" disabled>Use GeodeMCP's managed tunnel (premium)</button>
+                  <button className="btn disabled" disabled>Use GeodeMCP&apos;s managed tunnel (premium)</button>
                   <span className="cta-note">Running on localhost — connect from claude.ai with our managed tunnel (coming soon), or set a public <code>GEODE_BASE_URL</code>.</span>
                 </div>
               </>

@@ -1,4 +1,5 @@
 // Canonical Geode gem mark — identical to the marketing site (GeodeMCP/site #gem symbol).
+/** Renders the Geode gem-mark SVG logo at the given pixel size. */
 export function GemMark({ size = 22 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">

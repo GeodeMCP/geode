@@ -7,6 +7,7 @@ function cleanDiff(diff: string): string[] {
   return diff.split("\n").filter((l) => !/^(diff --git |index [0-9a-f]|--- |\+\+\+ )/.test(l));
 }
 
+/** Renders the file viewer column, switching between a markdown preview, a git diff view, and an inline editor. */
 export function Viewer({ path, content, diff, dirty, compose, onCommit, onDiscard, onSave }: {
   path: string | null; content: string; diff: string; dirty: boolean;
   compose: { path: string; draft: string } | null;

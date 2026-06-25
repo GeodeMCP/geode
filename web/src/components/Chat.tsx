@@ -165,6 +165,7 @@ function Notice({ noticeKind, text }: { noticeKind: "compact" | "memory" | "retr
   return <div className="divider">{text}</div>;
 }
 
+/** Renders the full chat column: message history, SSE-driven live updates, and the send input. */
 export function Chat({ onSend, running, dirty, onCommit, onDiscard }: {
   onSend: (instruction: string, onEvent: (e: SseEvent) => void) => Promise<void>;
   running: boolean; dirty: boolean; onCommit: () => void; onDiscard: () => void;

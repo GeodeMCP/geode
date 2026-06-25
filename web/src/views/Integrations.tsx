@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type IntegrationView } from "../api";
+/** Renders the Integrations view listing configured integrations with a detail panel showing actions, test results, and required secret status. */
 export function Integrations() {
   const [list, setList] = useState<IntegrationView[]>([]);
   const [open, setOpen] = useState<IntegrationView | null>(null);
