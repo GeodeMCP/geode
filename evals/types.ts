@@ -51,7 +51,7 @@ export interface ScenarioLeg { prompt: string; expect: Expect }
 export interface Scenario { id: string; cls: ScenarioClass; legs: ScenarioLeg[] }
 
 /** The caller's output for one leg. */
-export interface LegResult { trace: Trace; finalText: string }
+export interface LegResult { trace: Trace; finalText: string; turns: number }
 
 /** Per-leg score. `null` = not applicable to this leg/class. */
 export interface LegMetrics {
@@ -61,4 +61,6 @@ export interface LegMetrics {
   falseTrigger: boolean | null;
   remembered: boolean | null;
   heavyQueryCalls: number;
+  turns: number;
+  toolResultChars: number;
 }

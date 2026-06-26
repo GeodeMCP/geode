@@ -40,8 +40,8 @@ async function runScenario(anthropic: Anthropic, config: EvalConfig, tierModel: 
     const rows: LegMetricsRow[] = [];
     for (const leg of sc.legs) {
       const system = `You are a helpful AI assistant.${instructions ? "\n\n" + instructions : ""}`;
-      const { trace } = await runCaller({ tools, model, callTool, system, prompt: leg.prompt, maxTurns: 6 });
-      rows.push({ config: config.name, tier: Object.keys(TIERS).find((k) => TIERS[k] === tierModel)!, m: scoreLeg(trace, leg.expect, sc.cls) });
+      const { trace, turns } = await runCaller({ tools, model, callTool, system, prompt: leg.prompt, maxTurns: 6 });
+      rows.push({ config: config.name, tier: Object.keys(TIERS).find((k) => TIERS[k] === tierModel)!, m: scoreLeg(trace, leg.expect, sc.cls, turns) });
     }
     await client.close();
     return rows;
@@ -72,9 +72,9 @@ async function main(): Promise<void> {
   }
   const scores = aggregate(rows);
   const pct = (n: number) => `${Math.round(n * 100)}%`.padStart(4);
-  console.log("\nconfig                tier    disc  retr  invk  false rem   qry/leg  n");
+  console.log("\nconfig                tier    disc  retr  invk  false rem   qry/leg turns  chars  n");
   for (const s of scores.sort((a, b) => a.config.localeCompare(b.config) || a.tier.localeCompare(b.tier))) {
-    console.log(`${s.config.padEnd(20)} ${s.tier.padEnd(6)} ${pct(s.discovered)} ${pct(s.correctRetrieval)} ${pct(s.correctInvoke)} ${pct(s.falseTrigger)} ${pct(s.remembered)}  ${s.avgHeavyQueryCalls.toFixed(1)}      ${s.n}`);
+    console.log(`${s.config.padEnd(20)} ${s.tier.padEnd(6)} ${pct(s.discovered)} ${pct(s.correctRetrieval)} ${pct(s.correctInvoke)} ${pct(s.falseTrigger)} ${pct(s.remembered)}  ${s.avgHeavyQueryCalls.toFixed(1)}   ${s.avgTurns.toFixed(1)}  ${Math.round(s.avgToolResultChars).toString().padStart(5)}  ${s.n}`);
   }
   mkdirSync(RESULTS, { recursive: true });
   writeFileSync(join(RESULTS, "latest.json"), JSON.stringify({ at: new Date().toISOString(), scores, rows }, null, 2));

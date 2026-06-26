@@ -5,11 +5,12 @@ const CONTENT_TOOLS = new Set(["search", "read", "query"]);
 const arg = (c: Trace[number], k: string): unknown => c.args[k];
 
 /** Scores one caller leg against its expectations, returning per-metric booleans (null = N/A). */
-export function scoreLeg(trace: Trace, expect: Expect, cls: ScenarioClass): LegMetrics {
+export function scoreLeg(trace: Trace, expect: Expect, cls: ScenarioClass, turns: number): LegMetrics {
   const calledAnyVault = trace.some((c) => READ_TOOLS.has(c.name) || c.name === "invoke" || c.name === "remember");
   const reachedContent = (needle: string) =>
     trace.some((c) => CONTENT_TOOLS.has(c.name) && c.result.toLowerCase().includes(needle.toLowerCase()));
   const heavyQueryCalls = trace.filter((c) => c.name === "query").length;
+  const toolResultChars = trace.reduce((s, c) => s + c.result.length, 0);
 
   const discovered = expect.discovers ? calledAnyVault : null;
   const correctRetrieval = expect.readsFile ? reachedContent(expect.readsFile) : null;
@@ -28,7 +29,7 @@ export function scoreLeg(trace: Trace, expect: Expect, cls: ScenarioClass): LegM
   const remembered = expect.remembers ? trace.some((c) => c.name === "remember") : null;
   const falseTrigger = cls === "should-not-use" ? calledAnyVault : null;
 
-  return { discovered, correctRetrieval, correctInvoke, falseTrigger, remembered, heavyQueryCalls };
+  return { discovered, correctRetrieval, correctInvoke, falseTrigger, remembered, heavyQueryCalls, turns, toolResultChars };
 }
 
 /** One scored leg tagged with the config + caller tier it came from. */
@@ -37,7 +38,8 @@ export interface LegMetricsRow { config: string; tier: string; m: LegMetrics }
 export interface ConfigScore {
   config: string; tier: string;
   discovered: number; correctRetrieval: number; correctInvoke: number;
-  falseTrigger: number; remembered: number; avgHeavyQueryCalls: number; n: number;
+  falseTrigger: number; remembered: number; avgHeavyQueryCalls: number;
+  avgTurns: number; avgToolResultChars: number; n: number;
 }
 
 const rate = (vals: (boolean | null)[]): number => {
@@ -62,6 +64,8 @@ export function aggregate(rows: LegMetricsRow[]): ConfigScore[] {
     falseTrigger: rate(g.map((r) => r.m.falseTrigger)),
     remembered: rate(g.map((r) => r.m.remembered)),
     avgHeavyQueryCalls: g.reduce((s, r) => s + r.m.heavyQueryCalls, 0) / g.length,
+    avgTurns: g.reduce((s, r) => s + r.m.turns, 0) / g.length,
+    avgToolResultChars: g.reduce((s, r) => s + r.m.toolResultChars, 0) / g.length,
     n: g.length,
   }));
 }

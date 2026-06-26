@@ -18,8 +18,10 @@ export async function runCaller(opts: {
   const messages: Msg[] = [{ role: "user", content: opts.prompt }];
   const trace: Trace = [];
   let finalText = "";
+  let turns = 0;
   for (let turn = 0; turn < opts.maxTurns; turn++) {
     const { text, toolCalls } = await opts.model({ system: opts.system, tools: opts.tools, messages });
+    turns++;
     if (text) finalText = text;
     if (toolCalls.length === 0) break;
     const assistantContent = [
@@ -37,5 +39,5 @@ export async function runCaller(opts: {
     }
     messages.push({ role: "user", content: results });
   }
-  return { trace, finalText };
+  return { trace, finalText, turns };
 }

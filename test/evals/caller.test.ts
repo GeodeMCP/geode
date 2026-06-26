@@ -18,6 +18,7 @@ describe("runCaller", () => {
     expect(res.trace[0].name).toBe("search");
     expect(res.trace[0].result).toContain("result for search");
     expect(res.finalText).toBe("done");
+    expect(res.turns).toBe(2);
   });
 
   it("stops at maxTurns even if the model keeps calling tools", async () => {
@@ -28,5 +29,6 @@ describe("runCaller", () => {
       system: "s", prompt: "p", maxTurns: 3,
     });
     expect(res.trace.length).toBe(3);
+    expect(res.turns).toBe(3);
   });
 });
