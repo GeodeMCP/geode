@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { renderMarkdown, splitFrontmatter } from "../markdown";
 import { fileType, prettyJson } from "../fileType";
+import { resolveLink } from "../links";
 import { CodeEditor } from "./CodeEditor";
 import { ColHead } from "./ColHead";
 
@@ -10,10 +11,11 @@ function cleanDiff(diff: string): string[] {
 }
 
 /** Renders the file viewer column: Formatted (Markdown) / Source (code) / Edit, plus the git diff for dirty files. */
-export function Viewer({ path, content, diff, dirty, compose, onCommit, onDiscard, onSave }: {
+export function Viewer({ path, content, diff, dirty, compose, onCommit, onDiscard, onSave, onOpenFile }: {
   path: string | null; content: string; diff: string; dirty: boolean;
   compose: { path: string; draft: string } | null;
   onCommit: () => void; onDiscard: () => void; onSave: (text: string) => void;
+  onOpenFile?: (path: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [showSource, setShowSource] = useState(false);
@@ -32,6 +34,14 @@ export function Viewer({ path, content, diff, dirty, compose, onCommit, onDiscar
   const save = (text?: string) => {
     onSave(text ?? draft); setEditing(false); setShowSource(false); setSaved(true);
     window.setTimeout(() => setSaved(false), 1600);
+  };
+  const onLinkClick = (e: React.MouseEvent) => {
+    const a = (e.target as HTMLElement).closest("a");
+    if (!a) return;
+    const href = a.getAttribute("href") ?? "";
+    const link = resolveLink(path ?? "", href);
+    if (link.kind === "internal") { e.preventDefault(); onOpenFile?.(link.path); }
+    else if (link.kind === "external") { e.preventDefault(); window.open(href, "_blank", "noopener,noreferrer"); }
   };
   const { fm, body } = splitFrontmatter(content);
   const showToggle = !!path && !editing && !dirty && ft.hasFormatted;
@@ -64,7 +74,7 @@ export function Viewer({ path, content, diff, dirty, compose, onCommit, onDiscar
             : <div style={{ color: "var(--faint)" }}>No changes.</div>;
         })()}</div>
       ) : path && ft.kind === "markdown" && !showSource ? (
-        <div className="doc md">
+        <div className="doc md" onClick={onLinkClick}>
           {(fm.title || fm.type || fm.tags) && (
             <div className="doc-fm">
               {fm.type && <span className="chip">{fm.type}</span>}
