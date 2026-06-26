@@ -38,7 +38,7 @@ So the one-time cleanup must author **~130+ meaningful JSDoc blocks** plus apply
 
 | Decision | Choice |
 |---|---|
-| Doc-block strictness | **JSDoc required on the public (exported) API**; commit blocks if missing. Internal (non-exported) code is free. |
+| Doc-block strictness | **JSDoc required on every top-level declaration — exported _or_ internal** (function/class/method/interface/type/enum); commit blocks if missing. (Originally scoped to exports only; broadened during follow-up — see As-Built.) Nested local closures are exempt. |
 | Gate scope (ongoing) | **Staged files only** (via lint-staged). |
 | Gate contents | ESLint baseline (typescript-eslint) + JSDoc enforcement + **auto-fix & re-stage** + **`tsc` type-check** per changed package. **No tests** in the gate (speed). |
 | Initial cleanup | **One-time, whole repo, meaningful JSDoc descriptions** authored per export. Then staged-only forever after. |
@@ -69,7 +69,7 @@ All at the root because ESLint, lint-staged, and husky all run from the root. Th
 ### 2. `eslint.config.js` (flat config)
 
 - **Baseline conventions:** `typescript-eslint` *recommended* (non-type-checked — fast, no project resolution needed). This is the "code conventions" layer.
-- **Doc blocks:** `eslint-plugin-jsdoc`, `require-jsdoc` with `publicOnly: true` → JSDoc required on exported functions, classes, methods, interfaces, type aliases, enums, and exported `const` declarations. Plus validity rules: `check-param-names`, `check-tag-names`, `check-alignment`. **Not** enabling `require-param`/`require-returns` description text.
+- **Doc blocks:** `eslint-plugin-jsdoc`, `require-jsdoc` with `publicOnly: false` → JSDoc required on **all top-level** functions, classes, methods, interfaces, type aliases, and enums (exported or internal). Plus validity rules: `check-param-names`, `check-tag-names`, `check-alignment`. **Not** enabling `require-param`/`require-returns` description text. Nested local closures and plain exported value-consts are not covered.
 - **`web/src/**` override:** `eslint-plugin-react` + `eslint-plugin-react-hooks` recommended, JSX enabled.
 - **Ignores:** `dist/`, `web/dist/`, `node_modules/`, `.worktrees/`, `**/*.tsbuildinfo`.
 
@@ -135,6 +135,10 @@ These refinements were made while building and verifying the gate:
 - **ESLint's `compact` formatter is no longer in core** (ESLint 9); the JSON formatter was used to triage findings.
 
 Net result: only **errors** block commits. `eslint .` reports **0 errors** with ~32 non-blocking warnings (the `any`/`set-state` cases above). "`eslint .` is clean" in the success criteria means **zero errors**.
+
+### Follow-up: broadened to internal declarations (2026-06-26)
+
+Per a later request to document the codebase "everywhere," `require-jsdoc` was switched to **`publicOnly: false`** so internal (non-exported) top-level declarations also need docs. This required dropping the `ExportNamedDeclaration > VariableDeclaration` context (under `publicOnly: false` it re-flagged already-documented exported consts as false positives) and authoring JSDoc for ~27 internal interfaces/helpers/sub-components. Nested local closures remain exempt; plain exported value-consts are no longer rule-covered (all current ones are already documented).
 
 ## Success Criteria
 
