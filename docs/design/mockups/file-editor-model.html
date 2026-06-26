@@ -1,0 +1,98 @@
+<style>
+  .ed { background:#0d1311; border:1px solid #1e2a26; border-radius:12px; overflow:hidden; font-family:"SF Mono",ui-monospace,Menlo,monospace; text-align:left; }
+  .ed.act { border-color:#2e6f57; box-shadow:0 0 0 1px #2e6f57; }
+  .ed-head { display:flex; align-items:center; gap:8px; padding:8px 11px; border-bottom:1px solid #1e2a26; background:#0f1714; }
+  .ed-head .ttl { font-size:10px; letter-spacing:.13em; text-transform:uppercase; color:#6b837a; font-family:"Instrument Sans",sans-serif; }
+  .ed-head .sp { margin-left:auto; }
+  .seg { display:inline-flex; border:1px solid #25332e; border-radius:7px; overflow:hidden; }
+  .seg span { font-family:"Instrument Sans",sans-serif; font-size:11px; padding:3px 9px; color:#7f9991; }
+  .seg span.on { background:#16241f; color:#9fe7c6; }
+  .bt { font-family:"Instrument Sans",sans-serif; font-size:11px; padding:3px 9px; border:1px solid #25332e; border-radius:7px; color:#8ba398; }
+  .bt.pri { background:#1b8a5a; border-color:#1b8a5a; color:#04140d; }
+  .ed-body { display:flex; font-size:12px; line-height:1.8; min-height:150px; }
+  .gutter { padding:10px 0; text-align:right; color:#3f534c; user-select:none; border-right:1px solid #16201c; min-width:30px; }
+  .gutter div { padding:0 8px; }
+  .code { padding:10px 12px; white-space:pre; overflow-x:auto; color:#c5d4cd; flex:1; }
+  .doc { padding:14px 16px; color:#b8cabf; font-family:"Instrument Sans",sans-serif; flex:1; }
+  .doc h1 { font-size:18px; color:#e6f0ea; margin:0 0 8px; }
+  .doc a { color:#7fd0b6; }
+  .fm { display:flex; gap:6px; margin-bottom:10px; padding-bottom:9px; border-bottom:1px solid #1a2420; }
+  .chip { font-size:10px; padding:2px 7px; border-radius:5px; background:#16241f; color:#9fe7c6; font-family:"Instrument Sans",sans-serif; }
+  .chip.m { background:transparent; color:#7f9991; }
+  .k{color:#7fd0b6}.s{color:#9fc0e8}.p{color:#5e7068}.h{color:#e0b072}.lk{color:#9fc0e8}
+  .caret{border-left:1.5px solid #9fe7c6;margin-left:-1px;animation:bl 1s step-end infinite}@keyframes bl{50%{opacity:0}}
+  .lbl3{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#6b837a;margin:0 0 6px;font-family:"Instrument Sans",sans-serif}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+  @media(max-width:1100px){.grid3{grid-template-columns:1fr}}
+</style>
+
+<h2>Proposed File Editor model — 3 states</h2>
+<p class="subtitle">For Markdown: default is the rendered <b>Formatted</b> view, with a toggle to <b>Source</b> (raw + line numbers + colour). <b>Edit</b> opens the code editor. For JSON/YAML/txt there's no prose form, so the Formatted/Source toggle is hidden — they always show the coloured code view, and Edit works the same.</p>
+
+<div class="grid3">
+  <div>
+    <p class="lbl3">① Default · Formatted</p>
+    <div class="ed">
+      <div class="ed-head"><span class="ttl">File editor</span><span class="sp"></span>
+        <span class="seg"><span class="on">Formatted</span><span>Source</span></span>
+        <span class="bt">Edit</span>
+      </div>
+      <div class="doc">
+        <div class="fm"><span class="chip">note</span><span class="chip m">Pricing standup</span><span class="chip m">[pricing, standup]</span></div>
+        <h1>Pricing standup</h1>
+        <p>Variant B wint de pricing-test met +0,3pt — laten doorlopen t/m juni.</p>
+        <p>Canonieke stand &amp; details: <a>pricing-variant-test</a>.</p>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <p class="lbl3">② Source (toggled)</p>
+    <div class="ed">
+      <div class="ed-head"><span class="ttl">File editor</span><span class="sp"></span>
+        <span class="seg"><span>Formatted</span><span class="on">Source</span></span>
+        <span class="bt">Edit</span>
+      </div>
+      <div class="ed-body">
+        <div class="gutter"><div>1</div><div>2</div><div>3</div><div>4</div><div>5</div><div>6</div><div>7</div><div>8</div><div>9</div></div>
+<div class="code"><span class="p">---</span>
+<span class="k">type</span><span class="p">:</span> <span class="s">note</span>
+<span class="k">title</span><span class="p">:</span> <span class="s">Pricing standup</span>
+<span class="k">tags</span><span class="p">:</span> <span class="s">[pricing, standup]</span>
+<span class="p">---</span>
+
+<span class="h"># Pricing standup</span>
+
+Variant B wint de pricing-test <span class="p">...</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <p class="lbl3">③ Edit · code editor</p>
+    <div class="ed act">
+      <div class="ed-head"><span class="ttl">File editor</span><span class="sp"></span>
+        <span class="bt">Cancel</span><span class="bt pri">Save</span>
+      </div>
+      <div class="ed-body">
+        <div class="gutter"><div>1</div><div>2</div><div>3</div><div>4</div><div>5</div><div>6</div><div>7</div><div>8</div><div>9</div></div>
+<div class="code"><span class="p">---</span>
+<span class="k">type</span><span class="p">:</span> <span class="s">note</span>
+<span class="k">title</span><span class="p">:</span> <span class="s">Pricing standup</span>
+<span class="k">tags</span><span class="p">:</span> <span class="s">[pricing, standup]</span>
+<span class="p">---</span>
+
+<span class="h"># Pricing standup</span>
+
+Variant B wint<span class="caret">&nbsp;</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:18px;">Keyboard stays as-is: <b>⌘S</b> save, <b>Esc</b> cancel. Question on the next screen: should the colour appear <i>while you type</i> too (state ③), or only in read/Source view — that decides whether we add a code-editor library or keep a lightweight line-numbered textarea.</p>
+
+<div class="options" style="margin-top:16px;">
+  <div class="option" data-choice="model-ok" onclick="toggleSelect(this)"><div class="letter">✓</div><div class="content"><h3>Model looks right</h3><p>Formatted default + Source toggle for Markdown; code view for the rest; Edit = code editor.</p></div></div>
+  <div class="option" data-choice="tweak" onclick="toggleSelect(this)"><div class="letter">✎</div><div class="content"><h3>Want to tweak it</h3><p>Tell me what to change (e.g. default to Source, different toggle, etc.)</p></div></div>
+</div>

@@ -1,0 +1,73 @@
+<style>
+  .ed { background:#0d1311; border:1px solid #1e2a26; border-radius:12px; overflow:hidden; font-family:"SF Mono",ui-monospace,Menlo,monospace; text-align:left; }
+  .ed-head { display:flex; align-items:center; gap:10px; padding:9px 13px; border-bottom:1px solid #1e2a26; background:#0f1714; }
+  .ed-head .ttl { font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:#6b837a; font-family:"Instrument Sans",sans-serif; }
+  .ed-head .pth { font-size:12px; color:#8ba398; margin-left:auto; }
+  .ed-body { display:flex; font-size:12.5px; line-height:1.85; }
+  .gutter { padding:12px 0; text-align:right; color:#3f534c; user-select:none; border-right:1px solid #16201c; min-width:34px; }
+  .gutter div { padding:0 10px; }
+  .code { padding:12px 14px; white-space:pre; overflow-x:auto; color:#c5d4cd; flex:1; }
+  /* syntax colors */
+  .k { color:#7fd0b6; }      /* keys -> emerald */
+  .s { color:#9fc0e8; }      /* strings -> blue */
+  .n { color:#e0b072; }      /* numbers */
+  .b { color:#c98fd0; }      /* booleans */
+  .p { color:#5e7068; }      /* punctuation */
+  .cards .card { cursor:pointer; }
+  .cap { font-size:12.5px; color:#7f9991; margin-top:8px; }
+</style>
+
+<h2>How should JSON (and other non-Markdown files) display in read mode?</h2>
+<p class="subtitle">Today every file is run through the Markdown renderer, so JSON collapses into one unformatted blob. Both options below add line numbers + proper indentation. The difference is colour.</p>
+
+<div class="cards">
+  <div class="card" data-choice="plain" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:14px;background:transparent;">
+      <div class="ed">
+        <div class="ed-head"><span class="ttl">File editor</span><span class="pth">experiments/experiment-data.json</span></div>
+        <div class="ed-body">
+          <div class="gutter"><div>1</div><div>2</div><div>3</div><div>4</div><div>5</div><div>6</div><div>7</div><div>8</div></div>
+<div class="code">{
+  "experiment": "pricing-variant-test",
+  "status": "running",
+  "variants": ["A", "B"],
+  "tests": [
+    { "name": "checkout", "passed": true }
+  ]
+}</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Pretty-print + line numbers (no colour)</h3>
+      <p>Indented, one item per line, gutter with line numbers. Monospace, single text colour.</p>
+      <p class="cap"><b>Zero new dependencies.</b> ~30 lines of code. Fits the minimalist codebase (react + marked + dompurify only).</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="highlight" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:14px;background:transparent;">
+      <div class="ed">
+        <div class="ed-head"><span class="ttl">File editor</span><span class="pth">experiments/experiment-data.json</span></div>
+        <div class="ed-body">
+          <div class="gutter"><div>1</div><div>2</div><div>3</div><div>4</div><div>5</div><div>6</div><div>7</div><div>8</div></div>
+<div class="code"><span class="p">{</span>
+  <span class="k">"experiment"</span><span class="p">:</span> <span class="s">"pricing-variant-test"</span><span class="p">,</span>
+  <span class="k">"status"</span><span class="p">:</span> <span class="s">"running"</span><span class="p">,</span>
+  <span class="k">"variants"</span><span class="p">:</span> <span class="p">[</span><span class="s">"A"</span><span class="p">,</span> <span class="s">"B"</span><span class="p">]</span><span class="p">,</span>
+  <span class="k">"tests"</span><span class="p">:</span> <span class="p">[</span>
+    <span class="p">{</span> <span class="k">"name"</span><span class="p">:</span> <span class="s">"checkout"</span><span class="p">,</span> <span class="k">"passed"</span><span class="p">:</span> <span class="b">true</span> <span class="p">}</span>
+  <span class="p">]</span>
+<span class="p">}</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Pretty-print + line numbers + syntax colour</h3>
+      <p>Same layout, plus coloured keys / strings / numbers / booleans — reads like a real code sample.</p>
+      <p class="cap"><b>Small custom tokenizer</b> (JSON only), or a tiny highlight lib. ~80–120 lines, or one dependency. More polish, slightly more code to maintain.</p>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:18px;">There's also a heavier option C — render JSON as a collapsible key/value tree — but that drifts away from a "code editor" feel and is more code. I'd skip it unless you want it.</p>
