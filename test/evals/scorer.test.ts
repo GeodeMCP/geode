@@ -42,6 +42,18 @@ describe("scoreLeg", () => {
     expect(m.heavyQueryCalls).toBe(1);
     expect(m.discovered).toBe(true);
   });
+
+  it("does NOT credit retrieval from a non-content tool result (e.g. list_capabilities)", () => {
+    const trace: Trace = [call("list_capabilities", {}, "tone-of-voice.md — Company Z writing voice")];
+    const m = scoreLeg(trace, { readsFile: "tone" }, "should-use");
+    expect(m.correctRetrieval).toBe(false);
+  });
+
+  it("counts going straight to invoke as discovery", () => {
+    const trace: Trace = [call("invoke", { tool: "linear", action: "create_issue" }, "{\"status\":200}")];
+    const m = scoreLeg(trace, { discovers: true, invokes: { tool: "linear", action: "create_issue" } }, "should-use");
+    expect(m.discovered).toBe(true);
+  });
 });
 
 describe("aggregate", () => {

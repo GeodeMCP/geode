@@ -14,7 +14,8 @@ describe("capabilities", () => {
   it("tiered L1 lists tools + connection labels/status but NOT action params", () => {
     const text = renderCapabilities(ROOT, "tiered");
     expect(text).toContain("gmail");
-    expect(text).toContain("companyB");
+    expect(text).toContain("acme-sales");
+    expect(text).toContain("Company B");
     expect(text).toContain("needs_reconnect"); // github status surfaced
     expect(text).not.toContain('"required"'); // no raw param schema in L1
   });

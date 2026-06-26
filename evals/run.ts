@@ -31,7 +31,10 @@ async function runScenario(anthropic: Anthropic, config: EvalConfig, tierModel: 
     const server = buildEvalServer(config, root);
     const { client, tools, instructions } = await connectInMemory(server);
     const model = (anthropic as any)._dry
-      ? async () => ({ text: "ok", toolCalls: [{ id: "1", name: config.tools[0], input: config.tools[0] === "search" ? { query: "deploy" } : {} }] })
+      ? async ({ messages }: { messages: unknown[] }) =>
+          messages.length === 1
+            ? { text: "ok", toolCalls: [{ id: "1", name: config.tools[0], input: config.tools[0] === "search" ? { query: "deploy" } : {} }] }
+            : { text: "ok", toolCalls: [] }
       : anthropicModel(anthropic, tierModel);
     const callTool = mcpCallTool(client);
     const rows: LegMetricsRow[] = [];

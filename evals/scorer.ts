@@ -1,15 +1,17 @@
 import type { Trace, Expect, ScenarioClass, LegMetrics } from "./types.js";
 
 const READ_TOOLS = new Set(["list_capabilities", "search", "read", "query"]);
+const CONTENT_TOOLS = new Set(["search", "read", "query"]);
 const arg = (c: Trace[number], k: string): unknown => c.args[k];
 
 /** Scores one caller leg against its expectations, returning per-metric booleans (null = N/A). */
 export function scoreLeg(trace: Trace, expect: Expect, cls: ScenarioClass): LegMetrics {
   const calledAnyVault = trace.some((c) => READ_TOOLS.has(c.name) || c.name === "invoke" || c.name === "remember");
-  const reachedContent = (needle: string) => trace.some((c) => c.result.toLowerCase().includes(needle.toLowerCase()));
+  const reachedContent = (needle: string) =>
+    trace.some((c) => CONTENT_TOOLS.has(c.name) && c.result.toLowerCase().includes(needle.toLowerCase()));
   const heavyQueryCalls = trace.filter((c) => c.name === "query").length;
 
-  const discovered = expect.discovers ? trace.some((c) => READ_TOOLS.has(c.name)) : null;
+  const discovered = expect.discovers ? calledAnyVault : null;
   const correctRetrieval = expect.readsFile ? reachedContent(expect.readsFile) : null;
 
   let correctInvoke: boolean | null = null;
@@ -17,7 +19,7 @@ export function scoreLeg(trace: Trace, expect: Expect, cls: ScenarioClass): LegM
     const want = expect.invokes;
     correctInvoke = trace.some((c) => {
       if (c.name !== "invoke") return false;
-      const tool = (arg(c, "tool") ?? arg(c, "integration")) as string | undefined;
+      const tool = arg(c, "tool") as string | undefined;
       if (tool !== want.tool || (arg(c, "action") as string) !== want.action) return false;
       return want.connection === undefined || (arg(c, "connection") as string) === want.connection;
     });
@@ -48,7 +50,8 @@ export function aggregate(rows: LegMetricsRow[]): ConfigScore[] {
   const groups = new Map<string, LegMetricsRow[]>();
   for (const r of rows) {
     const k = `${r.config} ${r.tier}`;
-    (groups.get(k) ?? groups.set(k, []).get(k)!).push(r);
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k)!.push(r);
   }
   return [...groups.values()].map((g) => ({
     config: g[0].config,

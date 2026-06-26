@@ -35,10 +35,17 @@ describe("handlers", () => {
     expect(out).toContain("acme-prod");
   });
 
-  it("invoke validates the action exists and echoes the connection", async () => {
+  it("invoke validates action + connection and echoes the connection", async () => {
     const h = makeHandlers(root, "tiered");
-    const out = await h.invoke({ tool: "gmail", action: "send", connection: "companyB", params: { to: "josh" } });
-    expect(out).toContain("companyB");
+    const out = await h.invoke({ tool: "gmail", action: "send", connection: "acme-sales", params: { to: "josh" } });
+    expect(out).toContain("acme-sales");
     await expect(h.invoke({ tool: "gmail", action: "nope" })).rejects.toThrow();
+    await expect(h.invoke({ tool: "gmail", action: "send", connection: "companyB" })).rejects.toThrow();
+  });
+
+  it("query works when called as a detached reference and returns vault content", async () => {
+    const { query } = makeHandlers(root, "tiered");
+    const out = await query({ instruction: "deploy staging" });
+    expect(out.toLowerCase()).toContain("acme-staging");
   });
 });

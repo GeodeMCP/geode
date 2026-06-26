@@ -15,7 +15,7 @@ export function loadManifests(root: string): ToolManifest[] {
 }
 
 const conns = (m: ToolManifest): string =>
-  (m.connections ?? []).map((c) => `${c.label} (${c.status})`).join(", ");
+  (m.connections ?? []).map((c) => `${c.label} (${c.status}${c.description ? " — " + c.description : ""})`).join(", ");
 
 /** The L1 map (`tiered`) or full dump (`flat`) plus the context index. */
 export function renderCapabilities(root: string, mode: "flat" | "tiered"): string {

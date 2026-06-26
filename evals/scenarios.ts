@@ -15,7 +15,7 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: "multi-connection", cls: "should-use",
-    legs: [{ prompt: "Email Josh (josh@acme.com) from my company B account to confirm tomorrow's demo.", expect: { invokes: { tool: "gmail", action: "send", connection: "companyB" } } }],
+    legs: [{ prompt: "Email Josh (josh@acme.com) from my company B account to confirm tomorrow's demo.", expect: { invokes: { tool: "gmail", action: "send", connection: "acme-sales" } } }],
   },
   {
     id: "context-compose", cls: "should-use",
