@@ -22,6 +22,12 @@ const JARGON = {
   invoke: "Run one action of an integration in your Geode vault.",
 };
 
+// leading's nudge plus an explicit "read the located file" step — tests whether weak models lift
+// retrieval-recall when told to read the specific file instead of answering from the map/snippet.
+const NUDGE_READ =
+  NUDGE +
+  " After list_capabilities or search points you at a relevant file, READ that specific file in full before answering — don't rely on the map or a snippet alone.";
+
 const ALL = ["list_capabilities", "search", "read", "invoke", "remember", "query"] as const;
 
 /** All tool-surface variants the harness pits against each other. */
@@ -31,4 +37,8 @@ export const CONFIGS: EvalConfig[] = [
   { name: "C-search-only", tools: ["list_capabilities", "search", "invoke", "remember", "query"], descriptions: RICH, serverInstructions: NUDGE, listMode: "tiered" },
   { name: "D-flat-list", tools: [...ALL], descriptions: RICH, serverInstructions: NUDGE, listMode: "flat" },
   { name: "E-minimal-desc", tools: [...ALL], descriptions: { list_capabilities: "list", search: "search", read: "read", invoke: "invoke", remember: "remember", query: "query" }, serverInstructions: NUDGE, listMode: "tiered" },
+  // F: leading + an explicit "read the located file" instruction — does it lift weak-model retrieval?
+  { name: "F-read-nudge", tools: [...ALL], descriptions: RICH, serverInstructions: NUDGE_READ, listMode: "tiered" },
+  // G: leading surface but EMPTY server instructions — isolates the nudge's effect on weak-model discovery.
+  { name: "G-leading-no-instr", tools: [...ALL], descriptions: RICH, serverInstructions: "", listMode: "tiered" },
 ];
