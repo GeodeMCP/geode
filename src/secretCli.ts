@@ -3,6 +3,7 @@ import { Writable } from "node:stream";
 import { loadConfig } from "./config.js";
 import { createSecretStore, loadOrCreateKey } from "./secrets.js";
 
+/** Prompts the user for input on stdin while suppressing echo, then resolves with the entered string. */
 function promptHidden(question: string): Promise<string> {
   return new Promise((resolve) => {
     let muted = false;
@@ -18,6 +19,7 @@ function promptHidden(question: string): Promise<string> {
   });
 }
 
+/** Entry point for the secret CLI: dispatches set, list, and rm subcommands against the encrypted secret store. */
 async function main(): Promise<void> {
   const [cmd, ref] = process.argv.slice(2);
   const config = loadConfig(process.env);

@@ -42,7 +42,7 @@ const Chev = ({ open }: { open: boolean }) => (
 );
 const Spin = () => <span className="spin" />;
 
-// Reveals text as if typed; pre-typed (persisted) text renders instantly.
+/** Custom hook that animates new text character-by-character; pre-existing (persisted) text renders instantly without animation. */
 function useTyped(text: string, animate?: boolean) {
   const [shown, setShown] = useState(animate ? "" : text);
   useEffect(() => {
@@ -54,6 +54,7 @@ function useTyped(text: string, animate?: boolean) {
   return shown;
 }
 
+/** Renders an agent reply bubble with optional typewriter animation and a cost/token/duration summary line. */
 function AgentBubble({ text, animate, meta }: { text: string; animate?: boolean; meta?: Metrics }) {
   const shown = useTyped(text, animate);
   return (
@@ -64,6 +65,7 @@ function AgentBubble({ text, animate, meta }: { text: string; animate?: boolean;
   );
 }
 
+/** Collapsible card that displays an agent thinking block, expanding live while the agent is running and auto-collapsing when done. */
 function ThinkingThought({ text, live }: { text: string; live?: boolean }) {
   const [open, setOpen] = useState(!!live);
   const shown = useTyped(text, live);
@@ -82,6 +84,7 @@ function ThinkingThought({ text, live }: { text: string; live?: boolean }) {
   );
 }
 
+/** Renders a tool step's detail payload as a syntax-highlighted diff (with +/- line coloring) or as plain preformatted output. */
 function DetailPre({ detail, output }: { detail?: string; output?: string }) {
   if (detail) {
     return (
@@ -93,6 +96,7 @@ function DetailPre({ detail, output }: { detail?: string; output?: string }) {
   return <pre className="tstep-detail">{output}</pre>;
 }
 
+/** Expandable row for a single agent tool use, showing its category icon, verb, summary, and optional detail output. */
 function ToolStep({ step }: { step: Step }) {
   const [open, setOpen] = useState(false);
   const hasDetail = !!(step.detail || step.output);
@@ -114,6 +118,7 @@ function ToolStep({ step }: { step: Step }) {
   );
 }
 
+/** Collapsible group of ToolStep rows summarizing all tool uses in a single agent turn. */
 function Activity({ steps }: { steps: Step[] }) {
   const [open, setOpen] = useState(true);
   const verbs = Array.from(new Set(steps.map((s) => verb(s.name)))).join(" · ");
@@ -130,6 +135,7 @@ function Activity({ steps }: { steps: Step[] }) {
   );
 }
 
+/** Renders a plan card listing the agent's todo items with completion checkmarks and an in-progress spinner. */
 function TodoCard({ items }: { items: { content: string; status: string }[] }) {
   const done = items.filter((t) => t.status === "completed").length;
   return (
@@ -154,6 +160,7 @@ function TodoCard({ items }: { items: { content: string; status: string }[] }) {
   );
 }
 
+/** Renders a contextual notice chip — a retry spinner pill, a memory-save chip, or a compact section divider. */
 function Notice({ noticeKind, text }: { noticeKind: "compact" | "memory" | "retry"; text: string }) {
   if (noticeKind === "retry") return <div className="pill retry"><Spin />{text}</div>;
   if (noticeKind === "memory") return (

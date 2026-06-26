@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { renderMarkdown, splitFrontmatter } from "../markdown";
 import { ColHead } from "./ColHead";
 
-// Hide git plumbing; keep hunk headers (rendered subtly) + the real +/- changes.
+/** Strips git plumbing header lines from a diff, keeping hunk headers and actual +/- change lines. */
 function cleanDiff(diff: string): string[] {
   return diff.split("\n").filter((l) => !/^(diff --git |index [0-9a-f]|--- |\+\+\+ )/.test(l));
 }

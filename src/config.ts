@@ -18,6 +18,7 @@ export interface Config {
   accountDir: string;
 }
 
+/** Reads a required environment variable from the given env map, throwing if the key is absent or empty. */
 function required(env: Record<string, string | undefined>, key: string): string {
   const v = env[key];
   if (!v) throw new Error(`Missing required env var: ${key}`);

@@ -36,6 +36,7 @@ export function parseSseChunk(buffer: string): { events: SseEvent[]; rest: strin
   return { events, rest };
 }
 
+/** Fetches a JSON endpoint and throws a descriptive error when the response is not OK. */
 async function json<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, { ...init, headers: { "content-type": "application/json", ...(init?.headers ?? {}) } });
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);

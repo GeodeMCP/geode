@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-// Faint topographic contour lines — the marketing-site hero motif, static + lightweight.
+/** Decorative faint topographic contour SVG rendered behind each column header. */
 function TopoLines() {
   return (
     <svg className="topo" viewBox="0 0 400 48" preserveAspectRatio="none" fill="none" stroke="rgba(155,188,176,.13)" strokeWidth={1} aria-hidden="true">

@@ -30,6 +30,7 @@ export function checkMcpAuth(header: string | undefined, token: string, verifyOA
 
 // Shared runner for agentic tools (query, remember): streams progress and
 // returns text + structured content, or a structured error on throw.
+/** Runs an agentic tool (query or remember), streams MCP progress notifications, and returns structured content or a structured error. */
 async function runAgenticTool(
   extra: any,
   run: (onProgress: (m: string) => void) => Promise<QueryResult>,

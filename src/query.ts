@@ -27,6 +27,7 @@ export interface QueryResult {
   metrics?: Metrics;
 }
 
+/** Recursively lists all file paths under an artifacts directory, relative to that directory and using forward slashes. */
 function listArtifacts(dir: string): string[] {
   if (!existsSync(dir)) return [];
   const out: string[] = [];

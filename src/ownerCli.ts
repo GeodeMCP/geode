@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { loadConfig } from "./config.js";
 import { createAccountStore } from "./account.js";
 
+/** Prompts the user for input on stdin while suppressing echo, then resolves with the entered string. */
 function promptHidden(question: string): Promise<string> {
   return new Promise((resolve) => {
     let muted = false;
@@ -15,6 +16,7 @@ function promptHidden(question: string): Promise<string> {
   });
 }
 
+/** Entry point for the owner CLI: dispatches show, create, set-password, and reset subcommands against the account store. */
 async function main(): Promise<void> {
   const [cmd, arg] = process.argv.slice(2);
   const config = loadConfig(process.env);

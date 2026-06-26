@@ -57,6 +57,7 @@ const fmtTokens = (n: number): string => (n >= 1000 ? `${(n / 1000).toFixed(1).r
 
 // tool_result content is string | array of {type,text,...}. Flatten to text, capped so a giant
 // file Read doesn't bloat the SSE stream.
+/** Extracts and truncates the text content from a tool_result block, returning undefined for empty output. */
 function extractToolText(content: any): string | undefined {
   let s = typeof content === "string"
     ? content
@@ -67,6 +68,7 @@ function extractToolText(content: any): string | undefined {
   return s.length > MAX ? s.slice(0, MAX) + "\n… (truncated)" : s;
 }
 
+/** Extracts run duration, cost, and token usage from an Agent SDK result message, returning undefined if none are present. */
 function extractMetrics(message: any): Metrics | undefined {
   if (typeof message.duration_ms !== "number" && typeof message.total_cost_usd !== "number") return undefined;
   const u = message.usage ?? {};

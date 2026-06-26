@@ -11,6 +11,7 @@ export interface IntegrationView {
   requiredSecrets: { ref: string; set: boolean }[];
 }
 
+/** Maps an integration manifest and the set of already-configured secret refs to a flattened IntegrationView. */
 function toView(m: IntegrationManifest, setRefs: Set<string>): IntegrationView {
   return {
     name: m.name, type: m.type ?? "connection", description: m.description ?? "",

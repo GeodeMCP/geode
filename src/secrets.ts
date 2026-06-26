@@ -10,12 +10,14 @@ export interface SecretStore {
   delete(ref: string): Promise<void>;
 }
 
+/** Encrypts a plaintext string with AES-256-GCM using the given key and returns the IV+tag+ciphertext buffer. */
 function enc(key: Buffer, plain: string): Buffer {
   const iv = randomBytes(12);
   const c = createCipheriv("aes-256-gcm", key, iv);
   const data = Buffer.concat([c.update(plain, "utf8"), c.final()]);
   return Buffer.concat([iv, c.getAuthTag(), data]);
 }
+/** Decrypts an IV+tag+ciphertext buffer produced by enc and returns the original plaintext string. */
 function dec(key: Buffer, blob: Buffer): string {
   const iv = blob.subarray(0, 12), tag = blob.subarray(12, 28), data = blob.subarray(28);
   const d = createDecipheriv("aes-256-gcm", key, iv);

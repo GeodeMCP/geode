@@ -21,6 +21,7 @@ import { createOAuth } from "./oauth/tokens.js";
 import { createOAuthRouter } from "./oauth/router.js";
 import { createRateLimiter } from "./dashboard/rateLimit.js";
 
+/** Bootstraps the full GeodeMCP server: loads config, initialises all stores, and starts the MCP and HTTP listeners. */
 async function main() {
   const config = loadConfig();
   const workspace = createWorkspace(config.workspaceRoot);

@@ -30,6 +30,7 @@ export function parseFrontmatter(md: string): Frontmatter {
   return fm;
 }
 
+/** Recursively collects all Markdown file paths under a directory, skipping .git, node_modules, integrations, and artifacts. */
 async function walkMd(dir: string, out: string[]): Promise<void> {
   let entries;
   try { entries = await readdir(dir, { withFileTypes: true }); } catch { return; }

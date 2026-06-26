@@ -3,6 +3,7 @@ import { api, type ConnectInfo } from "../api";
 
 const MASK = "••••••••••••••••";
 
+/** Button that copies the given text to the clipboard and briefly shows a "Copied" confirmation. */
 function CopyButton({ text }: { text: string }) {
   const [done, setDone] = useState(false);
   const copy = async () => {

@@ -25,7 +25,10 @@ export default tseslint.config(
     plugins: { jsdoc },
     rules: {
       'jsdoc/require-jsdoc': ['error', {
-        publicOnly: true,
+        // Require docs on ALL top-level functions/classes/methods/types —
+        // exported or not. (Nested local closures inside function bodies are
+        // intentionally not required: that is noise, not idiomatic TS.)
+        publicOnly: false,
         // Do NOT auto-insert empty JSDoc stubs on `eslint --fix`; a missing doc
         // block must stay a hard error that blocks the commit, forcing a real
         // description to be written by hand.
@@ -39,7 +42,6 @@ export default tseslint.config(
           'TSInterfaceDeclaration',
           'TSTypeAliasDeclaration',
           'TSEnumDeclaration',
-          'ExportNamedDeclaration > VariableDeclaration',
         ],
       }],
       'jsdoc/check-param-names': 'error',

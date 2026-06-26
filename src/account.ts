@@ -4,6 +4,7 @@ import { join } from "node:path";
 
 /** The public identity of an authenticated account, safe to pass to callers without exposing credentials. */
 export interface Principal { id: string; email: string; createdAt: number }
+/** Internal persisted shape of the owner account record, including the scrypt salt and derived key hash. */
 interface OwnerRecord { id: string; email: string; salt: string; hash: string; createdAt: number }
 
 /** Store interface for managing the single machine-local owner account. */
