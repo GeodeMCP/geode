@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from "vitest";
+import { afterEach, expect, it, test, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { FileTree } from "./FileTree";
 import type { TreeNode } from "../api";
@@ -43,4 +43,46 @@ test("delete asks for confirmation, then calls onDelete with the path", () => {
   expect(screen.getByText("Cancel")).toBeTruthy();
   fireEvent.click(screen.getByText("Delete"));             // confirm
   expect(deleted).toBe("index.md");
+});
+
+it("opens and closes the new-file row", () => {
+  const onCreate = vi.fn();
+  const { getByText, getByPlaceholderText, queryByPlaceholderText } = render(
+    <FileTree tree={[]} status={{ modified: [], created: [] }} selected={null}
+      onSelect={() => {}} onCreate={onCreate} onDelete={() => {}} />,
+  );
+  fireEvent.click(getByText("+ New"));
+  const input = getByPlaceholderText("path/to/note");
+  fireEvent.keyDown(input, { key: "Escape" });
+  expect(queryByPlaceholderText("path/to/note")).toBeNull();
+});
+
+it("creates on Enter and cancels on blur-when-empty", () => {
+  const onCreate = vi.fn();
+  const { getByText, getByPlaceholderText, getByTitle, queryByPlaceholderText } = render(
+    <FileTree tree={[]} status={{ modified: [], created: [] }} selected={null}
+      onSelect={() => {}} onCreate={onCreate} onDelete={() => {}} />,
+  );
+  fireEvent.click(getByText("+ New"));
+  const input = getByPlaceholderText("path/to/note");
+  fireEvent.change(input, { target: { value: "notes/x" } });
+  fireEvent.keyDown(input, { key: "Enter" });
+  expect(onCreate).toHaveBeenCalledWith("notes/x");
+
+  fireEvent.click(getByText("+ New"));
+  expect(getByTitle("Cancel")).toBeTruthy();
+  fireEvent.blur(getByPlaceholderText("path/to/note"));
+  expect(queryByPlaceholderText("path/to/note")).toBeNull();
+});
+
+it("keeps the new-file row open when blurred with text", () => {
+  const { getByText, getByPlaceholderText, queryByPlaceholderText } = render(
+    <FileTree tree={[]} status={{ modified: [], created: [] }} selected={null}
+      onSelect={() => {}} onCreate={() => {}} onDelete={() => {}} />,
+  );
+  fireEvent.click(getByText("+ New"));
+  const input = getByPlaceholderText("path/to/note");
+  fireEvent.change(input, { target: { value: "draft" } });
+  fireEvent.blur(input);
+  expect(queryByPlaceholderText("path/to/note")).not.toBeNull();
 });
