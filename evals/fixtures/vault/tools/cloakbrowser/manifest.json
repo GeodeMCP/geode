@@ -1,0 +1,7 @@
+{
+  "id": "cloakbrowser", "name": "CloakBrowser", "type": "cli",
+  "description": "A headless browser that passes bot detection; fetch pages that block normal scrapers.",
+  "connections": [ { "label": "default", "status": "connected" } ],
+  "actions": { "fetch": { "description": "Fetch a URL bypassing bot detection.", "params": [
+    { "name": "url", "required": true } ] } }
+}

@@ -1,0 +1,15 @@
+{
+  "id": "gmail",
+  "name": "Gmail",
+  "type": "cli",
+  "description": "Send and read email from your Gmail accounts.",
+  "connections": [
+    { "label": "private", "status": "connected", "description": "Personal inbox" },
+    { "label": "companyA", "status": "connected", "description": "Company A inbox" },
+    { "label": "companyB", "status": "connected", "description": "Company B (Acme) sales inbox" }
+  ],
+  "actions": {
+    "send": { "description": "Send an email.", "params": [
+      { "name": "to", "required": true }, { "name": "subject", "required": true }, { "name": "body", "required": true } ] }
+  }
+}

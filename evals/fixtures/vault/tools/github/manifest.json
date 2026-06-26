@@ -1,0 +1,7 @@
+{
+  "id": "github", "name": "GitHub", "type": "mcp",
+  "description": "GitHub operations (PRs, issues) via the GitHub MCP, proxied through the vault.",
+  "connections": [ { "label": "default", "status": "needs_reconnect" } ],
+  "actions": { "open_pr": { "description": "Open a pull request.", "params": [
+    { "name": "title", "required": true }, { "name": "head", "required": true }, { "name": "base", "required": true } ] } }
+}
