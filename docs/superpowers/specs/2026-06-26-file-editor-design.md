@@ -102,7 +102,7 @@ function CodeEditor(props: {
 
 `VaultHome.tsx` `create(input)`:
 - Keep "append `.md` if no extension" behaviour.
-- Replace the always-Markdown scaffold with `scaffoldFor(path)`: `.md` → `---\ntype: note\ntitle: <name>\n---\n\n`; `.json` → `{}`; else → `""`. (Helper lives in `fileType.ts`.)
+- Replace the always-Markdown scaffold + inline path-normalisation with `newFileDraft(input)` (the as-built superset of `scaffoldFor`): it trims/normalises the path, defaults the extension to `.md`, and returns `{ path, draft }` — `.md` → `---\ntype: note\ntitle: <name>\n---\n\n`; `.json` → `{}`; else → `""`; returns `null` for blank input. (Helper lives in `fileType.ts`.)
 
 `app.css`:
 - **Global** `.input:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(52,211,153,.22);}` (token `--green:#34d399`) — the central fix.
@@ -112,18 +112,18 @@ function CodeEditor(props: {
 
 | File | Change |
 |------|--------|
-| `web/src/fileType.ts` (new) | `Kind`, `fileType(path)`, `prettyJson(text)`, `scaffoldFor(path)`. Pure, unit-tested. |
+| `web/src/fileType.ts` (new) | `Kind`, `fileType(path)`, `prettyJson(text)`, `newFileDraft(input)`. Pure, unit-tested. |
 | `web/src/editorTheme.ts` (new) | `geodeTheme` + `geodeHighlight` from design tokens. |
 | `web/src/components/CodeEditor.tsx` (new) | CodeMirror 6 React mount; read-only + editable via compartments. |
 | `web/src/components/Viewer.tsx` | 3-state model; segmented toggle; use `CodeEditor` for Source + Edit; keep Formatted (markdown) and diff (dirty) paths. Drop the `<textarea>`. |
 | `web/src/components/FileTree.tsx` | New-file row: ✕ cancel, blur-when-empty, `Esc`; "+ New" active state. |
-| `web/src/views/VaultHome.tsx` | `create()` uses `scaffoldFor(path)`. |
+| `web/src/views/VaultHome.tsx` | `create()` uses `newFileDraft(input)`. |
 | `web/src/app.css` | Global `.input:focus` ring; `.seg`, `.newfile-row`, ✕, "+ New" `.on`, `.cm-host`. |
 | `web/package.json` | Add CodeMirror 6 packages. |
 
 ## Testing
 
-- `web/src/fileType.test.ts`: `fileType()` maps extensions correctly (md/markdown/json/yaml/yml/unknown); `prettyJson()` indents valid JSON and returns input unchanged on invalid JSON; `scaffoldFor()` returns frontmatter for `.md`, `{}` for `.json`, empty otherwise.
+- `web/src/fileType.test.ts`: `fileType()` maps extensions correctly (md/markdown/json/yaml/yml/unknown); `prettyJson()` indents valid JSON and returns input unchanged on invalid JSON; `newFileDraft()` returns frontmatter for `.md`, `{}` for `.json`, empty otherwise, and `null` for blank input.
 - `web/src/components/Viewer.test.tsx` (new): markdown clean file shows Formatted by default and the toggle switches to a code view; a `.json` file shows the code view and **no** Formatted/Source toggle; clicking Edit enters the editor; dirty file still shows the diff. (CodeMirror treated as a black box — assert the host renders and that a `.json` shows pretty-printed text content, not Markdown HTML.)
 - `web/src/components/FileTree.test.tsx` (extend): "+ New" reveals the row; ✕ and `Esc` close it; blur with empty field closes, blur with text keeps it; submit calls `onCreate` with the typed path.
 - Keep existing tests green (`web/src/api.test.ts`, `markdown.test.ts`, `FileTree.test.tsx`, etc.).

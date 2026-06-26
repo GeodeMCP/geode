@@ -164,7 +164,7 @@ export function newFileDraft(input: string): { path: string; draft: string } | n
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `cd web && npx vitest run src/fileType.test.ts`
-Expected: PASS (4 suites, all green).
+Expected: PASS (3 describe blocks, 7 tests, all green).
 
 - [ ] **Step 5: Commit**
 
