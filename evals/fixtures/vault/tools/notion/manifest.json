@@ -1,0 +1,11 @@
+{
+  "id": "notion", "name": "Notion", "type": "http",
+  "description": "Read and write Notion pages and databases.",
+  "connections": [ { "label": "team", "status": "connected", "description": "Team workspace" } ],
+  "actions": {
+    "create_page": { "description": "Create a new Notion page.", "params": [
+      { "name": "parent_id", "required": true }, { "name": "title", "required": true }, { "name": "content", "required": false } ] },
+    "query_database": { "description": "Query a Notion database.", "params": [
+      { "name": "database_id", "required": true }, { "name": "filter", "required": false } ] }
+  }
+}

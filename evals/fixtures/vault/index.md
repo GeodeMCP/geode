@@ -4,3 +4,15 @@
 - context/company-z/tone-of-voice.md — Company Z writing voice
 - context/sales-pipeline.md — the outbound sales pipeline steps
 - tools/ — gmail, linear, cloakbrowser, github
+- clients/northwind/preferences.md — Northwind's eslint + PR conventions
+- clients/zenith/preferences.md — Zenith's TypeScript + eslint conventions
+- notes/blorp-tone.md — Blorp tone of voice guidelines
+- notes/zenith-leads.md — Zenith lead tracking process
+- notes/northwind-email-templates.md — Northwind email template rules
+- notes/paxon-deploy-notes.md — Paxon staging deploy command
+- notes/blorp-lint-rules.md — Blorp eslint + prettier rules
+- projects/northwind-migration.md — Northwind DB migration project notes
+- projects/zenith-rebrand.md — Zenith rebrand project notes
+- projects/paxon-ci-setup.md — Paxon CI lint + deploy gates
+- context/blorp/voice-guidelines.md — Blorp content voice guidelines
+- context/paxon-sales.md — Paxon outbound sales pipeline

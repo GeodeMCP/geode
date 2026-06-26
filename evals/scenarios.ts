@@ -37,4 +37,16 @@ export const SCENARIOS: Scenario[] = [
     id: "negative-fizzbuzz", cls: "should-not-use",
     legs: [{ prompt: "Write a fizzbuzz function in Python.", expect: {} }],
   },
+  {
+    id: "ambiguous-followup", cls: "should-use",
+    legs: [{ prompt: "Draft a short follow-up message to a new lead about our product.", expect: { discovers: true, readsFile: "warm, concise" } }],
+  },
+  {
+    id: "ambiguous-lint", cls: "should-use",
+    legs: [{ prompt: "Set up the linting config for this project the way it should be.", expect: { discovers: true, readsFile: "airbnb" } }],
+  },
+  {
+    id: "ambiguous-ship", cls: "should-use",
+    legs: [{ prompt: "What's the command to ship the test environment?", expect: { discovers: true, readsFile: "acme-staging" } }],
+  },
 ];

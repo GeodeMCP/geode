@@ -1,0 +1,13 @@
+{
+  "id": "stripe", "name": "Stripe", "type": "http",
+  "description": "Look up customers, invoices, and payment status in Stripe.",
+  "connections": [ { "label": "live", "status": "connected", "description": "Live mode" } ],
+  "actions": {
+    "get_customer": { "description": "Fetch a customer by ID or email.", "params": [
+      { "name": "customer_id", "required": false }, { "name": "email", "required": false } ] },
+    "list_invoices": { "description": "List invoices for a customer.", "params": [
+      { "name": "customer_id", "required": true } ] },
+    "get_payment": { "description": "Look up a specific payment intent.", "params": [
+      { "name": "payment_intent_id", "required": true } ] }
+  }
+}

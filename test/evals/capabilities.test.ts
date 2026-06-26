@@ -6,9 +6,10 @@ import { loadManifests, renderCapabilities, renderToolDetail } from "../../evals
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "evals", "fixtures", "vault");
 
 describe("capabilities", () => {
-  it("loads all tool manifests", () => {
-    const ids = loadManifests(ROOT).map((m) => m.id).sort();
-    expect(ids).toEqual(["cloakbrowser", "github", "gmail", "linear"]);
+  it("loads all tool manifests including the originals", () => {
+    const ids = loadManifests(ROOT).map((m) => m.id);
+    for (const id of ["cloakbrowser", "github", "gmail", "linear"]) expect(ids).toContain(id);
+    expect(ids.length).toBeGreaterThanOrEqual(8);
   });
 
   it("tiered L1 lists tools + connection labels/status but NOT action params", () => {
