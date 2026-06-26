@@ -54,7 +54,7 @@ export function VaultHome() {
     <div className="main">
       <Chat onSend={send} running={running} dirty={dirty} onCommit={commit} onDiscard={discard} />
       <FileTree tree={tree} status={status} selected={selected} onSelect={select} onCreate={create} onDelete={del} />
-      <Viewer path={selected} content={content} diff={diff} dirty={selectedDirty} compose={compose} onCommit={commit} onDiscard={discard} onSave={save} />
+      <Viewer path={selected} content={content} diff={diff} dirty={selectedDirty} compose={compose} onCommit={commit} onDiscard={discard} onSave={save} onOpenFile={select} />
     </div>
   );
 }

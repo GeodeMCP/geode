@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, cleanup, fireEvent } from "@testing-library/react";
 import { Viewer } from "./Viewer";
 
@@ -53,5 +53,28 @@ describe("Viewer", () => {
     );
     expect(container.querySelector(".pre")).toBeTruthy();
     expect(container.querySelector(".cm-host")).toBeFalsy();
+  });
+
+  it("opens an internal link target on click", () => {
+    const onOpenFile = vi.fn();
+    const { container } = render(
+      <Viewer {...base} path="notes/a.md" content={"[x](../experiments/b.md)"} onOpenFile={onOpenFile} />,
+    );
+    const a = container.querySelector(".doc.md a");
+    expect(a).toBeTruthy();
+    fireEvent.click(a!);
+    expect(onOpenFile).toHaveBeenCalledWith("experiments/b.md");
+  });
+
+  it("does not navigate internally for external links", () => {
+    const onOpenFile = vi.fn();
+    const openSpy = vi.spyOn(window, "open").mockReturnValue(null);
+    const { container } = render(
+      <Viewer {...base} path="notes/a.md" content={"[x](https://example.com)"} onOpenFile={onOpenFile} />,
+    );
+    fireEvent.click(container.querySelector(".doc.md a")!);
+    expect(onOpenFile).not.toHaveBeenCalled();
+    expect(openSpy).toHaveBeenCalledWith("https://example.com", "_blank", "noopener,noreferrer");
+    openSpy.mockRestore();
   });
 });
