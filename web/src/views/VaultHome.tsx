@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, type TreeNode, type SseEvent } from "../api";
+import { newFileDraft } from "../fileType";
 import { Chat } from "../components/Chat";
 import { FileTree } from "../components/FileTree";
 import { Viewer } from "../components/Viewer";
@@ -37,12 +38,10 @@ export function VaultHome() {
   const discard = async () => { await api.discard(); await refresh(); setDiff(""); setSelected(null); setCompose(null); };
   const save = async (text: string) => { if (!selected) return; await api.writeFile(selected, text); setCompose(null); await refresh(); };
   const create = (input: string) => {
-    let p = input.trim().replace(/^\/+/, "");
-    if (!p) return;
-    if (!/\.[a-z0-9]+$/i.test(p)) p += ".md";
-    const title = p.replace(/\.[^.]+$/, "").split("/").pop() || "note";
-    setCompose({ path: p, draft: `---\ntype: note\ntitle: ${title}\n---\n\n` });
-    setSelected(p);
+    const nf = newFileDraft(input);
+    if (!nf) return;
+    setCompose({ path: nf.path, draft: nf.draft });
+    setSelected(nf.path);
   };
   const select = (p: string) => { setCompose(null); setSelected(p); };
   const del = async (p: string) => {
