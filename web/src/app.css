@@ -124,6 +124,11 @@
   .ctrl{padding:16px 20px;border-top:1px solid var(--border);}
   .input{width:100%;background:var(--input);border:1px solid var(--border-strong);border-radius:9px;padding:12px 14px;color:var(--text);font-family:"Geist",sans-serif;font-size:14.5px;}
   .input::placeholder{color:var(--faint);}
+  .input:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(52,211,153,.22);}
+  .newfile-row{display:flex;align-items:center;gap:6px;padding:0 14px 8px;}
+  .newfile-row .input{flex:1;}
+  .ghost.sm.icon{padding:6px 9px;line-height:1;}
+  .ghost.sm.on{color:var(--emerald-300);background:var(--surface-2);border-color:var(--border-strong);}
   /* TREE */
   .tree-list{padding:4px 0;font-size:14.5px;color:var(--muted);overflow:auto;}
   .row{padding:8px 20px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:background .12s var(--ease);}
@@ -176,6 +181,10 @@
   .bubble.md h1,.bubble.md h2,.bubble.md h3,.bubble.md h4{font-size:15px;margin:.5em 0 .25em;color:inherit;}
   .bubble.md p{margin:.35em 0;} .bubble.md ul,.bubble.md ol{margin:.35em 0;}
   .doc-fm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border);}
+  .seg{display:inline-flex;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;}
+  .seg button{font-family:"Instrument Sans",sans-serif;font-size:12px;padding:4px 10px;background:transparent;border:none;color:var(--faint);cursor:pointer;}
+  .seg button.on{background:var(--surface-2);color:var(--emerald-300);}
+  .cm-host{flex:1;min-height:0;overflow:auto;}
   /* DIRTY banner (chat) */
   .dirty-banner{margin:10px 14px 0;padding:9px 12px;border-radius:10px;background:rgba(217,161,58,.1);border:1px solid rgba(217,161,58,.35);display:flex;align-items:center;gap:10px;font-size:13px;color:#e0b970;}
   .input:disabled{opacity:.6;cursor:not-allowed;}

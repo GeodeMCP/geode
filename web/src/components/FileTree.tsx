@@ -31,6 +31,7 @@ export function FileTree({ tree, status, selected, onSelect, onCreate, onDelete 
   const [confirming, setConfirming] = useState<string | null>(null);
   const toggle = (p: string) => setCollapsed((s) => { const n = new Set(s); if (n.has(p)) n.delete(p); else n.add(p); return n; });
   const submitNew = () => { const v = name.trim(); if (!v) return; onCreate(v); setCreating(false); setName(""); };
+  const cancelNew = () => { setCreating(false); setName(""); };
   const stop = (e: React.MouseEvent) => e.stopPropagation();
 
   const render = (nodes: TreeNode[], depth = 0): React.ReactNode => nodes.map((n) => {
@@ -68,13 +69,15 @@ export function FileTree({ tree, status, selected, onSelect, onCreate, onDelete 
   return (
     <div className="col tree">
       <ColHead title="Vault">
-        <button className="ghost sm" onClick={() => setCreating((c) => !c)} style={{ textTransform: "none", letterSpacing: 0 }}>+ New</button>
+        <button className={`ghost sm${creating ? " on" : ""}`} onClick={() => (creating ? cancelNew() : setCreating(true))} style={{ textTransform: "none", letterSpacing: 0 }}>+ New</button>
       </ColHead>
       {creating && (
-        <div style={{ padding: "0 14px 8px" }}>
+        <div className="newfile-row">
           <input className="input" autoFocus value={name} placeholder="path/to/note"
             onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") submitNew(); else if (e.key === "Escape") { setCreating(false); setName(""); } }} />
+            onKeyDown={(e) => { if (e.key === "Enter") submitNew(); else if (e.key === "Escape") cancelNew(); }}
+            onBlur={() => { if (!name.trim()) cancelNew(); }} />
+          <button className="ghost sm icon" title="Cancel" onMouseDown={(e) => e.preventDefault()} onClick={cancelNew}>✕</button>
         </div>
       )}
       <div className="tree-list">{tree.length ? render(tree) : <div style={{ padding: "8px 20px", color: "var(--faint)", fontSize: 13 }}>Empty — create a note.</div>}</div>

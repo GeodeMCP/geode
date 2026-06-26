@@ -1,0 +1,61 @@
+<style>
+  .panel { background:#0d1311; border:1px solid #1e2a26; border-radius:12px; overflow:hidden; text-align:left; }
+  .ph { display:flex; align-items:center; gap:8px; padding:9px 13px; border-bottom:1px solid #1e2a26; background:#0f1714; }
+  .ph .ttl { font-size:10px; letter-spacing:.13em; text-transform:uppercase; color:#6b837a; font-family:"Instrument Sans",sans-serif; }
+  .ph .nw { margin-left:auto; font-family:"Instrument Sans",sans-serif; font-size:11px; padding:3px 9px; border:1px solid #25332e; border-radius:7px; color:#8ba398; }
+  .ph .nw.on { background:#16241f; color:#9fe7c6; border-color:#2e6f57; }
+  .pb { padding:12px 13px; }
+  .row { display:flex; align-items:center; gap:7px; }
+  .inp { flex:1; background:#0a0f0d; border:1px solid #25332e; border-radius:9px; padding:9px 12px; color:#c5d4cd; font-family:"SF Mono",ui-monospace,monospace; font-size:13px; }
+  /* current: ugly default focus ring */
+  .inp.bad { outline:2px solid #4c9ffe; outline-offset:1px; border-color:#fff; }
+  /* proposed: themed focus ring */
+  .inp.good { border-color:#2e6f57; box-shadow:0 0 0 3px rgba(46,111,87,.28); outline:none; }
+  .inp.good::after{content:""}
+  .ph-text{color:#5e7068}
+  .xbtn { width:30px;height:30px;display:flex;align-items:center;justify-content:center;border:1px solid #25332e;border-radius:8px;color:#8ba398;font-size:14px; }
+  .hint { font-size:11.5px; color:#5e7068; margin-top:7px; font-family:"Instrument Sans",sans-serif; }
+  .kbd{font-family:"SF Mono",monospace;font-size:10.5px;background:#16241f;color:#9fe7c6;padding:1px 5px;border-radius:4px;border:1px solid #25332e}
+  .split2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:900px){.split2{grid-template-columns:1fr}}
+  .lbl3{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#6b837a;margin:0 0 7px;font-family:"Instrument Sans",sans-serif}
+</style>
+
+<h2>New-file creation — fix dismissal + the focus ring</h2>
+<p class="subtitle">Today "+ New" drops an input you can only close with Esc, and the field shows the browser's default white/blue outline because <code>.input</code> has no focus style.</p>
+
+<div class="split2">
+  <div>
+    <p class="lbl3" style="color:#b56b6b">Now · the problem</p>
+    <div class="panel">
+      <div class="ph"><span class="ttl">Vault</span><span class="nw">+ New</span></div>
+      <div class="pb">
+        <div class="row"><div class="inp bad ph-text">path/to/note</div></div>
+        <div class="hint">No close button · stays open · harsh white + blue outline</div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <p class="lbl3" style="color:#7fd0b6">Proposed</p>
+    <div class="panel">
+      <div class="ph"><span class="ttl">Vault</span><span class="nw on">+ New</span></div>
+      <div class="pb">
+        <div class="row">
+          <div class="inp good ph-text">notes/idea.md</div>
+          <div class="xbtn">✕</div>
+        </div>
+        <div class="hint"><span class="kbd">Enter</span> create &nbsp;·&nbsp; <span class="kbd">Esc</span> / <span class="kbd">✕</span> / click-away cancel &nbsp;·&nbsp; "+ New" highlights while open · soft emerald focus ring</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:20px;">The themed focus ring is a global <code>.input:focus</code> fix, so the harsh outline disappears <b>everywhere</b> (chat box, login, etc.) — same root cause.</p>
+
+<h3 style="margin-top:8px">One more: what goes in a brand-new file?</h3>
+<p class="subtitle">Right now every new file gets a Markdown <code>--- type: note ---</code> scaffold — which makes a new <code>.json</code> invalid. Pick the behaviour:</p>
+<div class="options">
+  <div class="option" data-choice="scaffold-by-type" onclick="toggleSelect(this)"><div class="letter">A</div><div class="content"><h3>Scaffold by type (recommended)</h3><p><code>.md</code> → frontmatter scaffold (as now). <code>.json</code> → <code>{}</code>. Everything else → empty. Opens in Edit.</p></div></div>
+  <div class="option" data-choice="always-empty" onclick="toggleSelect(this)"><div class="letter">B</div><div class="content"><h3>Always empty</h3><p>New files open blank regardless of type; you (or the agent) fill them in.</p></div></div>
+</div>
