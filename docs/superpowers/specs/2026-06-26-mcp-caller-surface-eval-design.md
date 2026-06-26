@@ -95,3 +95,18 @@ Pitted against it:
 2. Baseline (current 4 tools, empty instructions) scores measurably worse on `discovered` than at least one candidate config → proves the harness discriminates.
 3. Adding/removing a tool or editing instructions changes the scorecard reproducibly → we can iterate to "the way".
 4. The scorecard is broken out **per caller tier** (strong vs weak/local) so we can see whether the winning surface survives on small models, not just strong ones.
+
+## Results & verdict (2026-06-26)
+
+Ran v2 (hardened: ambiguous discovery scenarios + scaled fixture of 9 tools / 17 files + `turns`/`toolResultChars` cost metrics) across 5 configs × strong/weak × 3 repeats (n=36 legs/cell, 0 failures), plus a focused weak-tier run adding two isolation configs (F = leading + explicit "read the located file" instruction; G = leading + empty server instructions).
+
+**Findings (weight `false`/`invoke`/cost/discovery over `retr` — trace-`retr` rewards verbose dumping, which doesn't scale):**
+- **Safe:** zero over-triggering on negatives, every config, both tiers — adding the nudge + cheap tools never makes the agent paw at the vault on irrelevant prompts.
+- **Query-only is the worst surface for weak/local models** — lowest invoke-precision (~50–58%), under-discovers (~83–88%), most context flooding (~2100–2800 chars). Cheap-reads configs win. (Empirical backing for the §2.1 reversal.)
+- **Discovery is carried by rich tool DESCRIPTIONS, not the server-`instructions` nudge.** Isolation config G (leading surface, empty instructions) still discovered 100% on weak; B's discovery drop came from jargon descriptions + query-only, not from missing instructions. Keep the nudge (harmless, may help unmodeled cases) but invest in descriptions. → "Must the user say 'check geode'?" = **no**, and it's the descriptions that make the agent reach in.
+- **`read`-step instruction helps small models:** F lifted weak-tier retrieval ~+10pp over leading at no cost (still 100% discovery, 75% invoke, 0 heavy-query, lean).
+- **Tiered > flat list** for invoke-precision; flat floods context.
+
+**Recommended surface = "F-read-nudge":** cheap `read`/`search` + tiered `list_capabilities` + rich trigger-situation descriptions + a server instruction that explicitly says *after list/search, read the specific file before answering*; `query` retained as last resort.
+
+**Caveats:** trace-based scoring can't measure answer *quality* (the LLM-judge was deliberately out of scope); ~±10pp run-to-run noise at n=36; the stub `query` is unrealistically generous (full-body dump), flattering query-only. Full decision write-up: `specs/2026-06-26-tool-supply-and-caller-surface-decisions.md`.
