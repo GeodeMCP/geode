@@ -44,9 +44,14 @@ export function CodeEditor({ value, kind, editable, onChange, onSave, onCancel }
         lineNumbers(), highlightActiveLine(), highlightActiveLineGutter(),
         history(), bracketMatching(),
         keymap.of([
-          { key: "Mod-s", run: (v) => { cb.current.onSave?.(v.state.doc.toString()); return true; } },
-          { key: "Escape", run: () => { cb.current.onCancel?.(); return true; } },
-          indentWithTab, ...defaultKeymap, ...historyKeymap,
+          ...(editable
+            ? [
+                { key: "Mod-s", run: (v: EditorView) => { cb.current.onSave?.(v.state.doc.toString()); return true; } },
+                { key: "Escape", run: () => { cb.current.onCancel?.(); return true; } },
+                indentWithTab,
+              ]
+            : []),
+          ...defaultKeymap, ...historyKeymap,
         ]),
         langFor(kind), geodeTheme, geodeHighlight, EditorView.lineWrapping,
         EditorView.editable.of(editable),
