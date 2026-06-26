@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { renderMarkdown, splitFrontmatter } from "../markdown";
+import { fileType, prettyJson } from "../fileType";
+import { CodeEditor } from "./CodeEditor";
 import { ColHead } from "./ColHead";
 
 /** Strips git plumbing header lines from a diff, keeping hunk headers and actual +/- change lines. */
@@ -7,42 +9,51 @@ function cleanDiff(diff: string): string[] {
   return diff.split("\n").filter((l) => !/^(diff --git |index [0-9a-f]|--- |\+\+\+ )/.test(l));
 }
 
-/** Renders the file viewer column, switching between a markdown preview, a git diff view, and an inline editor. */
+/** Renders the file viewer column: Formatted (Markdown) / Source (code) / Edit, plus the git diff for dirty files. */
 export function Viewer({ path, content, diff, dirty, compose, onCommit, onDiscard, onSave }: {
   path: string | null; content: string; diff: string; dirty: boolean;
   compose: { path: string; draft: string } | null;
   onCommit: () => void; onDiscard: () => void; onSave: (text: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
+  const [showSource, setShowSource] = useState(false);
   const [draft, setDraft] = useState("");
   const [saved, setSaved] = useState(false);
-  // A brand-new note (compose) opens straight in the editor; otherwise selecting a file shows it read-only.
+  const ft = path ? fileType(path) : { kind: "text" as const, hasFormatted: false };
+
+  // A brand-new note (compose) opens straight in the editor; selecting a file resets to the formatted/read view.
   useEffect(() => {
     if (compose && compose.path === path) { setDraft(compose.draft); setEditing(true); }
     else setEditing(false);
+    setShowSource(false);
   }, [path, compose]);
 
-  const startEdit = () => { setDraft(content); setEditing(true); };
-  const save = () => { onSave(draft); setEditing(false); setSaved(true); window.setTimeout(() => setSaved(false), 1600); };
-  const onKey = (e: React.KeyboardEvent) => {
-    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") { e.preventDefault(); save(); }
-    else if (e.key === "Escape") { e.preventDefault(); setEditing(false); }
+  const startEdit = () => { setDraft(ft.kind === "json" ? prettyJson(content) : content); setEditing(true); };
+  const save = (text?: string) => {
+    onSave(text ?? draft); setEditing(false); setShowSource(false); setSaved(true);
+    window.setTimeout(() => setSaved(false), 1600);
   };
   const { fm, body } = splitFrontmatter(content);
+  const showToggle = !!path && !editing && !dirty && ft.hasFormatted;
 
   return (
     <div className="col viewer">
       <ColHead title="File editor" note={path ?? "—"}>
         {dirty && <span className="uncommitted"><span className="dot-mod" />uncommitted</span>}
         {saved && <span style={{ color: "var(--green)", fontSize: 12.5 }}>Saved</span>}
-        {editing && <><button className="ghost sm" onClick={() => setEditing(false)}>Cancel</button><button className="btn sm" onClick={save}>Save</button></>}
+        {showToggle && (
+          <span className="seg">
+            <button className={!showSource ? "on" : ""} onClick={() => setShowSource(false)}>Formatted</button>
+            <button className={showSource ? "on" : ""} onClick={() => setShowSource(true)}>Source</button>
+          </span>
+        )}
+        {editing && <><button className="ghost sm" onClick={() => setEditing(false)}>Cancel</button><button className="btn sm" onClick={() => save()}>Save</button></>}
         {!editing && path && <button className="ghost sm" onClick={startEdit}>Edit</button>}
         {!editing && dirty && <><button className="ghost sm" onClick={onDiscard}>Discard</button><button className="btn sm" onClick={onCommit}>Commit</button></>}
       </ColHead>
 
       {editing ? (
-        <textarea className="input" style={{ flex: 1, margin: 16, fontFamily: "Geist Mono, monospace", fontSize: 13, resize: "none" }}
-          value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onKey} autoFocus />
+        <CodeEditor value={draft} kind={ft.kind} editable onChange={setDraft} onSave={(text) => save(text)} onCancel={() => setEditing(false)} />
       ) : dirty ? (
         <div className="pre">{(() => {
           const ls = cleanDiff(diff);
@@ -52,7 +63,7 @@ export function Viewer({ path, content, diff, dirty, compose, onCommit, onDiscar
               : <div key={i} className={l.startsWith("+") ? "add" : l.startsWith("-") ? "del" : ""}>{l || " "}</div>)
             : <div style={{ color: "var(--faint)" }}>No changes.</div>;
         })()}</div>
-      ) : path ? (
+      ) : path && ft.kind === "markdown" && !showSource ? (
         <div className="doc md">
           {(fm.title || fm.type || fm.tags) && (
             <div className="doc-fm">
@@ -63,6 +74,8 @@ export function Viewer({ path, content, diff, dirty, compose, onCommit, onDiscar
           )}
           <div dangerouslySetInnerHTML={{ __html: renderMarkdown(body) }} />
         </div>
+      ) : path ? (
+        <CodeEditor value={ft.kind === "json" ? prettyJson(content) : content} kind={ft.kind} editable={false} />
       ) : (
         <div className="pre"><div style={{ color: "var(--faint)" }}>Select a file or ask the agent.</div></div>
       )}
