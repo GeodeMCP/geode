@@ -1,0 +1,7 @@
+{
+  "id": "linear", "name": "Linear", "type": "http",
+  "description": "Create and update Linear issues.",
+  "connections": [ { "label": "default", "status": "connected" } ],
+  "actions": { "create_issue": { "description": "Create an issue.", "params": [
+    { "name": "title", "required": true }, { "name": "description", "required": false } ] } }
+}

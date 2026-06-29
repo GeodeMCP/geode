@@ -1,0 +1,11 @@
+{
+  "id": "drive", "name": "Google Drive", "type": "mcp",
+  "description": "Read and upload files in Google Drive.",
+  "connections": [ { "label": "shared", "status": "connected", "description": "Shared team drive" } ],
+  "actions": {
+    "read_file": { "description": "Read the contents of a Drive file.", "params": [
+      { "name": "file_id", "required": true } ] },
+    "upload_file": { "description": "Upload a file to Drive.", "params": [
+      { "name": "name", "required": true }, { "name": "content", "required": true }, { "name": "folder_id", "required": false } ] }
+  }
+}

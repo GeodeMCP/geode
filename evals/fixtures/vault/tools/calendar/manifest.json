@@ -1,0 +1,11 @@
+{
+  "id": "calendar", "name": "Calendar", "type": "cli",
+  "description": "Manage calendar events and check availability.",
+  "connections": [ { "label": "primary", "status": "connected", "description": "Primary calendar" } ],
+  "actions": {
+    "create_event": { "description": "Create a calendar event.", "params": [
+      { "name": "title", "required": true }, { "name": "start", "required": true }, { "name": "end", "required": true } ] },
+    "list_events": { "description": "List upcoming events.", "params": [
+      { "name": "date", "required": false } ] }
+  }
+}

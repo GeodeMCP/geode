@@ -65,6 +65,18 @@ caller's job. There is **no mechanical `find` tool** — asking the agent (`quer
 returns canonical, synthesized results (no stale raw greps), at the cost of an agent run for trivial
 reads (an accepted trade for simplicity + always-through-the-specialist).
 
+> **Update (2026-06-26, eval-backed — this stance is reversed):** add cheap `search`/`read`
+> primitives alongside `query`; `query` becomes the heavyweight last resort, not the only door.
+> Rationale: the caller is already an intelligent agent, so a sub-agent run for a trivial read is
+> wasted; and weak/local models (the B2B reseller motion) need cheap, legible reads. **Canonicality
+> no longer comes from read-gating but from the organize-discipline** — the internal agent keeps the
+> vault canonical (dedup, single source, `index.md` current), so a raw `read`/`search` *is* canonical
+> (no "stale grep" problem). The caller-surface eval (`specs/2026-06-26-mcp-caller-surface-eval-design.md`)
+> measured this: query-only was the **worst** surface for small models (lowest invoke-precision,
+> under-discovery, most context flooding), and cheap-reads configs won; discovery is carried by rich
+> tool **descriptions**, not a server-`instructions` nudge. Recommended surface + full verdict in
+> `specs/2026-06-26-tool-supply-and-caller-surface-decisions.md`.
+
 *Open mechanic for `invoke` (deferred):* expose each integration's actions as their own MCP tools, or
 one generic `invoke(integration, action, params)` + discovery (current lean: the latter).
 

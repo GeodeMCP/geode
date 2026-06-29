@@ -1,0 +1,10 @@
+{
+  "id": "slack", "name": "Slack", "type": "http",
+  "description": "Post messages and read channels in your Slack workspace.",
+  "connections": [ { "label": "workspace", "status": "connected", "description": "Main workspace" } ],
+  "actions": {
+    "post_message": { "description": "Post a message to a channel.", "params": [
+      { "name": "channel", "required": true }, { "name": "text", "required": true } ] },
+    "list_channels": { "description": "List available channels.", "params": [] }
+  }
+}
