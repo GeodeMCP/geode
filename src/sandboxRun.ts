@@ -7,6 +7,7 @@ import { loadTool, resolveTemplate, resolveConnection, loadConnBundle } from "./
 import { imageTag, runArgs } from "./docker.js";
 import { readInstallState } from "./installer.js";
 import type { InvokeResult } from "./invoke.js";
+import { startEgressProxy } from "./egressProxy.js";
 
 /** Runs one action of an installed cli tool in a fresh sandboxed container; returns exit-code + parsed stdout. */
 export async function runCliTool(
@@ -22,13 +23,21 @@ export async function runCliTool(
   const conn = await loadConnBundle(deps.secrets, toolId, label, m.requires ?? []);
   const command = resolveTemplate(`${m.bin ? m.bin + " " : ""}${action.command}`, { params, conn });
   const env = m.materialize?.env ? Object.fromEntries(Object.entries(m.materialize.env).map(([k, v]) => [k, resolveTemplate(v, { params, conn })])) : conn;
-  const network = m.permissions?.network && m.permissions.network !== "none" ? "bridge" : "none";
+  const networkSpec = m.permissions?.network;
+  const isAllowlist = Array.isArray(networkSpec);
+  const network = !networkSpec || networkSpec === "none" ? "none" : "bridge";
   const dir = await mkdtemp(join(tmpdir(), "geode-env-"));
   const envFile = join(dir, "env");
-  await writeFile(envFile, Object.entries(env).map(([k, v]) => `${k}=${v}`).join("\n"), { mode: 0o600 });
+  const proxy = isAllowlist ? await startEgressProxy(networkSpec as string[]) : null;
   try {
+    const proxyEnv = proxy ? { HTTP_PROXY: proxy.url, HTTPS_PROXY: proxy.url } : {};
+    const envEntries = { ...env, ...proxyEnv };
+    await writeFile(envFile, Object.entries(envEntries).map(([k, v]) => `${k}=${v}`).join("\n"), { mode: 0o600 });
     const r = await deps.docker.run(runArgs({ tag: imageTag(m), command: command.split(/\s+/), envFile, network, memoryMb: m.limits?.memoryMb ?? 512, cpus: m.limits?.cpus ?? 1, timeoutMs: m.limits?.timeoutMs ?? 60000 }), m.limits?.timeoutMs ?? 60000);
     let body: unknown = r.stdout; try { body = JSON.parse(r.stdout); } catch { /* keep text */ }
     return { status: r.exitCode, body };
-  } finally { await rm(dir, { recursive: true, force: true }); }
+  } finally {
+    await proxy?.close();
+    await rm(dir, { recursive: true, force: true });
+  }
 }
