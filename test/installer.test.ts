@@ -31,6 +31,25 @@ test("installTool builds, smoke-runs, and records state", async () => {
   expect((await readInstallState(toolsDir, "cb"))?.image).toBe("geode-tool/cb:v1");
 });
 
+test("installTool smoke-runs with a multi-token bin split into separate argv tokens", async () => {
+  const root = vault("nd", `---
+id: nd
+name: Nd
+type: cli
+description: d
+image: { base: "node:20-slim" }
+source: { repo: "https://github.com/x/nd", ref: "v1" }
+bin: "node dist/cli.js"
+actions: { fetch: { command: ["fetch"] } }
+---`);
+  const toolsDir = mkdtempSync(join(tmpdir(), "ge-tools-"));
+  let ranArgs: string[] = [];
+  const docker = fakeDocker({ run: async (args) => { ranArgs = args; return { exitCode: 0, stdout: "ok", stderr: "" }; } });
+  await installTool({ root, toolsDir, docker }, "nd", { network: "none" });
+  const cmd = ranArgs.slice(ranArgs.indexOf("geode-tool/nd:v1") + 1);
+  expect(cmd.slice(0, 2)).toEqual(["node", "dist/cli.js"]);
+});
+
 test("installTool fails (and records nothing) when smoke run exits non-zero", async () => {
   const root = vault("cb", MD);
   const toolsDir = mkdtempSync(join(tmpdir(), "ge-tools-"));

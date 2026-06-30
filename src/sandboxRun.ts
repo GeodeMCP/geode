@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import type { SecretStore } from "./secrets.js";
 import type { Docker } from "./docker.js";
-import { loadTool, resolveTemplate, resolveConnection, loadConnBundle } from "./tools.js";
+import { loadTool, resolveTemplate, resolveConnection, loadConnBundle, binTokens } from "./tools.js";
 import { imageTag, runArgs } from "./docker.js";
 import { readInstallState } from "./installer.js";
 import type { InvokeResult } from "./invoke.js";
@@ -23,8 +23,7 @@ export async function runCliTool(
   const label = resolveConnection(m.connections ?? [], connection);
   const conn = await loadConnBundle(deps.secrets, toolId, label, m.requires ?? []);
   const ctx = { params, conn };
-  const binTokens = (m.bin ? m.bin.trim().split(/\s+/) : []).map((t) => resolveTemplate(t, ctx));
-  const argv = [...binTokens, ...action.command.map((t) => resolveTemplate(t, ctx))];
+  const argv = [...binTokens(m.bin), ...action.command.map((t) => resolveTemplate(t, ctx))];
   const env = m.materialize?.env ? Object.fromEntries(Object.entries(m.materialize.env).map(([k, v]) => [k, resolveTemplate(v, ctx)])) : conn;
   const networkSpec = m.permissions?.network;
   const isAllowlist = Array.isArray(networkSpec);

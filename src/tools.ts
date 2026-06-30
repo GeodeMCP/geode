@@ -54,6 +54,11 @@ export async function listToolIds(root: string): Promise<string[]> {
   catch { return []; }
 }
 
+/** Splits a tool's `bin` interpreter prefix into argv tokens (static — never template-resolved, so it can't carry a credential onto the process list). */
+export function binTokens(bin: string | undefined): string[] {
+  return bin ? bin.trim().split(/\s+/) : [];
+}
+
 /** Replaces `${params.key}` and `${conn.key}` placeholders, throwing if any reference is unresolved. */
 export function resolveTemplate(input: string, ctx: { params: Record<string, unknown>; conn: Record<string, string> }): string {
   return input.replace(/\$\{(params|conn)\.([\w-]+)\}/g, (_m, ns: string, k: string) => {
