@@ -135,6 +135,7 @@
   .row:hover{background:var(--surface-2);}
   .row .ic{color:var(--faint);width:16px;height:16px;}
   .row .ic.tool{color:var(--emerald-300);}
+  .row.gen .lead span, .row.gen .ic{color:var(--faint);}
   .row.sub{padding-left:38px;}
   .row.active{background:var(--surface);color:var(--text);}
   .row.active .ic{color:var(--text);}

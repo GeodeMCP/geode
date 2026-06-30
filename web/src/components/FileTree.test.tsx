@@ -98,6 +98,25 @@ it("renders a tool icon for a tool manifest row but not for a note row", () => {
   expect(noteRow.querySelector(".ic.tool")).toBeFalsy();
 });
 
+it("dims artifact rows and suppresses their trash button", () => {
+  const artTree: TreeNode[] = [
+    { name: "notes", path: "notes", type: "dir", children: [
+      { name: "a.md", path: "notes/a.md", type: "file" },
+    ] },
+    { name: "artifacts", path: "artifacts", type: "dir", children: [
+      { name: "report.md", path: "artifacts/report.md", type: "file" },
+    ] },
+  ];
+  render(<FileTree tree={artTree} status={{ modified: [], created: [] }} selected={null}
+    onSelect={noop} onCreate={noop} onDelete={noop} />);
+  const artRow = screen.getByLabelText("report.md");
+  expect(artRow.className).toContain("gen");
+  expect(artRow.querySelector(".del-btn")).toBeFalsy();
+  const noteRow = screen.getByLabelText("a.md");
+  expect(noteRow.className).not.toContain("gen");
+  expect(noteRow.querySelector(".del-btn")).toBeTruthy();
+});
+
 it("keeps the new-file row open when blurred with text", () => {
   const { getByText, getByPlaceholderText, queryByPlaceholderText } = render(
     <FileTree tree={[]} status={{ modified: [], created: [] }} selected={null}

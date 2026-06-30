@@ -6,7 +6,6 @@ import { TopBar, type View } from "./components/TopBar";
 import { VaultHome } from "./views/VaultHome";
 import { Connect } from "./views/Connect";
 import { Secrets } from "./views/Secrets";
-import { Artifacts } from "./views/Artifacts";
 
 /** Root application component that handles authentication gating and top-level view routing. */
 export function App() {
@@ -27,7 +26,6 @@ export function App() {
       {view === "Vault" && <VaultHome />}
       {view === "Connect" && <Connect />}
       {view === "Secrets" && <Secrets />}
-      {view === "Artifacts" && <Artifacts />}
     </div>
   );
 }

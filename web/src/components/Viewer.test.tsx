@@ -3,6 +3,7 @@ import { render, cleanup, fireEvent } from "@testing-library/react";
 import { Viewer } from "./Viewer";
 
 vi.mock("./ToolPanel", () => ({ ToolPanel: ({ id }: { id: string }) => <div data-testid="toolpanel">{id}</div> }));
+vi.mock("./ArtifactPanel", () => ({ ArtifactPanel: ({ path }: { path: string }) => <div data-testid="artifactpanel">{path}</div> }));
 
 afterEach(cleanup);
 
@@ -80,6 +81,15 @@ describe("Viewer", () => {
     );
     expect(getByTestId("toolpanel").textContent).toBe("cb");
     expect(container.querySelector(".add")).toBeFalsy();
+  });
+
+  it("renders the ArtifactPanel for an artifact path with no toggle or Edit", () => {
+    const { getByTestId, queryByText } = render(
+      <Viewer {...base} path="artifacts/report.md" content={""} />,
+    );
+    expect(getByTestId("artifactpanel").textContent).toBe("report.md");
+    expect(queryByText("Source")).toBeNull();
+    expect(queryByText("Edit")).toBeNull();
   });
 
   it("opens an internal link target on click", () => {
