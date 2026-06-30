@@ -1,6 +1,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { parse as parseYaml } from "yaml";
+import type { SecretStore } from "./secrets.js";
 
 /** How a tool's actions are executed server-side (the caller never sees the difference). */
 export type ToolType = "http" | "cli" | "mcp";
@@ -67,4 +68,21 @@ export function resolveConnection(connections: ToolConnection[], requested: stri
   if (connections.length === 1) return connections[0].label;
   if (connections.length === 0) return undefined;
   throw new Error(`specify a connection: ${connections.map((c) => c.label).join(", ")}`);
+}
+
+/** Resolves all `requires` secret keys for one connection into a `${conn.X}` map; throws if any is unset. */
+export async function loadConnBundle(store: Pick<SecretStore, "get">, tool: string, label: string | undefined, requires: string[]): Promise<Record<string, string>> {
+  const conn: Record<string, string> = {};
+  for (const key of requires) {
+    const v = label === undefined ? null : await store.get(connRef(tool, label, key));
+    if (v === null) throw new Error(`connection '${label ?? "(none)"}' needs setup for ${tool}: missing ${key}`);
+    conn[key] = v;
+  }
+  return conn;
+}
+
+/** True when every `requires` key for a connection has a stored value. */
+export async function connectionConfigured(store: Pick<SecretStore, "get">, tool: string, label: string, requires: string[]): Promise<boolean> {
+  for (const key of requires) if ((await store.get(connRef(tool, label, key))) === null) return false;
+  return true;
 }
