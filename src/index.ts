@@ -14,7 +14,9 @@ import { createArtifactStore } from "./artifacts.js";
 import { createTranscriptStore } from "./transcripts.js";
 import { createAccountStore } from "./account.js";
 import { invoke } from "./invoke.js";
+import { realDocker } from "./docker.js";
 import { dirname, join } from "node:path";
+import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { mountDashboard } from "./dashboard/index.js";
 import { createOAuth } from "./oauth/tokens.js";
@@ -89,7 +91,7 @@ async function main() {
     artifactsDir: config.artifactsDir,
     baseUrl: config.baseUrl,
     authToken: config.authToken,
-    invoke: (args) => invoke({ root: workspace.root, secrets }, args),
+    invoke: (args) => invoke({ root: workspace.root, secrets, toolsDir: join(homedir(), ".geode", "tools"), docker: realDocker() }, args),
     linkKey: loadOrCreateKey(join(config.secretsDir, "link"), process.env.GEODE_LINK_KEY),
   });
   console.log(`Dashboard enabled at ${config.baseUrl}/`);

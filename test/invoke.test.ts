@@ -50,9 +50,24 @@ test("invalid connection + needs-setup errors", async () => {
   await expect(invoke({ root, secrets: fakeSecrets({}) }, { tool: "demo", action: "ping" })).rejects.toThrow(/needs setup/);
 });
 
-test("cli/mcp executors are inert in 2a", async () => {
+const MCP = `---
+id: mcp1
+name: Mcp
+type: mcp
+description: d
+connections: [{ label: default }]
+actions: { run: { remote_tool: "go" } }
+---
+`;
+
+test("cli invoke without configured deps throws not configured", async () => {
   const root = vaultWith("cli1", CLI);
-  await expect(invoke({ root, secrets: fakeSecrets({}) }, { tool: "cli1", action: "run" })).rejects.toThrow(/executor 'cli' not available yet/);
+  await expect(invoke({ root, secrets: fakeSecrets({}) }, { tool: "cli1", action: "run" })).rejects.toThrow(/not configured/);
+});
+
+test("mcp executor is inert in slice #3b", async () => {
+  const root = vaultWith("mcp1", MCP);
+  await expect(invoke({ root, secrets: fakeSecrets({}) }, { tool: "mcp1", action: "run" })).rejects.toThrow(/executor 'mcp' not available yet/);
 });
 
 test("unknown tool + action errors", async () => {
