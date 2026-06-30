@@ -6,7 +6,7 @@ non-deterministic. It is intentionally **not** part of `npm test`.
 
 Current tool surface: `query` · `remember` · `list_capabilities` · `invoke` (+ the `GET /artifacts/*`
 download route). The vault **prepares/explains**; the **caller executes** via `invoke`; the agent
-never calls integrations and never touches secrets.
+never calls tools and never touches secrets.
 
 Prereqs: a model is reachable (e.g. `ollama serve` with a tool-capable model, or `ANTHROPIC_API_KEY`).
 
@@ -44,33 +44,33 @@ Prereqs: a model is reachable (e.g. `ollama serve` with a tool-capable model, or
 
 ## `list_capabilities` (derived discovery)
 
-8. Call `list_capabilities` (no args) → expect a rendered menu **derived** from integration manifests
-   (`integrations/*/manifest.json`) + OKF frontmatter on recipe/skill/sop pages. On a fresh vault with
-   no integrations and no recipes, expect the empty/"nothing yet" rendering.
+8. Call `list_capabilities` (no args) → expect a rendered menu **derived** from tool manifests
+   (`tools/*/TOOL.md`) + OKF frontmatter on recipe/skill/sop pages. On a fresh vault with
+   no tools and no recipes, expect the empty/"nothing yet" rendering.
 
 ## Secret broker + `invoke` (caller executes; server injects the secret)
 
-9. Add a sample integration to the vault (a copy lives at `examples/integrations/httpbin/`):
+9. Add a sample tool to the vault (a copy lives at `examples/tools/httpbin/`):
    ```bash
-   mkdir -p "$GEODE_WORKSPACE/integrations/httpbin"
-   cp examples/integrations/httpbin/manifest.json "$GEODE_WORKSPACE/integrations/httpbin/manifest.json"
+   mkdir -p "$GEODE_WORKSPACE/tools/httpbin"
+   cp examples/tools/httpbin/TOOL.md "$GEODE_WORKSPACE/tools/httpbin/TOOL.md"
    ```
-   The action `headers` does a `GET https://httpbin.org/headers` injecting
-   `X-Demo: Bearer ${secrets.DEMO_KEY}`.
+   The connection `default` does a `GET https://httpbin.org/headers` injecting
+   `X-Demo: Bearer ${secrets.httpbin__default__DEMO_KEY}`.
 10. Set the secret (hidden prompt; never echoed, never through the agent):
-    `npm run secret -- set DEMO_KEY`  (type any value, e.g. `sk-test-123`), then
-    `npm run secret -- list` → shows `DEMO_KEY`.
-11. Call `query` with `{ "instruction": "How do I call the httpbin integration to echo my headers? Give me the exact invoke call." }`
-    - Expect: the agent reads `integrations/httpbin/manifest.json` and returns an executable plan —
-      the exact `invoke(integration: "httpbin", action: "headers", params: {})` to make. It must
-      **not** read or reveal `DEMO_KEY` (it has no access to secrets).
-12. Call `invoke` with `{ "integration": "httpbin", "action": "headers" }`.
+    `npm run secret -- set httpbin__default__DEMO_KEY`  (type any value, e.g. `sk-test-123`), then
+    `npm run secret -- list` → shows `httpbin__default__DEMO_KEY`.
+11. Call `query` with `{ "instruction": "How do I call the httpbin tool to echo my headers? Give me the exact invoke call." }`
+    - Expect: the agent reads `tools/httpbin/TOOL.md` and returns an executable plan —
+      the exact `invoke(tool: "httpbin", connection: "default", action: "headers", params: {})` to make. It must
+      **not** read or reveal `httpbin__default__DEMO_KEY` (it has no access to secrets).
+12. Call `invoke` with `{ "tool": "httpbin", "connection": "default", "action": "headers" }`.
     - Expect: `status` 200 and a body whose echoed `headers` include `"X-Demo": "Bearer sk-test-123"`,
       proving the server injected the secret into the outbound request.
     - The secret appears only because httpbin echoes the request header; confirm our `InvokeResult`
       doesn't leak it anywhere else.
-13. Call `invoke` with a missing secret (e.g. after `npm run secret -- rm DEMO_KEY`) → expect a clear
-    error naming `DEMO_KEY` and the `npm run secret -- set DEMO_KEY` command. Re-add it afterwards.
+13. Call `invoke` with a missing secret (e.g. after `npm run secret -- rm httpbin__default__DEMO_KEY`) → expect a clear
+    error naming `httpbin__default__DEMO_KEY` and the `npm run secret -- set httpbin__default__DEMO_KEY` command. Re-add it afterwards.
 
 ## Artifacts (download: bearer by default, opt-in signed public URL)
 

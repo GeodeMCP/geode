@@ -14,10 +14,10 @@ Needs a reachable model (`ANTHROPIC_API_KEY` or local Ollama). Build the SPA fir
 
 ## Increment B — ops views (manual)
 
-(Build the SPA first; log in as in Increment A. Set a real integration + secret to exercise testing.)
+(Build the SPA first; log in as in Increment A. Set a real tool + secret to exercise testing.)
 
-8. Click **Capabilities** → see the derived menu (integrations + recipes). Empty vault → "No integrations yet." / "No recipes yet.".
-9. Add a sample integration: `cp examples/integrations/httpbin/manifest.json $GEODE_WORKSPACE/integrations/httpbin/manifest.json` (mkdir first). Click **Integrations** → `httpbin` listed with "0/1 secrets". Open it → see the `headers` action + required `DEMO_KEY` (missing).
+8. Click **Capabilities** → see the derived menu (tools + recipes). Empty vault → "No tools yet." / "No recipes yet.".
+9. Add a sample tool: `cp examples/tools/httpbin/TOOL.md $GEODE_WORKSPACE/tools/httpbin/TOOL.md` (mkdir first). Click **Tools** → `httpbin` listed with "0/1 secrets". Open it → see the `headers` action + required `httpbin__default__DEMO_KEY` (missing).
 10. Click **Secrets → Add secret**, name `DEMO_KEY` → a single-use link appears. Open it in a new tab → the §5.9 auth screen (shows `DEMO_KEY`, no value echoed). Enter a value → "saved to the broker". Reopen the same link → "This link has expired or was already used." (single-use).
 11. Back in **Integrations → httpbin**, the secret now shows "set". Click **Test** on `headers` → a 200 result with the injected header echoed (proves invoke + server-side injection from the dashboard).
 12. Produce an artifact (a `query` that writes to `artifacts/`), then **Artifacts** → see it; **Download** (session-authed) returns the file; **Share link** mints a signed public URL that works without auth.
@@ -30,7 +30,7 @@ Needs a reachable model (`ANTHROPIC_API_KEY` or local Ollama). Build the SPA fir
 14. Select an existing committed note in the tree → it renders as **markdown** (frontmatter shown as a header chip), not an empty panel.
 15. Click **Edit** → edit a line → **Save** → the file shows as a **diff** (uncommitted) → **Commit** → re-selecting shows the updated rendered markdown.
 16. Click **+ New** in the Vault column → name it → a `notes/<slug>.md` OKF stub opens; edit + Save + Commit → it appears in the tree.
-17. With **no integrations** in the vault, the top-bar shows only **Vault** and **Capabilities** (Integrations/Secrets/Artifacts hidden). Add an integration manifest → reload → the tool nav appears.
+17. With **no tools** in the vault, the top-bar shows only **Vault** and **Capabilities** (Tools/Secrets/Artifacts hidden). Add a tool manifest → reload → the tool nav appears.
 18. A write to a forbidden path is rejected (e.g. via devtools `POST /api/file {path:"../x"}` → 400).
 
 ## Connect page (manual)
