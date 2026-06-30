@@ -16,7 +16,8 @@
     "typecheck": "tsc --noEmit",
     "prepare": "husky",
     "eval": "tsx evals/run.ts",
-    "tool": "tsx src/toolCli.ts"
+    "tool": "tsx src/toolCli.ts",
+    "test:docker": "vitest run --config vitest.integration.config.ts"
   },
   "keywords": [],
   "author": "",
