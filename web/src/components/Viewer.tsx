@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { renderMarkdown, splitFrontmatter } from "../markdown";
-import { fileType, prettyJson } from "../fileType";
+import { fileType, prettyJson, toolManifestId } from "../fileType";
 import { resolveLink } from "../links";
 import { CodeEditor } from "./CodeEditor";
 import { ColHead } from "./ColHead";
+import { ToolPanel } from "./ToolPanel";
 
 /** Strips git plumbing header lines from a diff, keeping hunk headers and actual +/- change lines. */
 function cleanDiff(diff: string): string[] {
@@ -44,7 +45,8 @@ export function Viewer({ path, content, diff, dirty, compose, onCommit, onDiscar
     else if (link.kind === "external") { e.preventDefault(); window.open(href, "_blank", "noopener,noreferrer"); }
   };
   const { fm, body } = splitFrontmatter(content);
-  const showToggle = !!path && !editing && !dirty && ft.hasFormatted;
+  const toolId = path ? toolManifestId(path) : null;
+  const showToggle = !!path && !editing && (toolId !== null || (!dirty && ft.hasFormatted));
 
   return (
     <div className="col viewer">
@@ -64,6 +66,10 @@ export function Viewer({ path, content, diff, dirty, compose, onCommit, onDiscar
 
       {editing ? (
         <CodeEditor value={draft} kind={ft.kind} editable onChange={setDraft} onSave={(text) => save(text)} onCancel={() => setEditing(false)} />
+      ) : toolId ? (
+        showSource
+          ? <CodeEditor value={content} kind={ft.kind} editable={false} />
+          : <ToolPanel id={toolId} />
       ) : dirty ? (
         <div className="pre">{(() => {
           const ls = cleanDiff(diff);
