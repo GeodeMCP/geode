@@ -5,7 +5,6 @@ import { Setup } from "./views/Setup";
 import { TopBar, type View } from "./components/TopBar";
 import { VaultHome } from "./views/VaultHome";
 import { Connect } from "./views/Connect";
-import { Tools } from "./views/Tools";
 import { Secrets } from "./views/Secrets";
 import { Artifacts } from "./views/Artifacts";
 
@@ -27,7 +26,6 @@ export function App() {
       <TopBar view={view} onNav={setView} hasTools={hasTools} onLogout={logout} />
       {view === "Vault" && <VaultHome />}
       {view === "Connect" && <Connect />}
-      {view === "Tools" && <Tools />}
       {view === "Secrets" && <Secrets />}
       {view === "Artifacts" && <Artifacts />}
     </div>

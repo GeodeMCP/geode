@@ -2,6 +2,8 @@ import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, cleanup, fireEvent } from "@testing-library/react";
 import { Viewer } from "./Viewer";
 
+vi.mock("./ToolPanel", () => ({ ToolPanel: ({ id }: { id: string }) => <div data-testid="toolpanel">{id}</div> }));
+
 afterEach(cleanup);
 
 const noop = () => {};
@@ -53,6 +55,31 @@ describe("Viewer", () => {
     );
     expect(container.querySelector(".pre")).toBeTruthy();
     expect(container.querySelector(".cm-host")).toBeFalsy();
+  });
+
+  it("renders the ToolPanel for a tool manifest by default (not markdown)", () => {
+    const { container, getByTestId } = render(
+      <Viewer {...base} path="tools/cb/TOOL.md" content={"---\nid: cb\n---\n"} />,
+    );
+    expect(getByTestId("toolpanel").textContent).toBe("cb");
+    expect(container.querySelector(".doc.md")).toBeFalsy();
+  });
+
+  it("shows the raw manifest on the Source toggle, not the ToolPanel", () => {
+    const { container, getByText, queryByTestId } = render(
+      <Viewer {...base} path="tools/cb/TOOL.md" content={"---\nid: cb\n---\nraw"} />,
+    );
+    fireEvent.click(getByText("Source"));
+    expect(queryByTestId("toolpanel")).toBeNull();
+    expect(container.querySelector(".cm-host")).toBeTruthy();
+  });
+
+  it("renders the ToolPanel for a dirty tool manifest (no diff)", () => {
+    const { container, getByTestId } = render(
+      <Viewer {...base} path="tools/cb/TOOL.md" content={"x"} dirty diff={"@@ -1 +1 @@\n+x"} />,
+    );
+    expect(getByTestId("toolpanel").textContent).toBe("cb");
+    expect(container.querySelector(".add")).toBeFalsy();
   });
 
   it("opens an internal link target on click", () => {

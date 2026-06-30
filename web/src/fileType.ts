@@ -29,3 +29,13 @@ export function newFileDraft(input: string): { path: string; draft: string } | n
   if (kind === "json") return { path: p, draft: "{}" };
   return { path: p, draft: "" };
 }
+
+/** Returns the tool id when a path is a tool manifest (`tools/<id>/TOOL.md`), else null. */
+export function toolManifestId(path: string): string | null {
+  const m = /^tools\/([^/]+)\/TOOL\.md$/.exec(path);
+  return m ? m[1] : null;
+}
+/** True when a tree path is anywhere under the `tools/` area (used for the tool icon). */
+export function isToolPath(path: string): boolean {
+  return path === "tools" || path.startsWith("tools/");
+}

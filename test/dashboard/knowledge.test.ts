@@ -15,16 +15,21 @@ beforeEach(() => {
 });
 afterEach(() => { rmSync(root, { recursive: true, force: true }); });
 
-test("buildKnowledgeTree includes knowledge, excludes tools/artifacts/.git", async () => {
+test("buildKnowledgeTree includes knowledge + tools, excludes artifacts/.git", async () => {
   const tree = await buildKnowledgeTree(root);
   const names = tree.map((n) => n.name).sort();
   expect(names).toContain("index.md");
   expect(names).toContain("clients");
-  expect(names).not.toContain("tools");
+  expect(names).toContain("tools");
   expect(names).not.toContain("artifacts");
   const clients = tree.find((n) => n.name === "clients")!;
   expect(clients.type).toBe("dir");
   expect(clients.children!.map((c) => c.path)).toEqual(["clients/x.md"]);
+  const tools = tree.find((n) => n.name === "tools")!;
+  expect(tools.type).toBe("dir");
+  expect(tools.children!.map((c) => c.path)).toEqual(["tools/moneybird"]);
+  const moneybird = tools.children!.find((c) => c.name === "moneybird")!;
+  expect(moneybird.children!.map((c) => c.path)).toEqual(["tools/moneybird/TOOL.md"]);
 });
 
 test("parseStatus splits modified vs created", () => {

@@ -75,6 +75,29 @@ it("creates on Enter and cancels on blur-when-empty", () => {
   expect(queryByPlaceholderText("path/to/note")).toBeNull();
 });
 
+it("renders a tool icon for a tool manifest row but not for a note row", () => {
+  const toolTree: TreeNode[] = [
+    { name: "notes", path: "notes", type: "dir", children: [
+      { name: "a.md", path: "notes/a.md", type: "file" },
+    ] },
+    { name: "tools", path: "tools", type: "dir", children: [
+      { name: "cb", path: "tools/cb", type: "dir", children: [
+        { name: "TOOL.md", path: "tools/cb/TOOL.md", type: "file" },
+      ] },
+    ] },
+  ];
+  const { container } = render(
+    <FileTree tree={toolTree} status={{ modified: [], created: [] }} selected={null}
+      onSelect={noop} onCreate={noop} onDelete={noop} />,
+  );
+  const toolIcon = container.querySelector(".ic.tool");
+  expect(toolIcon).toBeTruthy();
+  const toolRow = screen.getByLabelText("TOOL.md");
+  expect(toolRow.querySelector(".ic.tool")).toBeTruthy();
+  const noteRow = screen.getByLabelText("a.md");
+  expect(noteRow.querySelector(".ic.tool")).toBeFalsy();
+});
+
 it("keeps the new-file row open when blurred with text", () => {
   const { getByText, getByPlaceholderText, queryByPlaceholderText } = render(
     <FileTree tree={[]} status={{ modified: [], created: [] }} selected={null}
