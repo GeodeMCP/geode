@@ -96,7 +96,7 @@ export function makeListCapabilitiesHandler(deps: ListCapabilitiesHandlerDeps) {
 export interface InvokeHandlerDeps {
   invoke: (args: InvokeArgs) => Promise<InvokeResult>;
 }
-/** Creates the MCP tool handler for the invoke tool, which calls an integration action and returns its JSON result. */
+/** Creates the MCP tool handler for the invoke tool, which calls a tool action and returns its JSON result. */
 export function makeInvokeHandler(deps: InvokeHandlerDeps) {
   return async (args: InvokeArgs, _extra: any) => {
     try {

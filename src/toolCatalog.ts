@@ -27,7 +27,7 @@ export const TOOL_CATALOG: ToolDoc[] = [
   {
     name: "list_capabilities",
     description:
-      "List what your Geode vault offers — recipes/skills and integrations with their actions. Cheap; call this to learn what the vault can do before delegating.",
+      "List what your Geode vault offers — recipes/skills and tools with their actions. Cheap; call this to learn what the vault can do before delegating.",
     params: [],
   },
   {

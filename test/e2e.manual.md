@@ -56,7 +56,7 @@ Prereqs: a model is reachable (e.g. `ollama serve` with a tool-capable model, or
    cp examples/tools/httpbin/TOOL.md "$GEODE_WORKSPACE/tools/httpbin/TOOL.md"
    ```
    The connection `default` does a `GET https://httpbin.org/headers` injecting
-   `X-Demo: Bearer ${secrets.httpbin__default__DEMO_KEY}`.
+   `X-Demo: Bearer ${conn.DEMO_KEY}` (resolved from the `default` connection's bundle).
 10. Set the secret (hidden prompt; never echoed, never through the agent):
     `npm run secret -- set httpbin__default__DEMO_KEY`  (type any value, e.g. `sk-test-123`), then
     `npm run secret -- list` → shows `httpbin__default__DEMO_KEY`.

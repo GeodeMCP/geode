@@ -75,7 +75,10 @@ export async function loadConnBundle(store: Pick<SecretStore, "get">, tool: stri
   const conn: Record<string, string> = {};
   for (const key of requires) {
     const v = label === undefined ? null : await store.get(connRef(tool, label, key));
-    if (v === null) throw new Error(`connection '${label ?? "(none)"}' needs setup for ${tool}: missing ${key}`);
+    if (v === null) {
+      const hint = label === undefined ? `missing ${key}` : `run \`npm run secret -- set ${connRef(tool, label, key)}\``;
+      throw new Error(`connection '${label ?? "(none)"}' needs setup for ${tool}: ${hint}`);
+    }
     conn[key] = v;
   }
   return conn;

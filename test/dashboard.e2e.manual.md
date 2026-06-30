@@ -18,8 +18,8 @@ Needs a reachable model (`ANTHROPIC_API_KEY` or local Ollama). Build the SPA fir
 
 8. Click **Capabilities** → see the derived menu (tools + recipes). Empty vault → "No tools yet." / "No recipes yet.".
 9. Add a sample tool: `cp examples/tools/httpbin/TOOL.md $GEODE_WORKSPACE/tools/httpbin/TOOL.md` (mkdir first). Click **Tools** → `httpbin` listed with "0/1 secrets". Open it → see the `headers` action + required `httpbin__default__DEMO_KEY` (missing).
-10. Click **Secrets → Add secret**, name `DEMO_KEY` → a single-use link appears. Open it in a new tab → the §5.9 auth screen (shows `DEMO_KEY`, no value echoed). Enter a value → "saved to the broker". Reopen the same link → "This link has expired or was already used." (single-use).
-11. Back in **Integrations → httpbin**, the secret now shows "set". Click **Test** on `headers` → a 200 result with the injected header echoed (proves invoke + server-side injection from the dashboard).
+10. Click **Secrets → Add secret**, name `httpbin__default__DEMO_KEY` → a single-use link appears. Open it in a new tab → the §5.9 auth screen (shows `httpbin__default__DEMO_KEY`, no value echoed). Enter a value → "saved to the broker". Reopen the same link → "This link has expired or was already used." (single-use).
+11. Back in **Tools → httpbin**, the `default` connection now shows "configured". Click **Test** on `headers` → a 200 result with the injected header echoed (proves invoke + server-side injection from the dashboard).
 12. Produce an artifact (a `query` that writes to `artifacts/`), then **Artifacts** → see it; **Download** (session-authed) returns the file; **Share link** mints a signed public URL that works without auth.
 13. Confirm no secret value is ever shown anywhere in the UI.
 
