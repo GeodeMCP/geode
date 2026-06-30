@@ -15,7 +15,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "prepare": "husky",
-    "eval": "tsx evals/run.ts"
+    "eval": "tsx evals/run.ts",
+    "tool": "tsx src/toolCli.ts"
   },
   "keywords": [],
   "author": "",
