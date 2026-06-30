@@ -13,7 +13,7 @@ import { createRateLimiter } from "./rateLimit.js";
 import { buildKnowledgeTree, parseStatus } from "./knowledge.js";
 import { openSse } from "./sse.js";
 import { deriveCapabilities } from "../capabilities.js";
-import { listIntegrations, getIntegration, listSecrets, listArtifacts } from "./ops.js";
+import { listTools, getTool, listSecrets, listArtifacts } from "./ops.js";
 import { mintSecretLink } from "./secretLinks.js";
 import { TOOL_CATALOG } from "../toolCatalog.js";
 
@@ -142,15 +142,15 @@ export function createApiRouter(deps: ApiDeps): Router {
 
   router.get("/capabilities", async (_req, res) => { res.json(await deriveCapabilities(deps.workspace.root, deps.secrets)); });
 
-  router.get("/integrations", async (_req, res) => { res.json(await listIntegrations(deps.workspace.root, deps.secrets)); });
-  router.get("/integrations/:name", async (req, res) => {
-    if (!SAFE_NAME.test(req.params.name)) { res.status(404).json({ error: "unknown integration" }); return; }
-    try { res.json(await getIntegration(deps.workspace.root, req.params.name, deps.secrets)); }
-    catch { res.status(404).json({ error: "unknown integration" }); }
+  router.get("/tools", async (_req, res) => { res.json(await listTools(deps.workspace.root, deps.secrets)); });
+  router.get("/tools/:id", async (req, res) => {
+    if (!SAFE_NAME.test(req.params.id)) { res.status(404).json({ error: "unknown tool" }); return; }
+    try { res.json(await getTool(deps.workspace.root, req.params.id, deps.secrets)); }
+    catch { res.status(404).json({ error: "unknown tool" }); }
   });
-  router.post("/integrations/:name/test", async (req, res) => {
-    if (!SAFE_NAME.test(req.params.name)) { res.status(404).json({ error: "unknown integration" }); return; }
-    try { res.json(await deps.invoke({ tool: req.params.name, action: String(req.body?.action ?? ""), connection: req.body?.connection, params: req.body?.params ?? {} })); }
+  router.post("/tools/:id/test", async (req, res) => {
+    if (!SAFE_NAME.test(req.params.id)) { res.status(404).json({ error: "unknown tool" }); return; }
+    try { res.json(await deps.invoke({ tool: req.params.id, action: String(req.body?.action ?? ""), connection: req.body?.connection, params: req.body?.params ?? {} })); }
     catch (e) { res.status(400).json({ error: e instanceof Error ? e.message : String(e) }); }
   });
 

@@ -1,48 +1,38 @@
-import { readdir } from "node:fs/promises";
 import { existsSync, readdirSync } from "node:fs";
 import { join, relative, sep } from "node:path";
-import type { SecretStore } from "../secrets.js";
-import { loadIntegration, type IntegrationManifest } from "../integrations.js";
+import { type SecretStore } from "../secrets.js";
+import { listToolIds, loadTool, connectionConfigured, type ToolManifest } from "../tools.js";
 
-/** Flattened view of an integration manifest with secret-set status included. */
-export interface IntegrationView {
-  name: string; type: string; description: string;
-  actions: { name: string; method: string; url: string; description?: string }[];
-  requiredSecrets: { ref: string; set: boolean }[];
+/** Flattened dashboard view of a tool with per-connection configured status. */
+export interface ToolView {
+  id: string; name: string; type: string; description: string;
+  actions: { name: string; description?: string }[];
+  connections: { label: string; description?: string; configured: boolean }[];
+  requires: string[];
 }
 
-/** Maps an integration manifest and the set of already-configured secret refs to a flattened IntegrationView. */
-function toView(m: IntegrationManifest, setRefs: Set<string>): IntegrationView {
-  return {
-    name: m.name, type: m.type ?? "connection", description: m.description ?? "",
-    actions: Object.entries(m.actions ?? {}).map(([name, a]) => ({ name, method: a.method, url: a.url, description: a.description })),
-    requiredSecrets: (m.requires ?? []).map((ref) => ({ ref, set: setRefs.has(ref) })),
-  };
+/** Maps a tool manifest to a ToolView, resolving per-connection configured status from the secret store. */
+async function toView(m: ToolManifest, secrets: Pick<SecretStore, "get">): Promise<ToolView> {
+  const connections = [];
+  for (const c of m.connections ?? []) connections.push({ label: c.label, description: c.description, configured: await connectionConfigured(secrets, m.id, c.label, m.requires ?? []) });
+  return { id: m.id, name: m.name, type: m.type, description: m.description, actions: Object.entries(m.actions).map(([name, a]) => ({ name, description: a.description })), connections, requires: m.requires ?? [] };
 }
 
-/** Reads all integration directories under <root>/integrations and returns their views with secret-set status. */
-export async function listIntegrations(root: string, secrets: Pick<SecretStore, "list">): Promise<IntegrationView[]> {
-  let dirs: string[] = [];
-  try { dirs = (await readdir(join(root, "integrations"), { withFileTypes: true })).filter((e) => e.isDirectory()).map((e) => e.name); }
-  catch { return []; }
-  const setRefs = new Set(await secrets.list());
-  const out: IntegrationView[] = [];
-  for (const name of dirs) {
-    try { out.push(toView(await loadIntegration(root, name), setRefs)); } catch { /* skip malformed */ }
-  }
+/** Reads all tools under <root>/tools and returns their views with connection status. */
+export async function listTools(root: string, secrets: Pick<SecretStore, "get">): Promise<ToolView[]> {
+  const out: ToolView[] = [];
+  for (const id of (await listToolIds(root)).sort()) { try { out.push(await toView(await loadTool(root, id), secrets)); } catch { /* skip malformed */ } }
   return out;
 }
 
-/** Loads a single integration by name and returns its view with secret-set status. */
-export async function getIntegration(root: string, name: string, secrets: Pick<SecretStore, "list">): Promise<IntegrationView> {
-  return toView(await loadIntegration(root, name), new Set(await secrets.list()));
+/** Loads a single tool by id and returns its view. */
+export async function getTool(root: string, id: string, secrets: Pick<SecretStore, "get">): Promise<ToolView> {
+  return toView(await loadTool(root, id), secrets);
 }
 
-/** Lists all stored secret refs and annotates each with the integration names that require it. */
-export async function listSecrets(root: string, secrets: Pick<SecretStore, "list">): Promise<{ ref: string; requiredBy: string[] }[]> {
-  const refs = await secrets.list();
-  const ints = await listIntegrations(root, secrets);
-  return refs.map((ref) => ({ ref, requiredBy: ints.filter((i) => i.requiredSecrets.some((s) => s.ref === ref)).map((i) => i.name) }));
+/** Lists stored secret refs, annotating each with the tool id it belongs to (the part before the first `__`). */
+export async function listSecrets(_root: string, secrets: Pick<SecretStore, "list">): Promise<{ ref: string; requiredBy: string[] }[]> {
+  return (await secrets.list()).map((ref) => ({ ref, requiredBy: ref.includes("__") ? [ref.split("__")[0]] : [] }));
 }
 
 /** Recursively enumerates all files under the artifacts directory, returning their workspace-relative POSIX paths. */
