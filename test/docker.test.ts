@@ -25,11 +25,16 @@ test("buildDockerfile clones the pinned ref and runs install in the image", () =
 });
 
 test("runArgs builds a locked-down docker run argv", () => {
-  const args = runArgs({ tag: "geode-tool/cb:v1", command: ["./cb", "fetch", "--url", "x"], envFile: "/tmp/e", network: "none", memoryMb: 256, cpus: 1, timeoutMs: 30000 });
+  const args = runArgs({ name: "geode-cb-abc123", tag: "geode-tool/cb:v1", command: ["./cb", "fetch", "--url", "x"], envFile: "/tmp/e", network: "none", memoryMb: 256, cpus: 1, timeoutMs: 30000 });
   expect(args).toContain("run");
   expect(args).toContain("--rm");
+  expect(args).toContain("--name"); expect(args).toContain("geode-cb-abc123");
   expect(args).toContain("--network"); expect(args).toContain("none");
   expect(args).toContain("--read-only");
+  expect(args).toContain("--cap-drop"); expect(args).toContain("ALL");
+  expect(args).toContain("--security-opt"); expect(args).toContain("no-new-privileges");
+  expect(args).toContain("--pids-limit"); expect(args).toContain("256");
+  expect(args).toContain("--tmpfs"); expect(args).toContain("/tmp:rw,noexec,nosuid,size=64m");
   expect(args).toContain("--env-file"); expect(args).toContain("/tmp/e");
   expect(args).toContain("--memory"); expect(args).toContain("256m");
   expect(args).toContain("geode-tool/cb:v1");

@@ -45,8 +45,9 @@ materialize:
 - **Install-gate = permissions review.** On install/approve, the owner is shown the requested permissions ("cloakbrowser requests: network to `*.cloak.com`, the `companyB` creds — approve?") and approves. Approval is recorded with the install. Changing `permissions` requires re-approval.
 - **Enforcement (v1):**
   - filesystem / creds / read-only-rootfs / memory / cpu / timeout → **strictly enforced** via `docker run` flags.
-  - network → `none` (`--network none`, default, perfect) OR routed through a small **egress-proxy that allowlists the declared hosts** (HTTP(S)_PROXY in the container). Covers the HTTP(S)-calling majority with real per-host enforcement.
-  - **Honest v1 limitation:** a tool that deliberately bypasses the proxy (raw sockets) is not yet blocked — that needs iptables/IP-allowlist firewalling, deferred to the managed hardening (#3c). Residual risk with the proxy/coarse path: a rogue tool could exfiltrate only the single cred it was handed (the host fs + rest of the store remain unreachable).
+  - network → `none` (`--network none`, default) is the **hard boundary** — strictly enforced, no egress at all. A declared host-allowlist is routed through a small **egress-proxy** (HTTP(S)_PROXY in the container), but is **best-effort only**: with `--network bridge` the container has full outbound IP connectivity, and the proxy constrains *only* clients that honor `HTTP(S)_PROXY` — a tool that ignores the proxy env (or uses raw sockets) reaches any host directly. So treat a host-allowlist as a **soft guardrail**, not a hard limit.
+  - **Deferred to managed hardening (#3c):** real per-host enforcement (an `--internal` Docker network where the proxy is the *sole* route + IP-allowlist firewalling). Until then, the enforced-safe network choices are `none` (no egress) or `any` (explicit, full outbound). Residual risk on the soft path: a rogue tool could exfiltrate the single cred it was handed (the host fs + the rest of the store stay unreachable — those are hard-enforced).
+  - **Container hardening (v1, enforced):** `--cap-drop ALL`, `--security-opt no-new-privileges`, `--pids-limit`, read-only rootfs with a writable `--tmpfs /tmp`, plus `--memory`/`--cpus`. The run timeout kills the *container* (not just the docker client) via `--name` + `docker kill`/`rm`.
 
 ## Install model (owner-gated, Docker image build)
 

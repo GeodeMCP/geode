@@ -1,6 +1,7 @@
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { randomUUID } from "node:crypto";
 import type { SecretStore } from "./secrets.js";
 import type { Docker } from "./docker.js";
 import { loadTool, resolveTemplate, resolveConnection, loadConnBundle } from "./tools.js";
@@ -32,8 +33,14 @@ export async function runCliTool(
   try {
     const proxyEnv = proxy ? { HTTP_PROXY: proxy.url, HTTPS_PROXY: proxy.url } : {};
     const envEntries = { ...env, ...proxyEnv };
+    for (const [k, v] of Object.entries(envEntries)) {
+      if (/[\r\n]/.test(v)) throw new Error(`refusing to run: env value for ${k} contains a newline`);
+    }
     await writeFile(envFile, Object.entries(envEntries).map(([k, v]) => `${k}=${v}`).join("\n"), { mode: 0o600 });
-    const r = await deps.docker.run(runArgs({ tag: imageTag(m), command: command.split(/\s+/), envFile, network, memoryMb: m.limits?.memoryMb ?? 512, cpus: m.limits?.cpus ?? 1, timeoutMs: m.limits?.timeoutMs ?? 60000 }), m.limits?.timeoutMs ?? 60000);
+    const name = `geode-${toolId}-${randomUUID().slice(0, 8)}`;
+    const timeoutMs = m.limits?.timeoutMs ?? 60000;
+    const r = await deps.docker.run(runArgs({ name, tag: imageTag(m), command: command.split(/\s+/), envFile, network, memoryMb: m.limits?.memoryMb ?? 512, cpus: m.limits?.cpus ?? 1, timeoutMs }), { timeoutMs, killName: name });
+    if (r.timedOut) return { status: 124, body: "timed out" };
     let body: unknown = r.stdout; try { body = JSON.parse(r.stdout); } catch { /* keep text */ }
     return { status: r.exitCode, body };
   } finally {

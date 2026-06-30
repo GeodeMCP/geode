@@ -30,6 +30,7 @@ test("runCliTool runs the action's command in a fresh container and returns stdo
   const r = await runCliTool({ root, toolsDir, docker: d, secrets: secrets({ "cb__default__TOKEN": "sek" }) }, "cb", "fetch", { url: "https://x" }, "default");
   expect(r).toEqual({ status: 0, body: { ok: true } });
   expect(ranArgs).toContain("--network"); expect(ranArgs).toContain("none");
+  expect(ranArgs).toContain("--name");
   // command resolved
   expect(ranArgs.join(" ")).toContain("fetch --url https://x");
 });
