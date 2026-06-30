@@ -11,8 +11,8 @@ export interface ToolConnection { label: string; description?: string }
 export interface ToolParam { name: string; required: boolean }
 /** HTTP request shape for an `http`-type action. */
 export interface HttpAction { method: "GET"|"POST"|"PUT"|"PATCH"|"DELETE"; url: string; headers?: Record<string,string>; query?: Record<string,string>; body?: unknown }
-/** One callable action; executor-specific fields vary by tool `type`. */
-export interface ToolAction { description?: string; params?: ToolParam[]; http?: HttpAction; command?: string; remote_tool?: string }
+/** One callable action; executor-specific fields vary by tool `type`. `command` is a per-element argv array, each token template-resolved independently. */
+export interface ToolAction { description?: string; params?: ToolParam[]; http?: HttpAction; command?: string[]; remote_tool?: string }
 /** A vault tool: one manifest, one or more connections, one `invoke` door regardless of executor. */
 export interface ToolManifest {
   id: string; name: string; type: ToolType; description: string;
@@ -41,6 +41,10 @@ export async function loadTool(root: string, id: string): Promise<ToolManifest> 
   if (!m) throw new Error(`tool ${id}: missing frontmatter`);
   const fm = (parseYaml(m[1]) ?? {}) as Partial<ToolManifest>;
   if (!fm.type || !fm.actions) throw new Error(`tool ${id}: frontmatter needs type + actions`);
+  for (const [name, action] of Object.entries(fm.actions)) {
+    if (action.command !== undefined && (!Array.isArray(action.command) || action.command.length === 0 || !action.command.every((t) => typeof t === "string")))
+      throw new Error(`tool ${id}: action "${name}" — command must be a non-empty array of argv tokens (string[]); the space-separated string form was removed`);
+  }
   return { ...fm, id, name: fm.name ?? id, description: fm.description ?? "", type: fm.type, actions: fm.actions, body: m[2] || undefined } as ToolManifest;
 }
 

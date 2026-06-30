@@ -14,7 +14,7 @@ description: d
 image: { base: "node:20-slim" }
 source: { repo: "https://github.com/x/cb", ref: "v1" }
 bin: "./cb"
-actions: { fetch: { command: "fetch" } }
+actions: { fetch: { command: ["fetch"] } }
 ---`;
 function fakeDocker(over: Partial<Docker> = {}): Docker {
   return { available: async () => true, imageExists: async () => false, build: async () => {}, run: async () => ({ exitCode: 0, stdout: "ok", stderr: "" }), removeImage: async () => {}, ...over };

@@ -45,7 +45,7 @@ connections:
 actions:
   send:
     params: [{ name: to, required: true }]
-    command: "send --to \${params.to}"
+    command: ["send", "--to", "\${params.to}"]
 ---
 `;
 
@@ -65,7 +65,7 @@ test("loadTool parses cli frontmatter (source/install/bin/materialize/command)",
   expect(t.runtime).toBe("host");
   expect(t.source?.repo).toContain("github.com");
   expect(t.bin).toBe("./gog");
-  expect(t.actions.send.command).toBe("send --to ${params.to}");
+  expect(t.actions.send.command).toEqual(["send", "--to", "${params.to}"]);
   expect(t.connections?.[0].label).toBe("acme-sales");
 });
 
@@ -113,11 +113,37 @@ limits: { timeoutMs: 30000, memoryMb: 256 }
 source: { repo: "https://github.com/x/cb", ref: "v1" }
 install: ["npm ci"]
 bin: "./cb"
-actions: { fetch: { command: "fetch --url \${params.url}", params: [{ name: url, required: true }] } }
+actions: { fetch: { command: ["fetch", "--url", "\${params.url}"], params: [{ name: url, required: true }] } }
 ---
 `);
   const t = await loadTool(root, "cb");
   expect(t.image?.base).toBe("node:20-slim");
   expect(t.permissions?.network).toEqual(["*.cloak.com"]);
   expect(t.limits?.timeoutMs).toBe(30000);
+});
+
+test("loadTool rejects the old space-separated string command form", async () => {
+  const root = vault();
+  writeTool(root, "legacy", `---
+id: legacy
+name: Legacy
+type: cli
+description: d
+actions: { fetch: { command: "fetch --url x" } }
+---
+`);
+  await expect(loadTool(root, "legacy")).rejects.toThrow(/array of argv tokens/);
+});
+
+test("loadTool rejects an empty command array", async () => {
+  const root = vault();
+  writeTool(root, "empty", `---
+id: empty
+name: Empty
+type: cli
+description: d
+actions: { fetch: { command: [] } }
+---
+`);
+  await expect(loadTool(root, "empty")).rejects.toThrow(/array of argv tokens/);
 });

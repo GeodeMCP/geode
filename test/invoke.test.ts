@@ -30,7 +30,7 @@ name: Cli
 type: cli
 description: d
 connections: [{ label: default }]
-actions: { run: { command: "go" } }
+actions: { run: { command: ["go"] } }
 ---
 `;
 

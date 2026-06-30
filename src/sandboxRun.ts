@@ -22,8 +22,10 @@ export async function runCliTool(
   if (!action?.command) throw new Error(`unknown cli action "${actionName}" on "${toolId}"`);
   const label = resolveConnection(m.connections ?? [], connection);
   const conn = await loadConnBundle(deps.secrets, toolId, label, m.requires ?? []);
-  const command = resolveTemplate(`${m.bin ? m.bin + " " : ""}${action.command}`, { params, conn });
-  const env = m.materialize?.env ? Object.fromEntries(Object.entries(m.materialize.env).map(([k, v]) => [k, resolveTemplate(v, { params, conn })])) : conn;
+  const ctx = { params, conn };
+  const binTokens = (m.bin ? m.bin.trim().split(/\s+/) : []).map((t) => resolveTemplate(t, ctx));
+  const argv = [...binTokens, ...action.command.map((t) => resolveTemplate(t, ctx))];
+  const env = m.materialize?.env ? Object.fromEntries(Object.entries(m.materialize.env).map(([k, v]) => [k, resolveTemplate(v, ctx)])) : conn;
   const networkSpec = m.permissions?.network;
   const isAllowlist = Array.isArray(networkSpec);
   const network = !networkSpec || networkSpec === "none" ? "none" : "bridge";
@@ -39,7 +41,7 @@ export async function runCliTool(
     await writeFile(envFile, Object.entries(envEntries).map(([k, v]) => `${k}=${v}`).join("\n"), { mode: 0o600 });
     const name = `geode-${toolId}-${randomUUID().slice(0, 8)}`;
     const timeoutMs = m.limits?.timeoutMs ?? 60000;
-    const r = await deps.docker.run(runArgs({ name, tag: imageTag(m), command: command.split(/\s+/), envFile, network, memoryMb: m.limits?.memoryMb ?? 512, cpus: m.limits?.cpus ?? 1, timeoutMs }), { timeoutMs, killName: name });
+    const r = await deps.docker.run(runArgs({ name, tag: imageTag(m), command: argv, envFile, network, memoryMb: m.limits?.memoryMb ?? 512, cpus: m.limits?.cpus ?? 1, timeoutMs }), { timeoutMs, killName: name });
     if (r.timedOut) return { status: 124, body: "timed out" };
     let body: unknown = r.stdout; try { body = JSON.parse(r.stdout); } catch { /* keep text */ }
     return { status: r.exitCode, body };

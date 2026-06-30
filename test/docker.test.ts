@@ -7,7 +7,7 @@ const M: ToolManifest = {
   image: { base: "node:20-slim" },
   source: { repo: "https://github.com/x/cb", ref: "v1" },
   install: ["npm ci", "npm run build"], bin: "./cb",
-  actions: { fetch: { command: "fetch --url x" } },
+  actions: { fetch: { command: ["fetch", "--url", "x"] } },
 };
 
 test("imageTag is per id+ref", () => {
