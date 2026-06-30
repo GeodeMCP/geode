@@ -165,7 +165,7 @@ export function buildMcpServer(queryDeps: QueryDeps, opts?: { secrets?: SecretSt
       "invoke",
       {
         description: toolDescription("invoke"),
-        inputSchema: { integration: z.string(), action: z.string(), params: z.record(z.string(), z.any()).optional(), workspace: z.string().optional() },
+        inputSchema: { tool: z.string(), action: z.string(), connection: z.string().optional(), params: z.record(z.string(), z.any()).optional(), workspace: z.string().optional() },
       },
       invokeHandler,
     );

@@ -32,7 +32,7 @@ export interface ApiDeps {
   baseUrl: string;
   authToken: string;
   accounts: AccountStore;
-  invoke: (args: { integration: string; action: string; params?: Record<string, unknown> }) => Promise<{ status: number; body: unknown }>;
+  invoke: (args: { tool: string; action: string; connection?: string; params?: Record<string, unknown> }) => Promise<{ status: number; body: unknown }>;
 }
 
 const SAFE_NAME = /^[A-Za-z0-9_-]+$/;
@@ -150,7 +150,7 @@ export function createApiRouter(deps: ApiDeps): Router {
   });
   router.post("/integrations/:name/test", async (req, res) => {
     if (!SAFE_NAME.test(req.params.name)) { res.status(404).json({ error: "unknown integration" }); return; }
-    try { res.json(await deps.invoke({ integration: req.params.name, action: String(req.body?.action ?? ""), params: req.body?.params ?? {} })); }
+    try { res.json(await deps.invoke({ tool: req.params.name, action: String(req.body?.action ?? ""), connection: req.body?.connection, params: req.body?.params ?? {} })); }
     catch (e) { res.status(400).json({ error: e instanceof Error ? e.message : String(e) }); }
   });
 
