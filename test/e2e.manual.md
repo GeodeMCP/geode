@@ -87,3 +87,11 @@ Prereqs: a model is reachable (e.g. `ollama serve` with a tool-capable model, or
     node snippet using `createArtifactStore(...).mintPublicUrl("report.md")`, or expose it from a tool
     later) and `curl` it → `200`. A tampered `sig` or past `exp` → `403`.
 18. Path traversal is rejected: `curl -H "Authorization: Bearer test-token" "http://localhost:8787/artifacts/../package.json"` → not served (`400`/`404`).
+
+## Onboard a tool via the agent (#2b-1)
+
+1. With the kernel running and an owner signed in, `query` the agent (dashboard chat or an MCP client):
+   `{ "instruction": "Onboard the repo at https://github.com/<a small CLI repo> as a tool." }`
+2. Expect: the agent clones the repo to a temp dir, inspects it, and writes `tools/<id>/TOOL.md` (a `cli` manifest with source/ref/install/bin/actions and a proposed `permissions`). It reports the proposed permissions + "review + Install & trust" and does NOT install or run anything.
+3. Confirm `tools/<id>/TOOL.md` parses: it appears in the dashboard **Tools** tab as a `cli` tool (not installed).
+4. As owner, click **Install & trust** → the #3 Docker build runs; then `invoke` an action.
