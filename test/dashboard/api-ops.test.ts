@@ -17,10 +17,8 @@ async function boot() {
   artDir = mkdtempSync(join(tmpdir(), "geode-apiops-art-"));
   writeFileSync(join(artDir, "report.md"), "hello");
   const ws = createWorkspace(root); await ws.init();
-  mkdirSync(join(root, "integrations", "demo"), { recursive: true });
-  writeFileSync(join(root, "integrations", "demo", "manifest.json"), JSON.stringify({
-    name: "demo", type: "connection", description: "d", requires: ["DEMO_KEY"], actions: { ping: { method: "GET", url: "https://h/p" } },
-  }));
+  mkdirSync(join(root, "tools", "demo"), { recursive: true });
+  writeFileSync(join(root, "tools", "demo", "TOOL.md"), "---\nid: demo\nname: demo\ntype: http\ndescription: d\nrequires: [DEMO_KEY]\nconnections: [{label: default}]\nactions:\n  ping:\n    http: {method: GET, url: \"https://h/p\"}\n---\n");
   const app = express(); app.use(express.json());
   const accounts = createAccountStore(join(root, ".accounts"));
   accounts.createOwner({ email: "owner@test.dev", password: "owner-password-1" });
@@ -41,23 +39,25 @@ const login = async () => (await fetch(`${url}/api/login`, { method: "POST", hea
 beforeEach(async () => { secretRefs.length = 0; await boot(); });
 afterEach(() => { server.close(); rmSync(root, { recursive: true, force: true }); rmSync(artDir, { recursive: true, force: true }); });
 
-test("integrations list/detail compose credential status; test calls invoke", async () => {
+test("tools list/detail shape; test calls invoke", async () => {
   const cookie = await login();
-  const list = await (await fetch(`${url}/api/integrations`, { headers: { cookie } })).json();
-  expect(list[0]).toMatchObject({ name: "demo", type: "connection" });
-  expect(list[0].requiredSecrets).toEqual([{ ref: "DEMO_KEY", set: false }]);
-  const test = await (await fetch(`${url}/api/integrations/demo/test`, { method: "POST", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ action: "ping" }) })).json();
-  expect(test).toEqual({ status: 200, body: { echoed: "ping" } });
+  const list = await (await fetch(`${url}/api/tools`, { headers: { cookie } })).json();
+  expect(list[0]).toMatchObject({ id: "demo", type: "http" });
+  expect(list[0].connections).toEqual([{ label: "default", configured: false }]);
+  const detail = await (await fetch(`${url}/api/tools/demo`, { headers: { cookie } })).json();
+  expect(detail).toMatchObject({ id: "demo", type: "http" });
+  const testResult = await (await fetch(`${url}/api/tools/demo/test`, { method: "POST", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ action: "ping" }) })).json();
+  expect(testResult).toEqual({ status: 200, body: { echoed: "ping" } });
 });
 
-test("secrets: mint link, list requiredBy, delete", async () => {
+test("secrets: mint link, list requiredBy from composite ref, delete", async () => {
   const cookie = await login();
-  secretRefs.push("DEMO_KEY");
+  secretRefs.push("demo__default__DEMO_KEY");
   const sec = await (await fetch(`${url}/api/secrets`, { headers: { cookie } })).json();
-  expect(sec).toEqual([{ ref: "DEMO_KEY", requiredBy: ["demo"] }]);
-  const link = await (await fetch(`${url}/api/secrets/NEW_KEY/link`, { method: "POST", headers: { cookie } })).json();
+  expect(sec).toEqual([{ ref: "demo__default__DEMO_KEY", requiredBy: ["demo"] }]);
+  const link = await (await fetch(`${url}/api/secrets/NEW-KEY/link`, { method: "POST", headers: { cookie } })).json();
   expect(link.url).toContain("/auth/s/");
-  const del = await fetch(`${url}/api/secrets/DEMO_KEY`, { method: "DELETE", headers: { cookie } });
+  const del = await fetch(`${url}/api/secrets/demo__default__DEMO_KEY`, { method: "DELETE", headers: { cookie } });
   expect((await del.json()).ok).toBe(true);
   expect(secretRefs).toEqual([]);
 });
@@ -72,15 +72,9 @@ test("artifacts list + download + public-link", async () => {
   expect(pub.url).toContain("sig=");
 });
 
-test("capabilities renders the derived menu", async () => {
-  const cookie = await login();
-  const cap = await (await fetch(`${url}/api/capabilities`, { headers: { cookie } })).json();
-  expect(cap.integrations.map((i: any) => i.name)).toContain("demo");
-});
-
 test("path-traversal route params are rejected", async () => {
   const cookie = await login();
-  expect((await fetch(`${url}/api/integrations/..%2f..%2fetc`, { headers: { cookie } })).status).toBe(404);
+  expect((await fetch(`${url}/api/tools/..%2f..%2fetc`, { headers: { cookie } })).status).toBe(404);
   expect((await fetch(`${url}/api/secrets/..%2f..%2fX`, { method: "DELETE", headers: { cookie } })).status).toBe(400);
   expect((await fetch(`${url}/api/secrets/..%2fX/link`, { method: "POST", headers: { cookie } })).status).toBe(400);
 });

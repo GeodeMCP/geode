@@ -12,8 +12,7 @@ import { signSession, requireSession, setSessionCookie, clearSessionCookie, sess
 import { createRateLimiter } from "./rateLimit.js";
 import { buildKnowledgeTree, parseStatus } from "./knowledge.js";
 import { openSse } from "./sse.js";
-import { deriveCapabilities } from "../capabilities.js";
-import { listIntegrations, getIntegration, listSecrets, listArtifacts } from "./ops.js";
+import { listTools, getTool, listSecrets, listArtifacts } from "./ops.js";
 import { mintSecretLink } from "./secretLinks.js";
 import { TOOL_CATALOG } from "../toolCatalog.js";
 
@@ -25,14 +24,14 @@ export interface ApiDeps {
   runQuery: (instruction: string, onProgress: (event: ProgressEvent) => void) => Promise<QueryResult>;
   runRemember: (args: RememberArgs, onProgress: (event: ProgressEvent) => void) => Promise<QueryResult>;
   linkKey: Buffer;
-  secrets: Pick<SecretStore, "list" | "delete" | "set">;
+  secrets: Pick<SecretStore, "get" | "list" | "delete" | "set">;
   artifacts: Pick<ArtifactStore, "mintPublicUrl" | "resolve">;
   transcripts: TranscriptStore;
   artifactsDir: string;
   baseUrl: string;
   authToken: string;
   accounts: AccountStore;
-  invoke: (args: { integration: string; action: string; params?: Record<string, unknown> }) => Promise<{ status: number; body: unknown }>;
+  invoke: (args: { tool: string; action: string; connection?: string; params?: Record<string, unknown> }) => Promise<{ status: number; body: unknown }>;
 }
 
 const SAFE_NAME = /^[A-Za-z0-9_-]+$/;
@@ -140,17 +139,15 @@ export function createApiRouter(deps: ApiDeps): Router {
     res.json({ mcpUrl: `${deps.baseUrl}/mcp`, authToken: deps.authToken, tools: TOOL_CATALOG, publicBaseUrl: isLoopback ? null : deps.baseUrl });
   });
 
-  router.get("/capabilities", async (_req, res) => { res.json(await deriveCapabilities(deps.workspace.root)); });
-
-  router.get("/integrations", async (_req, res) => { res.json(await listIntegrations(deps.workspace.root, deps.secrets)); });
-  router.get("/integrations/:name", async (req, res) => {
-    if (!SAFE_NAME.test(req.params.name)) { res.status(404).json({ error: "unknown integration" }); return; }
-    try { res.json(await getIntegration(deps.workspace.root, req.params.name, deps.secrets)); }
-    catch { res.status(404).json({ error: "unknown integration" }); }
+  router.get("/tools", async (_req, res) => { res.json(await listTools(deps.workspace.root, deps.secrets)); });
+  router.get("/tools/:id", async (req, res) => {
+    if (!SAFE_NAME.test(req.params.id)) { res.status(404).json({ error: "unknown tool" }); return; }
+    try { res.json(await getTool(deps.workspace.root, req.params.id, deps.secrets)); }
+    catch { res.status(404).json({ error: "unknown tool" }); }
   });
-  router.post("/integrations/:name/test", async (req, res) => {
-    if (!SAFE_NAME.test(req.params.name)) { res.status(404).json({ error: "unknown integration" }); return; }
-    try { res.json(await deps.invoke({ integration: req.params.name, action: String(req.body?.action ?? ""), params: req.body?.params ?? {} })); }
+  router.post("/tools/:id/test", async (req, res) => {
+    if (!SAFE_NAME.test(req.params.id)) { res.status(404).json({ error: "unknown tool" }); return; }
+    try { res.json(await deps.invoke({ tool: req.params.id, action: String(req.body?.action ?? ""), connection: req.body?.connection, params: req.body?.params ?? {} })); }
     catch (e) { res.status(400).json({ error: e instanceof Error ? e.message : String(e) }); }
   });
 

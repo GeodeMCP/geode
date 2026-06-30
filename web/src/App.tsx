@@ -4,9 +4,8 @@ import { Login } from "./views/Login";
 import { Setup } from "./views/Setup";
 import { TopBar, type View } from "./components/TopBar";
 import { VaultHome } from "./views/VaultHome";
-import { Capabilities } from "./views/Capabilities";
 import { Connect } from "./views/Connect";
-import { Integrations } from "./views/Integrations";
+import { Tools } from "./views/Tools";
 import { Secrets } from "./views/Secrets";
 import { Artifacts } from "./views/Artifacts";
 
@@ -17,7 +16,7 @@ export function App() {
   const [hasTools, setHasTools] = useState(false);
   const refresh = useCallback(() => api.authInfo().then(setAuth).catch(() => setAuth({ mode: "login", authed: false })), []);
   useEffect(() => { refresh(); }, [refresh]);
-  useEffect(() => { if (auth?.authed) api.integrations().then((l) => setHasTools(l.length > 0)).catch(() => {}); }, [auth?.authed]);
+  useEffect(() => { if (auth?.authed) api.tools().then((l) => setHasTools(l.length > 0)).catch(() => {}); }, [auth?.authed]);
   const logout = async () => { await api.logout().catch(() => {}); setHasTools(false); setView("Vault"); refresh(); };
   if (!auth) return null;
   if (!auth.authed) return auth.mode === "setup"
@@ -27,9 +26,8 @@ export function App() {
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
       <TopBar view={view} onNav={setView} hasTools={hasTools} onLogout={logout} />
       {view === "Vault" && <VaultHome />}
-      {view === "Capabilities" && <Capabilities />}
       {view === "Connect" && <Connect />}
-      {view === "Integrations" && <Integrations />}
+      {view === "Tools" && <Tools />}
       {view === "Secrets" && <Secrets />}
       {view === "Artifacts" && <Artifacts />}
     </div>

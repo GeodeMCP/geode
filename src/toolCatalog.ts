@@ -27,16 +27,17 @@ export const TOOL_CATALOG: ToolDoc[] = [
   {
     name: "list_capabilities",
     description:
-      "List what your Geode vault offers — recipes/skills and integrations with their actions. Cheap; call this to learn what the vault can do before delegating.",
+      "List what your Geode vault offers — recipes/skills and tools with their actions. Cheap; call this to learn what the vault can do before delegating.",
     params: [],
   },
   {
     name: "invoke",
     description:
-      "Run one action of an integration in your Geode vault — you (the caller) execute it; the server injects the required secret. First ask `query` for the plan (or read the integration manifest) to learn the action + params.",
+      "Run one action of a tool in your Geode vault — you (the caller) execute it; the server injects the chosen connection's secret. First ask `query` for the plan (or read the tool's TOOL.md) to learn the action + params + which connection.",
     params: [
-      { name: "integration", type: "string", required: true },
+      { name: "tool", type: "string", required: true },
       { name: "action", type: "string", required: true },
+      { name: "connection", type: "string", required: false },
       { name: "params", type: "object", required: false },
     ],
   },

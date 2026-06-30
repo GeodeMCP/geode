@@ -21,7 +21,7 @@ export interface Workspace {
 
 /** Creates a Workspace backed by a Git repository at the given root, with symlink-safe path resolution that blocks traversal outside the vault. */
 export function createWorkspace(root: string): Workspace {
-  const HIDDEN_FIRST = new Set([".git", "integrations", "artifacts", "node_modules"]);
+  const HIDDEN_FIRST = new Set([".git", "tools", "artifacts", "node_modules"]);
   // Resolve a vault-relative path safely: reject traversal + machinery dirs, and
   // follow symlinks (realpath) so a symlink inside the vault can't point outside it.
   const safeResolve = async (relPath: string): Promise<string> => {

@@ -1,11 +1,13 @@
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
+import type { SecretStore } from "./secrets.js";
+import { listToolIds, loadTool, connectionConfigured } from "./tools.js";
 
 /** Parsed YAML frontmatter fields extracted from a Markdown document. */
 export interface Frontmatter { type?: string; title?: string; description?: string; tags?: string[] }
-/** Aggregated summary of a vault's recipes, skills, and integrations. */
+/** Aggregated summary of a vault's tools and recipes/skills. */
 export interface CapabilitySummary {
-  integrations: { name: string; description: string; actions: string[] }[];
+  tools: { id: string; name: string; type: string; description: string; connections: { label: string; configured: boolean }[]; actions: string[] }[];
   recipes: { title: string; description: string; path: string }[];
   text: string;
 }
@@ -30,27 +32,27 @@ export function parseFrontmatter(md: string): Frontmatter {
   return fm;
 }
 
-/** Recursively collects all Markdown file paths under a directory, skipping .git, node_modules, integrations, and artifacts. */
+/** Recursively collects all Markdown file paths under a directory, skipping .git, node_modules, tools, and artifacts. */
 async function walkMd(dir: string, out: string[]): Promise<void> {
   let entries;
   try { entries = await readdir(dir, { withFileTypes: true }); } catch { return; }
   for (const e of entries) {
-    if (e.name === ".git" || e.name === "node_modules" || e.name === "integrations" || e.name === "artifacts") continue;
+    if (e.name === ".git" || e.name === "node_modules" || e.name === "tools" || e.name === "artifacts") continue;
     const full = join(dir, e.name);
     if (e.isDirectory()) await walkMd(full, out);
     else if (e.name.endsWith(".md")) out.push(full);
   }
 }
 
-/** Scans a vault root directory to derive a summary of its integrations and Markdown-based recipes and skills. */
-export async function deriveCapabilities(root: string): Promise<CapabilitySummary> {
-  const integrations: CapabilitySummary["integrations"] = [];
-  let intDirs: string[] = [];
-  try { intDirs = (await readdir(join(root, "integrations"), { withFileTypes: true })).filter((e) => e.isDirectory()).map((e) => e.name); } catch { /* none */ }
-  for (const name of intDirs) {
+/** Scans a vault root to summarise its tools (with connection status) and Markdown recipes/skills. */
+export async function deriveCapabilities(root: string, secrets: Pick<SecretStore, "get">): Promise<CapabilitySummary> {
+  const tools: CapabilitySummary["tools"] = [];
+  for (const id of (await listToolIds(root)).sort()) {
     try {
-      const m = JSON.parse(await readFile(join(root, "integrations", name, "manifest.json"), "utf8"));
-      integrations.push({ name: m.name ?? name, description: m.description ?? "", actions: Object.keys(m.actions ?? {}) });
+      const m = await loadTool(root, id);
+      const connections = [];
+      for (const c of m.connections ?? []) connections.push({ label: c.label, configured: await connectionConfigured(secrets, m.id, c.label, m.requires ?? []) });
+      tools.push({ id: m.id, name: m.name, type: m.type, description: m.description, connections, actions: Object.keys(m.actions) });
     } catch { /* skip malformed */ }
   }
   const recipes: CapabilitySummary["recipes"] = [];
@@ -58,13 +60,11 @@ export async function deriveCapabilities(root: string): Promise<CapabilitySummar
   await walkMd(root, files);
   for (const f of files) {
     const fm = parseFrontmatter(await readFile(f, "utf8").catch(() => ""));
-    if (fm.type && RECIPE_TYPES.has(fm.type)) {
-      recipes.push({ title: fm.title ?? f, description: fm.description ?? "", path: f.slice(root.length + 1) });
-    }
+    if (fm.type && RECIPE_TYPES.has(fm.type)) recipes.push({ title: fm.title ?? f, description: fm.description ?? "", path: f.slice(root.length + 1) });
   }
   const lines: string[] = ["# Capabilities", "\n## Recipes & skills"];
   lines.push(recipes.length ? recipes.map((r) => `- ${r.title} — ${r.description} (${r.path})`).join("\n") : "(nothing yet)");
-  lines.push("\n## Integrations");
-  lines.push(integrations.length ? integrations.map((i) => `- ${i.name} — ${i.description} · actions: ${i.actions.join(", ")}`).join("\n") : "(nothing yet)");
-  return { integrations, recipes, text: lines.join("\n") };
+  lines.push("\n## Tools");
+  lines.push(tools.length ? tools.map((t) => `- ${t.id} [${t.type}] — ${t.description} · connections: ${t.connections.map((c) => `${c.label}(${c.configured ? "ok" : "needs setup"})`).join(", ") || "—"} · actions: ${t.actions.join(", ")}`).join("\n") : "(nothing yet)");
+  return { tools, recipes, text: lines.join("\n") };
 }

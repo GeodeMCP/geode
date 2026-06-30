@@ -15,9 +15,9 @@ test("every tool has a non-empty description and well-formed params", () => {
   }
 });
 
-test("query takes instruction; list_capabilities takes none; invoke takes integration+action+params", () => {
+test("query takes instruction; list_capabilities takes none; invoke takes tool+action+connection+params", () => {
   const byName = Object.fromEntries(TOOL_CATALOG.map((t) => [t.name, t]));
   expect(byName.query.params.map((p) => p.name)).toEqual(["instruction"]);
   expect(byName.list_capabilities.params).toEqual([]);
-  expect(byName.invoke.params.map((p) => p.name)).toEqual(["integration", "action", "params"]);
+  expect(byName.invoke.params.map((p) => p.name)).toEqual(["tool", "action", "connection", "params"]);
 });

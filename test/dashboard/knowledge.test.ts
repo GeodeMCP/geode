@@ -9,18 +9,18 @@ beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), "geode-kn-"));
   writeFileSync(join(root, "index.md"), "i");
   mkdirSync(join(root, "clients")); writeFileSync(join(root, "clients", "x.md"), "x");
-  mkdirSync(join(root, "integrations", "moneybird"), { recursive: true });
-  writeFileSync(join(root, "integrations", "moneybird", "manifest.json"), "{}");
+  mkdirSync(join(root, "tools", "moneybird"), { recursive: true });
+  writeFileSync(join(root, "tools", "moneybird", "TOOL.md"), "---\nid: m\nname: M\ntype: http\ndescription: d\nactions: {}\n---\n");
   mkdirSync(join(root, "artifacts")); writeFileSync(join(root, "artifacts", "out.md"), "o");
 });
 afterEach(() => { rmSync(root, { recursive: true, force: true }); });
 
-test("buildKnowledgeTree includes knowledge, excludes integrations/artifacts/.git", async () => {
+test("buildKnowledgeTree includes knowledge, excludes tools/artifacts/.git", async () => {
   const tree = await buildKnowledgeTree(root);
   const names = tree.map((n) => n.name).sort();
   expect(names).toContain("index.md");
   expect(names).toContain("clients");
-  expect(names).not.toContain("integrations");
+  expect(names).not.toContain("tools");
   expect(names).not.toContain("artifacts");
   const clients = tree.find((n) => n.name === "clients")!;
   expect(clients.type).toBe("dir");

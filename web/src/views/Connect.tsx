@@ -118,7 +118,7 @@ export function Connect() {
             </div>
           </div>
         ))}
-        <div className="trust">Secrets stay server-side. The agent never reads them and never calls integrations itself — your client runs <code>invoke</code> and the kernel injects the secret into the outbound request.</div>
+        <div className="trust">Secrets stay server-side. The agent never reads them and never calls tools itself — your client runs <code>invoke</code> and the kernel injects the secret into the outbound request.</div>
       </div>
     </div>
   );

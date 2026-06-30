@@ -96,7 +96,7 @@ export function makeListCapabilitiesHandler(deps: ListCapabilitiesHandlerDeps) {
 export interface InvokeHandlerDeps {
   invoke: (args: InvokeArgs) => Promise<InvokeResult>;
 }
-/** Creates the MCP tool handler for the invoke tool, which calls an integration action and returns its JSON result. */
+/** Creates the MCP tool handler for the invoke tool, which calls a tool action and returns its JSON result. */
 export function makeInvokeHandler(deps: InvokeHandlerDeps) {
   return async (args: InvokeArgs, _extra: any) => {
     try {
@@ -146,7 +146,7 @@ export function buildMcpServer(queryDeps: QueryDeps, opts?: { secrets?: SecretSt
     rememberHandler,
   );
 
-  const listCapabilitiesHandler = makeListCapabilitiesHandler({ root: queryDeps.workspace.root, derive: deriveCapabilities });
+  const listCapabilitiesHandler = makeListCapabilitiesHandler({ root: queryDeps.workspace.root, derive: (root) => deriveCapabilities(root, opts?.secrets ?? { get: async () => null }) });
   server.registerTool(
     "list_capabilities",
     {
@@ -165,7 +165,7 @@ export function buildMcpServer(queryDeps: QueryDeps, opts?: { secrets?: SecretSt
       "invoke",
       {
         description: toolDescription("invoke"),
-        inputSchema: { integration: z.string(), action: z.string(), params: z.record(z.string(), z.any()).optional(), workspace: z.string().optional() },
+        inputSchema: { tool: z.string(), action: z.string(), connection: z.string().optional(), params: z.record(z.string(), z.any()).optional(), workspace: z.string().optional() },
       },
       invokeHandler,
     );
