@@ -27,3 +27,11 @@ test("buildSkillsFooter names the resolved onboarding-skill path", () => {
   expect(footer).toContain(resolveSkill(root, "onboard-tool.md"));
   expect(footer.toLowerCase()).toContain("onboard");
 });
+
+import { readFileSync } from "node:fs";
+test("the shipped onboard-tool SOP exists and is substantive", () => {
+  const body = readFileSync(join(kernelSkillsDir(), "onboard-tool.md"), "utf8");
+  expect(body.length).toBeGreaterThan(400);
+  expect(body).toContain("TOOL.md");
+  expect(body.toLowerCase()).toContain("never install");
+});
