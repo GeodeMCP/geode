@@ -61,7 +61,7 @@ async function main() {
 
   const oauth = createOAuth({ signKey: loadOrCreateKey(join(config.secretsDir, "oauth"), process.env.GEODE_OAUTH_KEY), baseUrl: config.baseUrl });
   const app = buildHttpApp(
-    () => buildMcpServer(queryDeps, { secrets, artifacts }),
+    () => buildMcpServer(queryDeps, { secrets, artifacts, toolsDir: join(homedir(), ".geode", "tools"), docker: realDocker() }),
     config.authToken,
     artifacts,
     { verify: (t) => !!oauth.verifyAccessToken(t), resourceMetadataUrl: `${config.baseUrl}/.well-known/oauth-protected-resource` },
