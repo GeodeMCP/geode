@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, type TreeNode, type SseEvent } from "../api";
+import { isArtifactPath, buildArtifactTree } from "../artifacts";
 import { newFileDraft } from "../fileType";
 import { Chat } from "../components/Chat";
 import { FileTree } from "../components/FileTree";
@@ -15,10 +16,17 @@ export function VaultHome() {
   const [running, setRunning] = useState(false);
   const [compose, setCompose] = useState<{ path: string; draft: string } | null>(null);
 
-  const refresh = useCallback(async () => { setTree(await api.tree()); setStatus(await api.status()); }, []);
+  const refresh = useCallback(async () => {
+    const [t, arts] = await Promise.all([api.tree(), api.artifacts()]);
+    setTree(arts.length
+      ? [...t, { name: "artifacts", path: "artifacts", type: "dir" as const, children: buildArtifactTree(arts.map((a) => a.path)) }]
+      : t);
+    setStatus(await api.status());
+  }, []);
   useEffect(() => { refresh(); }, [refresh]);
   useEffect(() => {
     if (!selected) { setContent(""); setDiff(""); return; }
+    if (isArtifactPath(selected)) { setContent(""); setDiff(""); return; }
     api.file(selected).then((f) => setContent(f.content)).catch(() => setContent(""));
     if (status.modified.includes(selected) || status.created.includes(selected)) api.diff(selected).then((d) => setDiff(d.diff));
     else setDiff("");
