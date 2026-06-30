@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { renderMarkdown, splitFrontmatter } from "../markdown";
 import { fileType, prettyJson, toolManifestId } from "../fileType";
 import { resolveLink } from "../links";
+import { isArtifactPath, artifactRelPath } from "../artifacts";
 import { CodeEditor } from "./CodeEditor";
 import { ColHead } from "./ColHead";
 import { ToolPanel } from "./ToolPanel";
+import { ArtifactPanel } from "./ArtifactPanel";
 
 /** Strips git plumbing header lines from a diff, keeping hunk headers and actual +/- change lines. */
 function cleanDiff(diff: string): string[] {
@@ -46,7 +48,8 @@ export function Viewer({ path, content, diff, dirty, compose, onCommit, onDiscar
   };
   const { fm, body } = splitFrontmatter(content);
   const toolId = path ? toolManifestId(path) : null;
-  const showToggle = !!path && !editing && (toolId !== null || (!dirty && ft.hasFormatted));
+  const artifact = path ? isArtifactPath(path) : false;
+  const showToggle = !!path && !editing && !artifact && (toolId !== null || (!dirty && ft.hasFormatted));
 
   return (
     <div className="col viewer">
@@ -59,13 +62,16 @@ export function Viewer({ path, content, diff, dirty, compose, onCommit, onDiscar
             <button className={showSource ? "on" : ""} onClick={() => setShowSource(true)}>Source</button>
           </span>
         )}
+        {artifact && <span className="chip">generated</span>}
         {editing && <><button className="ghost sm" onClick={() => setEditing(false)}>Cancel</button><button className="btn sm" onClick={() => save()}>Save</button></>}
-        {!editing && path && <button className="ghost sm" onClick={startEdit}>Edit</button>}
-        {!editing && dirty && <><button className="ghost sm" onClick={onDiscard}>Discard</button><button className="btn sm" onClick={onCommit}>Commit</button></>}
+        {!editing && path && !artifact && <button className="ghost sm" onClick={startEdit}>Edit</button>}
+        {!editing && dirty && !artifact && <><button className="ghost sm" onClick={onDiscard}>Discard</button><button className="btn sm" onClick={onCommit}>Commit</button></>}
       </ColHead>
 
       {editing ? (
         <CodeEditor value={draft} kind={ft.kind} editable onChange={setDraft} onSave={(text) => save(text)} onCancel={() => setEditing(false)} />
+      ) : artifact ? (
+        <ArtifactPanel path={artifactRelPath(path!)} />
       ) : toolId ? (
         showSource
           ? <CodeEditor value={content} kind={ft.kind} editable={false} />

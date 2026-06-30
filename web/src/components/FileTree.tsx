@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { TreeNode } from "../api";
 import { isToolPath } from "../fileType";
+import { isArtifactPath } from "../artifacts";
 import { ColHead } from "./ColHead";
 
 // Tree glyphs — identical to the marketing site (#ico-folder / #ico-file).
@@ -43,9 +44,10 @@ export function FileTree({ tree, status, selected, onSelect, onCreate, onDelete 
   const render = (nodes: TreeNode[], depth = 0): React.ReactNode => nodes.map((n) => {
     const isDir = n.type === "dir";
     const open = isDir && !collapsed.has(n.path);
+    const gen = isArtifactPath(n.path);
     return (
       <div key={n.path}>
-        <div className={`row ${isDir && open ? "open" : ""} ${selected === n.path ? "active" : ""}`}
+        <div className={`row ${isDir && open ? "open" : ""} ${selected === n.path ? "active" : ""} ${gen ? "gen" : ""}`}
           style={{ paddingLeft: 12 + depth * 14 }}
           onClick={() => (isDir ? toggle(n.path) : onSelect(n.path))}
           aria-label={n.name}>
@@ -63,7 +65,7 @@ export function FileTree({ tree, status, selected, onSelect, onCreate, onDelete 
             <>
               {status.modified.includes(n.path) && <span className="badge mod">modified</span>}
               {status.created.includes(n.path) && <span className="badge new">new</span>}
-              <button className="del-btn" title={`Delete ${n.name}`} onClick={(e) => { stop(e); setConfirming(n.path); }}><TrashIcon /></button>
+              {!gen && <button className="del-btn" title={`Delete ${n.name}`} onClick={(e) => { stop(e); setConfirming(n.path); }}><TrashIcon /></button>}
             </>
           )}
         </div>
