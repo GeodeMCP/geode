@@ -11,7 +11,14 @@ export function ToolPanel({ id }: { id: string }) {
   const [loadError, setLoadError] = useState(false);
 
   const load = () => api.tool(id).then((t) => { setTool(t); setLoadError(false); }).catch(() => setLoadError(true));
-  useEffect(() => { setResult(""); setConfirmInstall(false); setInstallError(""); setTool(null); load(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    let live = true;
+    setResult(""); setConfirmInstall(false); setInstallError(""); setTool(null);
+    api.tool(id)
+      .then((t) => { if (live) { setTool(t); setLoadError(false); } })
+      .catch(() => { if (live) setLoadError(true); });
+    return () => { live = false; };
+  }, [id]);  
 
   const test = async (action: string) => {
     setResult("…");

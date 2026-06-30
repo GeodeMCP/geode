@@ -3,6 +3,8 @@ import { render, cleanup, screen, fireEvent, waitFor } from "@testing-library/re
 import { ToolPanel } from "./ToolPanel";
 import { api } from "../api";
 
+function deferred<T>() { let resolve!: (v: T) => void; const promise = new Promise<T>((r) => resolve = r); return { promise, resolve }; }
+
 vi.mock("../api", () => ({ api: {
   tool: vi.fn(), installTool: vi.fn(), uninstallTool: vi.fn(), testAction: vi.fn(),
 } }));
@@ -38,4 +40,15 @@ it("Test calls the action and shows the result", async () => {
   render(<ToolPanel id="cb" />);
   fireEvent.click(await screen.findByText("Test"));
   await waitFor(() => expect(api.testAction).toHaveBeenCalledWith("cb", "fetch", {}));
+});
+
+it("ignores a stale load when id changes mid-flight", async () => {
+  const defA = deferred<typeof TOOL>(); const defB = deferred<typeof TOOL>();
+  (api.tool as any).mockReturnValueOnce(defA.promise).mockReturnValueOnce(defB.promise);
+  const { rerender } = render(<ToolPanel id="a" />);
+  rerender(<ToolPanel id="b" />);            // second mount-effect run, id=b
+  defB.resolve({ ...TOOL, id: "b", name: "Bravo" });
+  defA.resolve({ ...TOOL, id: "a", name: "Alpha" });  // stale, resolves LAST
+  expect(await screen.findByText("Bravo")).toBeTruthy();
+  expect(screen.queryByText("Alpha")).toBeNull();      // stale never shown
 });
