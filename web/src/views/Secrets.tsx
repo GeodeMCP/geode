@@ -33,7 +33,7 @@ export function Secrets() {
           <input
             ref={inputRef}
             className="input"
-            placeholder="Secret name (e.g. NOTION_TOKEN)"
+            placeholder="<tool>__<connection>__<KEY> (e.g. httpbin__default__DEMO_KEY)"
             value={refValue}
             onChange={(e) => setRefValue(e.currentTarget.value)}
             onKeyDown={(e) => { if (e.key === "Enter") submitAdd(); if (e.key === "Escape") cancelAdd(); }}

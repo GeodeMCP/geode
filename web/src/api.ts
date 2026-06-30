@@ -1,7 +1,7 @@
 /** Represents a node in the vault file tree, either a file or a directory. */
 export interface TreeNode { name: string; path: string; type: "file" | "dir"; children?: TreeNode[] }
-/** Describes an integration including its available actions and required secrets. */
-export interface IntegrationView { name: string; type: string; description: string; actions: { name: string; method: string; url: string; description?: string }[]; requiredSecrets: { ref: string; set: boolean }[] }
+/** Describes a tool: its actions and per-connection configured status. */
+export interface ToolView { id: string; name: string; type: string; description: string; actions: { name: string; description?: string }[]; connections: { label: string; description?: string; configured: boolean }[]; requires: string[] }
 /** A single Server-Sent Event with an event type name and parsed data payload. */
 export interface SseEvent { event: string; data: any }
 /** Documents a single MCP tool with its name, description, and parameter schema. */
@@ -58,10 +58,10 @@ export const api = {
   history: () => json<TranscriptRecord[]>("/api/history"),
   connect: () => json<ConnectInfo>("/api/connect"),
   clearHistory: () => json<{ ok: true }>("/api/history", { method: "DELETE" }),
-  capabilities: () => json<{ integrations: { name: string; description: string; actions: string[] }[]; recipes: { title: string; description: string; path: string }[] }>("/api/capabilities"),
-  integrations: () => json<IntegrationView[]>("/api/integrations"),
-  integration: (name: string) => json<IntegrationView>(`/api/integrations/${encodeURIComponent(name)}`),
-  testAction: (name: string, action: string, params: Record<string, unknown>) => json<{ status: number; body: unknown }>(`/api/integrations/${encodeURIComponent(name)}/test`, { method: "POST", body: JSON.stringify({ action, params }) }),
+  capabilities: () => json<{ tools: { id: string; name: string; type: string; description: string; connections: { label: string; configured: boolean }[]; actions: string[] }[]; recipes: { title: string; description: string; path: string }[] }>("/api/capabilities"),
+  tools: () => json<ToolView[]>("/api/tools"),
+  tool: (id: string) => json<ToolView>(`/api/tools/${encodeURIComponent(id)}`),
+  testAction: (id: string, action: string, params: Record<string, unknown>) => json<{ status: number; body: unknown }>(`/api/tools/${encodeURIComponent(id)}/test`, { method: "POST", body: JSON.stringify({ action, params }) }),
   secrets: () => json<{ ref: string; requiredBy: string[] }[]>("/api/secrets"),
   secretLink: (ref: string) => json<{ url: string }>(`/api/secrets/${encodeURIComponent(ref)}/link`, { method: "POST" }),
   deleteSecret: (ref: string) => json<{ ok: true }>(`/api/secrets/${encodeURIComponent(ref)}`, { method: "DELETE" }),

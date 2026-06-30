@@ -2,7 +2,7 @@ import { useState } from "react";
 import { GemMark } from "./Logo";
 
 /** Ordered list of all navigable dashboard views. */
-export const VIEWS = ["Vault", "Capabilities", "Connect", "Integrations", "Secrets", "Artifacts"] as const;
+export const VIEWS = ["Vault", "Capabilities", "Connect", "Tools", "Secrets", "Artifacts"] as const;
 /** Union type of valid view names derived from VIEWS. */
 export type View = typeof VIEWS[number];
 const ALWAYS = new Set<View>(["Vault", "Capabilities", "Connect"]);
