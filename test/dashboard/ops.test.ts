@@ -4,6 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { listTools, listSecrets, listArtifacts } from "../../src/dashboard/ops.js";
 
+const TOOLS_DIR = mkdtempSync(join(tmpdir(), "geode-tdir-"));
+
 let root: string;
 const fakeSecrets = (refs: string[]) => ({ list: async () => refs, get: async (r: string) => refs.includes(r) ? "v" : null } as any);
 beforeEach(() => {
@@ -27,11 +29,11 @@ beforeEach(() => {
 afterEach(() => { rmSync(root, { recursive: true, force: true }); });
 
 test("listTools composes connection status from the broker", async () => {
-  const none = await listTools(root, fakeSecrets([]));
-  expect(none[0]).toMatchObject({ id: "moneybird", type: "http" });
+  const none = await listTools(root, TOOLS_DIR, fakeSecrets([]));
+  expect(none[0]).toMatchObject({ id: "moneybird", type: "http", installed: false });
   expect(none[0].actions[0]).toMatchObject({ name: "create_invoice", description: "maak factuur" });
   expect(none[0].connections).toEqual([{ label: "default", configured: false }]);
-  const set = await listTools(root, fakeSecrets(["moneybird__default__MONEYBIRD_API_KEY"]));
+  const set = await listTools(root, TOOLS_DIR, fakeSecrets(["moneybird__default__MONEYBIRD_API_KEY"]));
   expect(set[0].connections[0].configured).toBe(true);
 });
 

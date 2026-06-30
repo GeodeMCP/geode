@@ -1,20 +1,26 @@
 import type { Express } from "express";
 import express from "express";
 import { existsSync } from "node:fs";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import { createApiRouter, type ApiDeps } from "./api.js";
 import { verifySecretLink } from "./secretLinks.js";
 import { renderAuthScreen, renderAuthResult } from "./authScreen.js";
+import { realDocker } from "../docker.js";
 
 /** Dependencies for the dashboard mount point, extending ApiDeps with the SPA directory and an optional secure flag. */
-export interface DashboardDeps extends Omit<ApiDeps, "secure"> {
+export interface DashboardDeps extends Omit<ApiDeps, "secure" | "docker" | "toolsDir"> {
   webDir: string;   // absolute path to the built SPA (web/dist)
   secure?: boolean;
+  docker?: ApiDeps["docker"];
+  toolsDir?: string;
 }
 
 /** Mounts /api and the static SPA on the given Express app. Call only when the dashboard is enabled. */
 export function mountDashboard(app: Express, deps: DashboardDeps): void {
-  app.use("/api", createApiRouter({ ...deps, secure: deps.secure ?? false }));
+  const docker = deps.docker ?? realDocker();
+  const toolsDir = deps.toolsDir ?? join(homedir(), ".geode", "tools");
+  app.use("/api", createApiRouter({ ...deps, secure: deps.secure ?? false, docker, toolsDir }));
 
   const authRouter = express.Router();
   authRouter.use(express.urlencoded({ extended: false }));

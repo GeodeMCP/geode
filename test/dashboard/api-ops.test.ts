@@ -7,6 +7,15 @@ import { join } from "node:path";
 import { createApiRouter } from "../../src/dashboard/api.js";
 import { createWorkspace } from "../../src/workspace.js";
 import { createAccountStore } from "../../src/account.js";
+import type { Docker } from "../../src/docker.js";
+
+const stubDocker: Docker = {
+  available: async () => false,
+  imageExists: async () => false,
+  build: async () => {},
+  run: async () => ({ exitCode: 0, stdout: "", stderr: "" }),
+  removeImage: async () => {},
+};
 
 let server: Server; let url: string; let root: string; let artDir: string;
 const KEY = Buffer.from("k".repeat(32));
@@ -31,6 +40,8 @@ async function boot() {
     artifactsDir: artDir, baseUrl: "http://h", authToken: "test-token",
     accounts,
     invoke: async (a: any) => ({ status: 200, body: { echoed: a.action } }),
+    docker: stubDocker,
+    toolsDir: root,
   }));
   await new Promise<void>((r) => { server = app.listen(0, () => { url = `http://localhost:${(server.address() as any).port}`; r(); }); });
 }

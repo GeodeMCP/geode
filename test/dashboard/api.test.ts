@@ -8,6 +8,15 @@ import { createApiRouter } from "../../src/dashboard/api.js";
 import { createWorkspace } from "../../src/workspace.js";
 import { createTranscriptStore } from "../../src/transcripts.js";
 import { createAccountStore } from "../../src/account.js";
+import type { Docker } from "../../src/docker.js";
+
+const stubDocker: Docker = {
+  available: async () => false,
+  imageExists: async () => false,
+  build: async () => {},
+  run: async () => ({ exitCode: 0, stdout: "", stderr: "" }),
+  removeImage: async () => {},
+};
 
 let server: Server; let url: string; let root: string;
 const KEY = Buffer.from("k".repeat(32));
@@ -37,6 +46,8 @@ async function boot() {
     authToken: "test-token",
     accounts,
     invoke: async () => ({ status: 200, body: {} }),
+    docker: stubDocker,
+    toolsDir: root,
   }));
   await new Promise<void>((r) => { server = app.listen(0, () => { url = `http://localhost:${(server.address() as any).port}`; r(); }); });
 }
@@ -140,6 +151,8 @@ test("an errored query run is still recorded with error + a generated runId", as
     artifacts: {} as any,
     transcripts: createTranscriptStore(join(root2, ".transcripts")),
     artifactsDir: root2, baseUrl: "http://h", accounts: accounts2, invoke: async () => ({ status: 200, body: {} }),
+    docker: stubDocker,
+    toolsDir: root2,
   }));
   const srv2 = await new Promise<Server>((r) => { const s = app2.listen(0, () => r(s)); });
   try {
@@ -184,6 +197,8 @@ test("no-owner kernel: setup needs no cookie, then login switches to the account
     artifacts: {} as any,
     transcripts: createTranscriptStore(join(root3, ".transcripts")),
     artifactsDir: root3, baseUrl: "http://h", accounts: createAccountStore(join(root3, ".accounts")), invoke: async () => ({ status: 200, body: {} }),
+    docker: stubDocker,
+    toolsDir: root3,
   }));
   const srv3 = await new Promise<Server>((r) => { const s = app3.listen(0, () => r(s)); });
   try {
