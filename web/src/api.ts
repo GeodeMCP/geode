@@ -58,7 +58,6 @@ export const api = {
   history: () => json<TranscriptRecord[]>("/api/history"),
   connect: () => json<ConnectInfo>("/api/connect"),
   clearHistory: () => json<{ ok: true }>("/api/history", { method: "DELETE" }),
-  capabilities: () => json<{ tools: { id: string; name: string; type: string; description: string; connections: { label: string; configured: boolean }[]; actions: string[] }[]; recipes: { title: string; description: string; path: string }[] }>("/api/capabilities"),
   tools: () => json<ToolView[]>("/api/tools"),
   tool: (id: string) => json<ToolView>(`/api/tools/${encodeURIComponent(id)}`),
   testAction: (id: string, action: string, params: Record<string, unknown>) => json<{ status: number; body: unknown }>(`/api/tools/${encodeURIComponent(id)}/test`, { method: "POST", body: JSON.stringify({ action, params }) }),

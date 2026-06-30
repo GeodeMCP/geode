@@ -4,7 +4,6 @@ import { Login } from "./views/Login";
 import { Setup } from "./views/Setup";
 import { TopBar, type View } from "./components/TopBar";
 import { VaultHome } from "./views/VaultHome";
-import { Capabilities } from "./views/Capabilities";
 import { Connect } from "./views/Connect";
 import { Tools } from "./views/Tools";
 import { Secrets } from "./views/Secrets";
@@ -27,7 +26,6 @@ export function App() {
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
       <TopBar view={view} onNav={setView} hasTools={hasTools} onLogout={logout} />
       {view === "Vault" && <VaultHome />}
-      {view === "Capabilities" && <Capabilities />}
       {view === "Connect" && <Connect />}
       {view === "Tools" && <Tools />}
       {view === "Secrets" && <Secrets />}

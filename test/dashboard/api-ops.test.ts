@@ -72,12 +72,6 @@ test("artifacts list + download + public-link", async () => {
   expect(pub.url).toContain("sig=");
 });
 
-test("capabilities renders the derived menu", async () => {
-  const cookie = await login();
-  const cap = await (await fetch(`${url}/api/capabilities`, { headers: { cookie } })).json();
-  expect(cap.tools.map((t: any) => t.id)).toContain("demo");
-});
-
 test("path-traversal route params are rejected", async () => {
   const cookie = await login();
   expect((await fetch(`${url}/api/tools/..%2f..%2fetc`, { headers: { cookie } })).status).toBe(404);

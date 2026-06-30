@@ -12,7 +12,6 @@ import { signSession, requireSession, setSessionCookie, clearSessionCookie, sess
 import { createRateLimiter } from "./rateLimit.js";
 import { buildKnowledgeTree, parseStatus } from "./knowledge.js";
 import { openSse } from "./sse.js";
-import { deriveCapabilities } from "../capabilities.js";
 import { listTools, getTool, listSecrets, listArtifacts } from "./ops.js";
 import { mintSecretLink } from "./secretLinks.js";
 import { TOOL_CATALOG } from "../toolCatalog.js";
@@ -139,8 +138,6 @@ export function createApiRouter(deps: ApiDeps): Router {
     const isLoopback = /(^https?:\/\/)?(localhost|127\.0\.0\.1|\[::1\])(:|\/|$)/.test(deps.baseUrl);
     res.json({ mcpUrl: `${deps.baseUrl}/mcp`, authToken: deps.authToken, tools: TOOL_CATALOG, publicBaseUrl: isLoopback ? null : deps.baseUrl });
   });
-
-  router.get("/capabilities", async (_req, res) => { res.json(await deriveCapabilities(deps.workspace.root, deps.secrets)); });
 
   router.get("/tools", async (_req, res) => { res.json(await listTools(deps.workspace.root, deps.secrets)); });
   router.get("/tools/:id", async (req, res) => {
