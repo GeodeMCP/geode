@@ -14,6 +14,10 @@ The minimal agent-core slice that lets you **ask the vault agent to onboard a re
 
 **Out (follow-ups):** the constitution **soul-split** (immutable safety-core vs overridable behavioral layer) + routing `AGENTS.md` through the resolver — the *next* slice, same resolver; the full seeded-SOP library + progressive-disclosure index + learning-loop; http/mcp onboarding polish (the SOP mentions them, but the focus/test is `cli`/repo); a dedicated "Onboard" UI (reuse `query`/chat).
 
+**#2b-1 does NOT touch the existing vault** — kernel-skills live in the kernel; nothing new is seeded into the vault (only an optional user `skills/` override is read if present).
+
+**Migration note (for the follow-up `AGENTS.md`/soul slice, NOT this one):** existing vaults already have kernel-seeded files (e.g. `AGENTS.md`) committed in git. Once those move to the kernel-default ⊕ vault-override model, the resolver gives a vault file *precedence* — so an untouched old seed would *win over* the new kernel default and block updates (the exact update-trap we're avoiding). The follow-up therefore migrates per file: compare the vault copy to the original seed (by content hash) → identical = untouched → remove it (the kernel default takes over and updates flow); different = the user edited it → keep it (it's their override). **User data files** (`index.md`, `log.md`, notes, `tools/*`, user-authored SOPs) are never kernel defaults and always stay. This is called out here so the follow-up handles existing vaults without clobbering user edits.
+
 ## Principles (locked, from the brainstorm)
 
 - **Mechanism ≠ intelligence.** The kernel provides the *capabilities* + *guardrails*; the agent's *intelligence* (Agent SDK + the declarative install-SOP) figures out how to onboard a given repo. No scripted pipeline.
