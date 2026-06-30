@@ -24,11 +24,11 @@ actions:
     params:
       - name: url
         required: true
-    command: "--url ${params.url}"
+    command: ["--url", "${params.url}"]
   token-check:
     description: Echo the TOKEN env var to confirm credential injection
-    command: "--token"
+    command: ["--token"]
   net-check:
     description: Attempt a network connection (should fail with network none)
-    command: "--net-check"
+    command: ["--net-check"]
 ---

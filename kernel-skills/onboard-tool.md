@@ -18,7 +18,7 @@ Clone the repo into a temp dir (`mktemp -d`, never into the vault) and read its 
 - `install`: the build/setup commands (e.g. `["npm ci", "npm run build"]`).
 - `bin`: the entrypoint to run.
 - `image`: `{ base: "node:20-slim" }` (or `python:3.12-slim`, etc. — match the project).
-- `actions`: the operations to expose; each a `command` template + `params`.
+- `actions`: the operations to expose; each a `command` template + `params`. `command` is an argv array — one token per element, never a single shell string; put an interpolated value like `${params.url}` in its own element.
 - `connections` + `requires`: if it needs auth, declare a connection label and the secret **key names** — NEVER values.
 - `permissions`: the MINIMAL access it needs — `network: none` if it works offline, else the specific hosts (e.g. `["api.x.com"]`); `any` only if unavoidable, and say so. The owner reviews these.
 
@@ -50,7 +50,7 @@ actions:
   fetch:
     description: Fetch a URL, returning the page HTML.
     params: [{ name: url, required: true }]
-    command: "fetch --url ${params.url}"
+    command: ["fetch", "--url", "${params.url}"]
 ---
 Use `invoke(cloakbrowser, fetch, { url })`. Owner installs via "Install & trust".
 ```

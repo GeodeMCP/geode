@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { loadTool } from "./tools.js";
+import { loadTool, binTokens } from "./tools.js";
 import { imageTag, buildDockerfile, runArgs, type Docker } from "./docker.js";
 
 /** Persisted record that a tool is installed. */
@@ -22,7 +22,7 @@ export async function installTool(deps: { root: string; toolsDir: string; docker
   const tag = imageTag(m);
   await deps.docker.build(tag, buildDockerfile(m));
   // smoke: run the bin with no args (must exit 0). `--network none`, no creds.
-  const smoke = await deps.docker.run(runArgs({ name: `geode-smoke-${id}`, tag, command: m.bin ? [m.bin] : [], envFile: "/dev/null", network: "none", timeoutMs: 30000 }), { timeoutMs: 30000 });
+  const smoke = await deps.docker.run(runArgs({ name: `geode-smoke-${id}`, tag, command: binTokens(m.bin), envFile: "/dev/null", network: "none", timeoutMs: 30000 }), { timeoutMs: 30000 });
   if (smoke.exitCode !== 0) throw new Error(`smoke run failed for ${id} (exit ${smoke.exitCode}): ${smoke.stderr.slice(-400)}`);
   const state: InstallState = { id, image: tag, ref: m.source?.ref, permissions: approvedPermissions, approvedAt: new Date().toISOString() };
   await mkdir(join(deps.toolsDir, id), { recursive: true });

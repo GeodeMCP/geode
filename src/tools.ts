@@ -11,8 +11,8 @@ export interface ToolConnection { label: string; description?: string }
 export interface ToolParam { name: string; required: boolean }
 /** HTTP request shape for an `http`-type action. */
 export interface HttpAction { method: "GET"|"POST"|"PUT"|"PATCH"|"DELETE"; url: string; headers?: Record<string,string>; query?: Record<string,string>; body?: unknown }
-/** One callable action; executor-specific fields vary by tool `type`. */
-export interface ToolAction { description?: string; params?: ToolParam[]; http?: HttpAction; command?: string; remote_tool?: string }
+/** One callable action; executor-specific fields vary by tool `type`. `command` is a per-element argv array, each token template-resolved independently. */
+export interface ToolAction { description?: string; params?: ToolParam[]; http?: HttpAction; command?: string[]; remote_tool?: string }
 /** A vault tool: one manifest, one or more connections, one `invoke` door regardless of executor. */
 export interface ToolManifest {
   id: string; name: string; type: ToolType; description: string;
@@ -41,6 +41,10 @@ export async function loadTool(root: string, id: string): Promise<ToolManifest> 
   if (!m) throw new Error(`tool ${id}: missing frontmatter`);
   const fm = (parseYaml(m[1]) ?? {}) as Partial<ToolManifest>;
   if (!fm.type || !fm.actions) throw new Error(`tool ${id}: frontmatter needs type + actions`);
+  for (const [name, action] of Object.entries(fm.actions)) {
+    if (action.command !== undefined && (!Array.isArray(action.command) || action.command.length === 0 || !action.command.every((t) => typeof t === "string")))
+      throw new Error(`tool ${id}: action "${name}" — command must be a non-empty array of argv tokens (string[]); the space-separated string form was removed`);
+  }
   return { ...fm, id, name: fm.name ?? id, description: fm.description ?? "", type: fm.type, actions: fm.actions, body: m[2] || undefined } as ToolManifest;
 }
 
@@ -48,6 +52,11 @@ export async function loadTool(root: string, id: string): Promise<ToolManifest> 
 export async function listToolIds(root: string): Promise<string[]> {
   try { return (await readdir(join(root, "tools"), { withFileTypes: true })).filter((e) => e.isDirectory()).map((e) => e.name); }
   catch { return []; }
+}
+
+/** Splits a tool's `bin` interpreter prefix into argv tokens (static — never template-resolved, so it can't carry a credential onto the process list). */
+export function binTokens(bin: string | undefined): string[] {
+  return bin ? bin.trim().split(/\s+/) : [];
 }
 
 /** Replaces `${params.key}` and `${conn.key}` placeholders, throwing if any reference is unresolved. */
