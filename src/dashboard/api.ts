@@ -15,6 +15,9 @@ import { openSse } from "./sse.js";
 import { listTools, getTool, listSecrets, listArtifacts } from "./ops.js";
 import { mintSecretLink } from "./secretLinks.js";
 import { TOOL_CATALOG } from "../toolCatalog.js";
+import { installTool, uninstallTool } from "../installer.js";
+import { loadTool } from "../tools.js";
+import type { Docker } from "../docker.js";
 
 /** Dependencies injected into the API router, covering auth, workspace, query execution, and storage. */
 export interface ApiDeps {
@@ -32,6 +35,10 @@ export interface ApiDeps {
   authToken: string;
   accounts: AccountStore;
   invoke: (args: { tool: string; action: string; connection?: string; params?: Record<string, unknown> }) => Promise<{ status: number; body: unknown }>;
+  /** Docker interface for cli tool install/uninstall. */
+  docker: Docker;
+  /** Directory where installed cli tool state is stored (e.g. ~/.geode/tools). */
+  toolsDir: string;
 }
 
 const SAFE_NAME = /^[A-Za-z0-9_-]+$/;
@@ -139,11 +146,24 @@ export function createApiRouter(deps: ApiDeps): Router {
     res.json({ mcpUrl: `${deps.baseUrl}/mcp`, authToken: deps.authToken, tools: TOOL_CATALOG, publicBaseUrl: isLoopback ? null : deps.baseUrl });
   });
 
-  router.get("/tools", async (_req, res) => { res.json(await listTools(deps.workspace.root, deps.secrets)); });
+  router.get("/tools", async (_req, res) => { res.json(await listTools(deps.workspace.root, deps.toolsDir, deps.secrets)); });
   router.get("/tools/:id", async (req, res) => {
     if (!SAFE_NAME.test(req.params.id)) { res.status(404).json({ error: "unknown tool" }); return; }
-    try { res.json(await getTool(deps.workspace.root, req.params.id, deps.secrets)); }
+    try { res.json(await getTool(deps.workspace.root, deps.toolsDir, req.params.id, deps.secrets)); }
     catch { res.status(404).json({ error: "unknown tool" }); }
+  });
+  router.post("/tools/:id/install", async (req, res) => {
+    if (!SAFE_NAME.test(req.params.id)) { res.status(404).json({ error: "unknown tool" }); return; }
+    try {
+      const manifest = await loadTool(deps.workspace.root, req.params.id);
+      const state = await installTool({ root: deps.workspace.root, toolsDir: deps.toolsDir, docker: deps.docker }, req.params.id, manifest.permissions ?? {});
+      res.json(state);
+    } catch (e) { res.status(400).json({ error: e instanceof Error ? e.message : String(e) }); }
+  });
+  router.post("/tools/:id/uninstall", async (req, res) => {
+    if (!SAFE_NAME.test(req.params.id)) { res.status(404).json({ error: "unknown tool" }); return; }
+    try { await uninstallTool({ toolsDir: deps.toolsDir, docker: deps.docker }, req.params.id); res.json({ ok: true }); }
+    catch (e) { res.status(400).json({ error: e instanceof Error ? e.message : String(e) }); }
   });
   router.post("/tools/:id/test", async (req, res) => {
     if (!SAFE_NAME.test(req.params.id)) { res.status(404).json({ error: "unknown tool" }); return; }

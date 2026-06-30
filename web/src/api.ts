@@ -1,7 +1,7 @@
 /** Represents a node in the vault file tree, either a file or a directory. */
 export interface TreeNode { name: string; path: string; type: "file" | "dir"; children?: TreeNode[] }
 /** Describes a tool: its actions and per-connection configured status. */
-export interface ToolView { id: string; name: string; type: string; description: string; actions: { name: string; description?: string }[]; connections: { label: string; description?: string; configured: boolean }[]; requires: string[] }
+export interface ToolView { id: string; name: string; type: string; description: string; actions: { name: string; description?: string }[]; connections: { label: string; description?: string; configured: boolean }[]; requires: string[]; installed: boolean; permissions: { network?: unknown; filesystem?: string[] } | undefined }
 /** A single Server-Sent Event with an event type name and parsed data payload. */
 export interface SseEvent { event: string; data: any }
 /** Documents a single MCP tool with its name, description, and parameter schema. */
@@ -60,6 +60,8 @@ export const api = {
   clearHistory: () => json<{ ok: true }>("/api/history", { method: "DELETE" }),
   tools: () => json<ToolView[]>("/api/tools"),
   tool: (id: string) => json<ToolView>(`/api/tools/${encodeURIComponent(id)}`),
+  installTool: (id: string) => json<unknown>(`/api/tools/${encodeURIComponent(id)}/install`, { method: "POST" }),
+  uninstallTool: (id: string) => json<{ ok: true }>(`/api/tools/${encodeURIComponent(id)}/uninstall`, { method: "POST" }),
   testAction: (id: string, action: string, params: Record<string, unknown>) => json<{ status: number; body: unknown }>(`/api/tools/${encodeURIComponent(id)}/test`, { method: "POST", body: JSON.stringify({ action, params }) }),
   secrets: () => json<{ ref: string; requiredBy: string[] }[]>("/api/secrets"),
   secretLink: (ref: string) => json<{ url: string }>(`/api/secrets/${encodeURIComponent(ref)}/link`, { method: "POST" }),

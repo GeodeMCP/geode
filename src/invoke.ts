@@ -8,7 +8,7 @@ export interface InvokeResult { status: number; body: unknown }
 
 /** Loads the tool manifest, resolves the connection bundle, and dispatches the action by executor type. */
 export async function invoke(
-  deps: { root: string; secrets: Pick<SecretStore, "get">; fetchFn?: typeof fetch },
+  deps: { root: string; secrets: Pick<SecretStore, "get">; fetchFn?: typeof fetch; toolsDir?: string; docker?: import("./docker.js").Docker },
   args: InvokeArgs,
 ): Promise<InvokeResult> {
   const manifest = await loadTool(deps.root, args.tool).catch(() => { throw new Error(`unknown tool: ${args.tool}`); });
@@ -17,7 +17,12 @@ export async function invoke(
   const label = resolveConnection(manifest.connections ?? [], args.connection);
   const conn = await loadConnBundle(deps.secrets, args.tool, label, manifest.requires ?? []);
   const params = args.params ?? {};
-  if (manifest.type === "cli" || manifest.type === "mcp") throw new Error(`executor '${manifest.type}' not available yet (slice #3)`);
+  if (manifest.type === "mcp") throw new Error("executor 'mcp' not available yet (slice #3b)");
+  if (manifest.type === "cli") {
+    if (!deps.toolsDir || !deps.docker) throw new Error("cli executor not configured");
+    const { runCliTool } = await import("./sandboxRun.js");
+    return runCliTool({ root: deps.root, toolsDir: deps.toolsDir, docker: deps.docker, secrets: deps.secrets }, args.tool, args.action, params, args.connection);
+  }
   const http = action.http;
   if (!http) throw new Error(`action "${args.action}" has no http definition`);
   const ctx = { params, conn };
