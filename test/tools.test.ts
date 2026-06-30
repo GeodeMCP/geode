@@ -99,3 +99,25 @@ test("resolveConnection: explicit valid/invalid, single default, multi requires 
   expect(() => resolveConnection(many, undefined)).toThrow(/specify a connection/);
   expect(resolveConnection([], undefined)).toBeUndefined();
 });
+
+test("loadTool parses image, permissions and limits", async () => {
+  const root = vault();
+  writeTool(root, "cb", `---
+id: cb
+name: CB
+type: cli
+description: d
+image: { base: "node:20-slim" }
+permissions: { network: ["*.cloak.com"] }
+limits: { timeoutMs: 30000, memoryMb: 256 }
+source: { repo: "https://github.com/x/cb", ref: "v1" }
+install: ["npm ci"]
+bin: "./cb"
+actions: { fetch: { command: "fetch --url \${params.url}", params: [{ name: url, required: true }] } }
+---
+`);
+  const t = await loadTool(root, "cb");
+  expect(t.image?.base).toBe("node:20-slim");
+  expect(t.permissions?.network).toEqual(["*.cloak.com"]);
+  expect(t.limits?.timeoutMs).toBe(30000);
+});
