@@ -105,3 +105,14 @@ test("auto-commit mode checkpoints a dirty tree before the run instead of resett
   expect(ws.calls).not.toContain("reset");
   expect(ws.calls.some((c) => c.startsWith("commit:dashboard-draft: checkpoint before "))).toBe(true);
 });
+
+test("engine receives systemPrompt that includes the resolved onboarding-skill path", async () => {
+  let seenPrompt = "";
+  const engine = async function* (opts: any) {
+    seenPrompt = opts.systemPrompt;
+    yield { type: "result", text: "ok" };
+  };
+  const d = deps({ engine: engine as any });
+  await query(d, "hi");
+  expect(seenPrompt).toContain("onboard-tool.md");
+});

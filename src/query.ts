@@ -4,6 +4,7 @@ import type { Engine, ProgressEvent, Metrics } from "./engine.js";
 import type { EventLog } from "./eventLog.js";
 import type { RunManager } from "./runManager.js";
 import type { Workspace } from "./workspace.js";
+import { buildSkillsFooter } from "./skills.js";
 
 /** Dependencies injected into a query call, including the workspace, engine, and supporting services. */
 export interface QueryDeps {
@@ -68,7 +69,7 @@ export async function query(
       for await (const ev of deps.engine({
         instruction,
         cwd: deps.workspace.root,
-        systemPrompt: deps.systemPrompt,
+        systemPrompt: deps.systemPrompt + buildSkillsFooter(deps.workspace.root),
         model: deps.model,
         abortController,
       })) {
