@@ -146,7 +146,7 @@ export function buildMcpServer(queryDeps: QueryDeps, opts?: { secrets?: SecretSt
     rememberHandler,
   );
 
-  const listCapabilitiesHandler = makeListCapabilitiesHandler({ root: queryDeps.workspace.root, derive: deriveCapabilities });
+  const listCapabilitiesHandler = makeListCapabilitiesHandler({ root: queryDeps.workspace.root, derive: (root) => deriveCapabilities(root, opts?.secrets ?? { get: async () => null }) });
   server.registerTool(
     "list_capabilities",
     {

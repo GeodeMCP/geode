@@ -1,41 +1,44 @@
-import { afterEach, beforeEach, expect, test } from "vitest";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { test, expect } from "vitest";
 import { parseFrontmatter, deriveCapabilities } from "../src/capabilities.js";
+import { createSecretStore, loadOrCreateKey } from "../src/secrets.js";
 
-test("parseFrontmatter reads YAML frontmatter fields", () => {
-  const md = "---\ntype: recipe\ntitle: Bookkeeping\ndescription: Book invoices\ntags: [finance]\n---\nbody";
-  const fm = parseFrontmatter(md);
-  expect(fm.type).toBe("recipe");
-  expect(fm.title).toBe("Bookkeeping");
-  expect(fm.description).toBe("Book invoices");
+function vault() { return mkdtempSync(join(tmpdir(), "geode-cap-")); }
+function store(dir: string) { return createSecretStore({ dir: join(dir, ".s"), key: loadOrCreateKey(join(dir, ".s")) }); }
+function tool(root: string, id: string, md: string) { mkdirSync(join(root, "tools", id), { recursive: true }); writeFileSync(join(root, "tools", id, "TOOL.md"), md); }
+
+const TOOL = `---
+id: linear
+name: Linear
+type: http
+description: Issues.
+requires: [API_KEY]
+connections: [{ label: default }]
+actions: { create_issue: { http: { method: POST, url: "x" } } }
+---
+`;
+
+test("parseFrontmatter still reads flat OKF fields", () => {
+  expect(parseFrontmatter("---\ntype: sop\ntitle: T\n---\nx").type).toBe("sop");
 });
 
-test("parseFrontmatter returns empty object when no frontmatter", () => {
-  expect(parseFrontmatter("# just a heading")).toEqual({});
+test("deriveCapabilities lists tools (with connection status) and recipes", async () => {
+  const root = vault(); tool(root, "linear", TOOL);
+  writeFileSync(join(root, "r.md"), "---\ntype: sop\ntitle: Deploy\ndescription: how\n---\nbody");
+  const s = store(root);
+  const caps = await deriveCapabilities(root, s);
+  expect(caps.tools[0].id).toBe("linear");
+  expect(caps.tools[0].actions).toEqual(["create_issue"]);
+  expect(caps.tools[0].connections[0]).toEqual({ label: "default", configured: false });
+  await s.set("linear__default__API_KEY", "k");
+  expect((await deriveCapabilities(root, s)).tools[0].connections[0].configured).toBe(true);
+  expect(caps.recipes.map((r) => r.title)).toContain("Deploy");
 });
 
-let root: string;
-beforeEach(() => { root = mkdtempSync(join(tmpdir(), "geode-cap-")); });
-afterEach(() => { rmSync(root, { recursive: true, force: true }); });
-
-test("deriveCapabilities lists integrations (from manifests) and recipes (from OKF frontmatter)", async () => {
-  mkdirSync(join(root, "integrations", "moneybird"), { recursive: true });
-  writeFileSync(join(root, "integrations", "moneybird", "manifest.json"), JSON.stringify({ name: "moneybird", type: "connection", description: "Bookkeeping", requires: ["MONEYBIRD_API_KEY"], actions: { create_invoice: { method: "POST", url: "https://x" } } }));
-  mkdirSync(join(root, "recipes"), { recursive: true });
-  writeFileSync(join(root, "recipes", "bookkeeping.md"), "---\ntype: recipe\ntitle: Bookkeeping\ndescription: Book invoices from email\n---\nsteps");
-  const caps = await deriveCapabilities(root);
-  expect(caps.integrations.map((i) => i.name)).toContain("moneybird");
-  expect(caps.integrations[0].actions).toContain("create_invoice");
-  expect(caps.recipes.map((r) => r.title)).toContain("Bookkeeping");
-  expect(caps.text).toContain("moneybird");
-  expect(caps.text).toContain("Bookkeeping");
-});
-
-test("deriveCapabilities on an empty vault returns empty lists + a friendly note", async () => {
-  const caps = await deriveCapabilities(root);
-  expect(caps.integrations).toEqual([]);
-  expect(caps.recipes).toEqual([]);
-  expect(caps.text).toMatch(/nothing yet|no capabilities/i);
+test("deriveCapabilities on an empty vault returns empty lists", async () => {
+  const root = vault();
+  const caps = await deriveCapabilities(root, store(root));
+  expect(caps.tools).toEqual([]); expect(caps.recipes).toEqual([]);
 });

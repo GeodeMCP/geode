@@ -21,6 +21,8 @@ async function boot() {
   writeFileSync(join(root, "integrations", "demo", "manifest.json"), JSON.stringify({
     name: "demo", type: "connection", description: "d", requires: ["DEMO_KEY"], actions: { ping: { method: "GET", url: "https://h/p" } },
   }));
+  mkdirSync(join(root, "tools", "demo"), { recursive: true });
+  writeFileSync(join(root, "tools", "demo", "TOOL.md"), "---\nid: demo\nname: demo\ntype: http\ndescription: d\nrequires: [DEMO_KEY]\nconnections: [{label: default}]\nactions:\n  ping:\n    http: {method: GET, url: \"https://h/p\"}\n---\n");
   const app = express(); app.use(express.json());
   const accounts = createAccountStore(join(root, ".accounts"));
   accounts.createOwner({ email: "owner@test.dev", password: "owner-password-1" });
@@ -75,7 +77,7 @@ test("artifacts list + download + public-link", async () => {
 test("capabilities renders the derived menu", async () => {
   const cookie = await login();
   const cap = await (await fetch(`${url}/api/capabilities`, { headers: { cookie } })).json();
-  expect(cap.integrations.map((i: any) => i.name)).toContain("demo");
+  expect(cap.tools.map((t: any) => t.id)).toContain("demo");
 });
 
 test("path-traversal route params are rejected", async () => {

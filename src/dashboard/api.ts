@@ -25,7 +25,7 @@ export interface ApiDeps {
   runQuery: (instruction: string, onProgress: (event: ProgressEvent) => void) => Promise<QueryResult>;
   runRemember: (args: RememberArgs, onProgress: (event: ProgressEvent) => void) => Promise<QueryResult>;
   linkKey: Buffer;
-  secrets: Pick<SecretStore, "list" | "delete" | "set">;
+  secrets: Pick<SecretStore, "get" | "list" | "delete" | "set">;
   artifacts: Pick<ArtifactStore, "mintPublicUrl" | "resolve">;
   transcripts: TranscriptStore;
   artifactsDir: string;
@@ -140,7 +140,7 @@ export function createApiRouter(deps: ApiDeps): Router {
     res.json({ mcpUrl: `${deps.baseUrl}/mcp`, authToken: deps.authToken, tools: TOOL_CATALOG, publicBaseUrl: isLoopback ? null : deps.baseUrl });
   });
 
-  router.get("/capabilities", async (_req, res) => { res.json(await deriveCapabilities(deps.workspace.root)); });
+  router.get("/capabilities", async (_req, res) => { res.json(await deriveCapabilities(deps.workspace.root, deps.secrets)); });
 
   router.get("/integrations", async (_req, res) => { res.json(await listIntegrations(deps.workspace.root, deps.secrets)); });
   router.get("/integrations/:name", async (req, res) => {
