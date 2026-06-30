@@ -4,7 +4,7 @@ import { join } from "node:path";
 /** Represents a single node in the workspace file tree, either a file or a directory with optional children. */
 export interface TreeNode { name: string; path: string; type: "file" | "dir"; children?: TreeNode[] }
 
-const HIDDEN = new Set([".git", "tools", "artifacts", ".gitignore", "node_modules"]);
+const HIDDEN = new Set([".git", "artifacts", ".gitignore", "node_modules"]);
 
 /** Recursively reads the workspace directory and returns a sorted tree of files and folders, excluding hidden/system entries. */
 export async function buildKnowledgeTree(root: string, rel = ""): Promise<TreeNode[]> {

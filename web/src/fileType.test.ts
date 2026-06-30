@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { fileType, prettyJson, newFileDraft } from "./fileType";
+import { fileType, prettyJson, newFileDraft, toolManifestId, isToolPath } from "./fileType";
 
 describe("fileType", () => {
   it("classifies by extension", () => {
@@ -36,4 +36,17 @@ describe("newFileDraft", () => {
   it("returns null for blank input", () => {
     expect(newFileDraft("   ")).toBeNull();
   });
+});
+
+describe("toolManifestId", () => {
+  it("returns the id for a tool manifest", () => { expect(toolManifestId("tools/cloakbrowser/TOOL.md")).toBe("cloakbrowser"); });
+  it("rejects non-manifest tool paths", () => {
+    expect(toolManifestId("tools/cloakbrowser/other.md")).toBeNull();
+    expect(toolManifestId("tools/TOOL.md")).toBeNull();
+    expect(toolManifestId("notes/TOOL.md")).toBeNull();
+  });
+});
+describe("isToolPath", () => {
+  it("is true under tools/", () => { expect(isToolPath("tools")).toBe(true); expect(isToolPath("tools/x/TOOL.md")).toBe(true); });
+  it("is false elsewhere", () => { expect(isToolPath("notes/a.md")).toBe(false); expect(isToolPath("toolsmith/a")).toBe(false); });
 });
