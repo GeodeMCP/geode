@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { TreeNode } from "../api";
+import { isToolPath } from "../fileType";
 import { ColHead } from "./ColHead";
 
 // Tree glyphs — identical to the marketing site (#ico-folder / #ico-file).
@@ -11,6 +12,11 @@ const FolderIcon = () => (
 const FileIcon = () => (
   <svg className="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinejoin="round">
     <path d="M4 2.5h5l3.2 3.2V13c0 .4-.3.7-.7.7H4c-.4 0-.7-.3-.7-.7V3.2c0-.4.3-.7.7-.7Z" /><path d="M8.8 2.6v3.1h3.1" />
+  </svg>
+);
+const ToolIcon = () => (
+  <svg className="ic tool" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M10.6 2.2a3 3 0 0 0-3.9 3.6L2.5 10a1.4 1.4 0 0 0 2 2l4.2-4.2a3 3 0 0 0 3.6-3.9l-1.8 1.8-1.5-.4-.4-1.5 1.8-1.8Z" />
   </svg>
 );
 const Chevron = () => (
@@ -45,7 +51,7 @@ export function FileTree({ tree, status, selected, onSelect, onCreate, onDelete 
           aria-label={n.name}>
           <span className="lead" style={{ flex: 1 }}>
             {isDir ? <Chevron /> : <span style={{ width: 14, flex: "none" }} />}
-            {isDir ? <FolderIcon /> : <FileIcon />}
+            {isToolPath(n.path) ? <ToolIcon /> : isDir ? <FolderIcon /> : <FileIcon />}
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.name}</span>
           </span>
           {confirming === n.path ? (
