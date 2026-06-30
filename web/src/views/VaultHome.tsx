@@ -17,7 +17,7 @@ export function VaultHome() {
   const [compose, setCompose] = useState<{ path: string; draft: string } | null>(null);
 
   const refresh = useCallback(async () => {
-    const [t, arts] = await Promise.all([api.tree(), api.artifacts()]);
+    const [t, arts] = await Promise.all([api.tree(), api.artifacts().catch(() => [] as { path: string }[])]);
     setTree(arts.length
       ? [...t, { name: "artifacts", path: "artifacts", type: "dir" as const, children: buildArtifactTree(arts.map((a) => a.path)) }]
       : t);
