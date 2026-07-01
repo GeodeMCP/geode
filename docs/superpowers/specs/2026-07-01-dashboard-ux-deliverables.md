@@ -30,7 +30,7 @@ defined enough to be verifiable.
   localStorage (there is currently zero client-side persistence).
   **Verify:** expand 2 folders, refresh → exactly those 2 remain open, the rest collapsed.
 
-- [ ] **D3 — Expand-all / Collapse-all control** · _S_
+- [x] **D3 — Expand-all / Collapse-all control** · _S_
   Control in the FileTree column header (next to `+ New`).
   **Verify:** "Collapse all" collapses every folder in one click; "Expand all" expands every folder in one click.
 

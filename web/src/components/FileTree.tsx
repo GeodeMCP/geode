@@ -7,6 +7,10 @@ import { ColHead } from "./ColHead";
 // Persisted set of expanded folder paths — survives refresh (localStorage).
 const TREE_STATE_KEY = "geode.tree.expanded";
 
+// All directory paths in the tree — used by expand-all.
+const allDirPaths = (nodes: TreeNode[]): string[] =>
+  nodes.flatMap((n) => (n.type === "dir" ? [n.path, ...allDirPaths(n.children ?? [])] : []));
+
 // Tree glyphs — identical to the marketing site (#ico-folder / #ico-file).
 const FolderIcon = () => (
   <svg className="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinejoin="round">
@@ -46,6 +50,7 @@ export function FileTree({ tree, status, selected, onSelect, onCreate, onDelete 
     try { localStorage.setItem(TREE_STATE_KEY, JSON.stringify([...expanded])); } catch { /* ignore */ }
   }, [expanded]);
   const toggle = (p: string) => setExpanded((s) => { const n = new Set(s); if (n.has(p)) n.delete(p); else n.add(p); return n; });
+  const toggleAll = () => setExpanded((s) => (s.size ? new Set<string>() : new Set(allDirPaths(tree))));
   const submitNew = () => { const v = name.trim(); if (!v) return; onCreate(v); setCreating(false); setName(""); };
   const cancelNew = () => { setCreating(false); setName(""); };
   const stop = (e: React.MouseEvent) => e.stopPropagation();
@@ -86,6 +91,7 @@ export function FileTree({ tree, status, selected, onSelect, onCreate, onDelete 
   return (
     <div className="col tree">
       <ColHead title="Vault">
+        <button className="ghost sm" onClick={toggleAll} title={expanded.size ? "Collapse all folders" : "Expand all folders"} style={{ textTransform: "none", letterSpacing: 0 }}>{expanded.size ? "Collapse all" : "Expand all"}</button>
         <button className={`ghost sm${creating ? " on" : ""}`} onClick={() => (creating ? cancelNew() : setCreating(true))} style={{ textTransform: "none", letterSpacing: 0 }}>+ New</button>
       </ColHead>
       {creating && (
