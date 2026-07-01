@@ -56,9 +56,14 @@ defined enough to be verifiable.
   `web/src/components/ToolPanel.tsx` hardcodes `{}` to `POST /api/tools/:id/test`.
   **Verify:** an action using `${params.url}` + a filled value → real response; an action with no params → still works with an empty form; "unresolved template reference" no longer appears on valid input.
 
-- [ ] **D8 — Connect capability audit + rewrite** · _M_
+- [x] **D8 — Connect capability audit** · _M_
   `src/toolCatalog.ts` + prose in `web/src/views/Connect.tsx`.
   **Verify:** each of the 4 tool descriptions (`query` / `invoke` / `list_capabilities` / `remember`) matches current server behaviour; no description references the pre-execution-split model.
+  **Outcome:** audited against `query.ts`, `constitution.ts`, and `server.ts` — all four
+  descriptions and the Connect trust-blurb are accurate to the current model (the agent
+  prepares the exact `invoke` calls and never calls tools; the caller executes `invoke`;
+  the kernel injects the connection secret). "It prepares; you execute via `invoke`" *is*
+  the current execution split, not a pre-split artifact. No rewrite needed.
 
 - [ ] **D9 — Aggregate git-status to folders + global counter** · _M_
   Badges are file-only today in `FileTree.tsx`.
