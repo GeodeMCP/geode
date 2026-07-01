@@ -1,27 +1,36 @@
-import { useEffect, useRef, useState } from "react";
-import { api } from "../api";
-/** Renders the Secrets view listing stored secret references (values never shown) with add-via-one-time-link and delete actions. */
+import { useEffect, useState } from "react";
+import { api, type ToolView } from "../api";
+/** Renders the Secrets view: stored secret refs (values never shown), guided add-via-picker, and delete. */
 export function Secrets() {
   const [items, setItems] = useState<{ ref: string; requiredBy: string[] }[]>([]);
+  const [tools, setTools] = useState<ToolView[]>([]);
   const [link, setLink] = useState<string>("");
   const [adding, setAdding] = useState(false);
-  const [refValue, setRefValue] = useState("");
-  const [refError, setRefError] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [toolId, setToolId] = useState("");
+  const [conn, setConn] = useState("");
+  const [secretKey, setSecretKey] = useState("");
   const refresh = () => api.secrets().then(setItems).catch(() => setItems([]));
-  useEffect(() => { refresh(); }, []);
-  const openAdd = () => { setAdding(true); setRefValue(""); setRefError(""); setTimeout(() => inputRef.current?.focus(), 0); };
-  const cancelAdd = () => { setAdding(false); setRefValue(""); setRefError(""); };
+  useEffect(() => { refresh(); api.tools().then(setTools).catch(() => setTools([])); }, []);
+
+  const tool = tools.find((t) => t.id === toolId);
+  // The ref format is <tool>__<connection>__<KEY> — composed for the user, never hand-typed.
+  const composedRef = toolId && conn && secretKey ? `${toolId}__${conn}__${secretKey}` : "";
+  const openAdd = () => { setAdding(true); setToolId(""); setConn(""); setSecretKey(""); };
+  const cancelAdd = () => { setAdding(false); setToolId(""); setConn(""); setSecretKey(""); };
+  const pickTool = (id: string) => {
+    setToolId(id);
+    const t = tools.find((x) => x.id === id);
+    setConn(t && t.connections.length === 1 ? t.connections[0].label : "");
+    setSecretKey(t && t.requires.length === 1 ? t.requires[0] : "");
+  };
   const submitAdd = async () => {
-    const ref = refValue.trim();
-    if (!ref) { setRefError("Secret name is required."); return; }
-    if (!/^[A-Za-z0-9_-]+$/.test(ref)) { setRefError("Only letters, digits, _ and - are allowed."); return; }
-    setRefError("");
-    const { url } = await api.secretLink(ref);
+    if (!composedRef) return;
+    const { url } = await api.secretLink(composedRef);
     setLink(url);
     cancelAdd();
   };
-  const del = async (ref: string) => { await api.deleteSecret(ref); refresh(); };
+  const del = async (r: string) => { await api.deleteSecret(r); refresh(); };
+
   return (
     <div style={{ overflow: "auto", padding: "24px 28px" }}>
       <div style={{ display: "flex", alignItems: "center" }}>
@@ -30,19 +39,42 @@ export function Secrets() {
       </div>
       {adding && (
         <div className="card" style={{ display: "block", margin: "12px 0" }}>
-          <input
-            ref={inputRef}
-            className="input"
-            placeholder="<tool>__<connection>__<KEY> (e.g. httpbin__default__DEMO_KEY)"
-            value={refValue}
-            onChange={(e) => setRefValue(e.currentTarget.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") submitAdd(); if (e.key === "Escape") cancelAdd(); }}
-          />
-          {refError && <p style={{ color: "var(--amber)", fontSize: 12, margin: "6px 0 0" }}>{refError}</p>}
-          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-            <button className="btn sm" onClick={submitAdd}>Add</button>
-            <button className="ghost sm" onClick={cancelAdd}>Cancel</button>
-          </div>
+          {tools.length === 0 ? (
+            <p style={{ color: "var(--faint)", margin: 0 }}>No tools yet — add a tool first; its connections&apos; secrets appear here.</p>
+          ) : (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+                <label style={{ display: "block" }}>
+                  <span style={{ fontSize: 12, color: "var(--faint)" }}>Tool</span>
+                  <select className="input" value={toolId} onChange={(e) => pickTool(e.currentTarget.value)}>
+                    <option value="">Select…</option>
+                    {tools.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  </select>
+                </label>
+                <label style={{ display: "block" }}>
+                  <span style={{ fontSize: 12, color: "var(--faint)" }}>Connection</span>
+                  <select className="input" value={conn} disabled={!tool} onChange={(e) => setConn(e.currentTarget.value)}>
+                    <option value="">Select…</option>
+                    {tool?.connections.map((c) => <option key={c.label} value={c.label}>{c.label}</option>)}
+                  </select>
+                </label>
+                <label style={{ display: "block" }}>
+                  <span style={{ fontSize: 12, color: "var(--faint)" }}>Key</span>
+                  <select className="input" value={secretKey} disabled={!tool} onChange={(e) => setSecretKey(e.currentTarget.value)}>
+                    <option value="">Select…</option>
+                    {tool?.requires.map((k) => <option key={k} value={k}>{k}</option>)}
+                  </select>
+                </label>
+              </div>
+              {tool && tool.connections.length === 0 && <p style={{ color: "#d9a13a", fontSize: 12, margin: "8px 0 0" }}>This tool has no connections defined.</p>}
+              {tool && tool.requires.length === 0 && <p style={{ color: "var(--faint)", fontSize: 12, margin: "8px 0 0" }}>This tool needs no secrets.</p>}
+              {composedRef && <p style={{ fontFamily: "'Geist Mono', monospace", fontSize: 12, color: "var(--emerald-300)", margin: "10px 0 0" }}>{composedRef}</p>}
+              <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                <button className="btn sm" onClick={submitAdd} disabled={!composedRef}>Add</button>
+                <button className="ghost sm" onClick={cancelAdd}>Cancel</button>
+              </div>
+            </>
+          )}
         </div>
       )}
       {link && <div className="card" style={{ display: "block", margin: "12px 0", borderColor: "rgba(52,211,153,.4)" }}>

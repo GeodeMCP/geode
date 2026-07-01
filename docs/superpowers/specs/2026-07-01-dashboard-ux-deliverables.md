@@ -69,7 +69,7 @@ defined enough to be verifiable.
   Badges are file-only today in `FileTree.tsx`.
   **Verify:** editing `tools/x/TOOL.md` → an indicator also appears on the `tools/` and `x/` folder rows; the Vault tab shows a pending count N; counter = 0 when clean.
 
-- [ ] **D10 — Guided secret-add (happy path)** · _M–L_
+- [x] **D10 — Guided secret-add (happy path)** · _M–L_
   `web/src/views/Secrets.tsx` (currently free-text `<tool>__<connection>__<KEY>`).
   **Verify:** add a secret without typing `__` or knowing the convention — picker: choose tool → choose connection → key name → the app composes the ref; the resulting ref matches the format and links to the correct tool. (Global/tool-less secret = out of scope here.)
 
