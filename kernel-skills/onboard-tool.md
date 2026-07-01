@@ -19,6 +19,7 @@ Clone the repo into a temp dir (`mktemp -d`, never into the vault) and read its 
 - `bin`: the entrypoint to run.
 - `image`: `{ base: "node:20-slim" }` (or `python:3.12-slim`, etc. — match the project).
 - `actions`: the operations to expose; each a `command` template + `params`. `command` is an argv array — one token per element, never a single shell string; put an interpolated value like `${params.url}` in its own element.
+  - **Prefer the tool's documented CLI subcommand** over a hand-written inline interpreter script. If the README / `--help` shows a command for the operation (`tool fetch --url …`), make that the action `command`. Fall back to an inline `python -c "…"` / `node -e "…"` only when the tool exposes no CLI for it — and say so as an assumption in your report. An inline script is a *guess* about the library's API: brittle across versions, and it interpolates `${params.*}` into source code (a wider injection surface) rather than passing them as discrete argv tokens.
 - `connections` + `requires`: if it needs auth, declare a connection label and the secret **key names** — NEVER values.
 - `permissions`: the MINIMAL access it needs — `network: none` if it works offline, else the specific hosts (e.g. `["api.x.com"]`); `any` only if unavoidable, and say so. The owner reviews these.
 
@@ -54,3 +55,5 @@ actions:
 ---
 Use `invoke(cloakbrowser, fetch, { url })`. Owner installs via "Install & trust".
 ```
+
+**Avoid** authoring an action as an inline interpreter script when a CLI exists — prefer `command: ["fetch", "--url", "${params.url}"]` over `command: ["-c", "from cloakbrowser import launch; launch().goto('${params.url}') …"]`. The latter guesses the library API and interpolates an untrusted value into source.
