@@ -65,7 +65,7 @@ defined enough to be verifiable.
   the kernel injects the connection secret). "It prepares; you execute via `invoke`" *is*
   the current execution split, not a pre-split artifact. No rewrite needed.
 
-- [ ] **D9 — Aggregate git-status to folders + global counter** · _M_
+- [x] **D9 — Aggregate git-status to folders + global counter** · _M_
   Badges are file-only today in `FileTree.tsx`.
   **Verify:** editing `tools/x/TOOL.md` → an indicator also appears on the `tools/` and `x/` folder rows; the Vault tab shows a pending count N; counter = 0 when clean.
 

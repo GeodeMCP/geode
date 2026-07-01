@@ -54,6 +54,9 @@ export function FileTree({ tree, status, selected, onSelect, onCreate, onDelete 
   const submitNew = () => { const v = name.trim(); if (!v) return; onCreate(v); setCreating(false); setName(""); };
   const cancelNew = () => { setCreating(false); setName(""); };
   const stop = (e: React.MouseEvent) => e.stopPropagation();
+  const dirtyPaths = [...status.modified, ...status.created];
+  const dirDirty = (p: string) => dirtyPaths.some((f) => f.startsWith(p + "/"));
+  const pending = status.modified.length + status.created.length;
 
   const render = (nodes: TreeNode[], depth = 0): React.ReactNode => nodes.map((n) => {
     const isDir = n.type === "dir";
@@ -79,6 +82,7 @@ export function FileTree({ tree, status, selected, onSelect, onCreate, onDelete 
             <>
               {status.modified.includes(n.path) && <span className="badge mod">modified</span>}
               {status.created.includes(n.path) && <span className="badge new">new</span>}
+              {isDir && dirDirty(n.path) && <span className="dot-mod" title="Uncommitted changes inside" />}
               {!gen && <button className="del-btn" title={`Delete ${n.name}`} onClick={(e) => { stop(e); setConfirming(n.path); }}><TrashIcon /></button>}
             </>
           )}
@@ -90,7 +94,7 @@ export function FileTree({ tree, status, selected, onSelect, onCreate, onDelete 
 
   return (
     <div className="col tree">
-      <ColHead title="Vault">
+      <ColHead title="Vault" note={pending > 0 ? <span style={{ color: "#d9a13a" }}>{pending} pending</span> : undefined}>
         <button className="ghost sm" onClick={toggleAll} title={expanded.size ? "Collapse all folders" : "Expand all folders"} style={{ textTransform: "none", letterSpacing: 0 }}>{expanded.size ? "Collapse all" : "Expand all"}</button>
         <button className={`ghost sm${creating ? " on" : ""}`} onClick={() => (creating ? cancelNew() : setCreating(true))} style={{ textTransform: "none", letterSpacing: 0 }}>+ New</button>
       </ColHead>
