@@ -38,7 +38,7 @@ defined enough to be verifiable.
   `web/src/components/TopBar.tsx` (both are hardcoded literals wired to nothing).
   **Verify:** neither `live` nor `personal-vault` appears in the header. (Making them real = B1, deferred.)
 
-- [ ] **D5 — Breathing room around header buttons** · _S, cosmetic_
+- [x] **D5 — Breathing room around header buttons** · _S, cosmetic_
   `.colhead` / `.colhead-actions` in `web/src/app.css` + inline styles.
   **Verify:** Clear / + New / Edit touch neither the title nor the column edge; ≥12px gap around them. (Visual sign-off by user.)
 
