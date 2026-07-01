@@ -1,7 +1,7 @@
 /** Represents a node in the vault file tree, either a file or a directory. */
 export interface TreeNode { name: string; path: string; type: "file" | "dir"; children?: TreeNode[] }
 /** Describes a tool: its actions and per-connection configured status. */
-export interface ToolView { id: string; name: string; type: string; description: string; actions: { name: string; description?: string }[]; connections: { label: string; description?: string; configured: boolean }[]; requires: string[]; installed: boolean; permissions: { network?: unknown; filesystem?: string[] } | undefined }
+export interface ToolView { id: string; name: string; type: string; description: string; actions: { name: string; description?: string; params: string[] }[]; connections: { label: string; description?: string; configured: boolean }[]; requires: string[]; installed: boolean; permissions: { network?: unknown; filesystem?: string[] } | undefined }
 /** A single Server-Sent Event with an event type name and parsed data payload. */
 export interface SseEvent { event: string; data: any }
 /** Documents a single MCP tool with its name, description, and parameter schema. */

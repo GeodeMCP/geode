@@ -52,7 +52,7 @@ defined enough to be verifiable.
 
 ### Broken / unusable flows
 
-- [ ] **D7 — Test action can send params (real bug)** · _M_
+- [x] **D7 — Test action can send params (real bug)** · _M_
   `web/src/components/ToolPanel.tsx` hardcodes `{}` to `POST /api/tools/:id/test`.
   **Verify:** an action using `${params.url}` + a filled value → real response; an action with no params → still works with an empty form; "unresolved template reference" no longer appears on valid input.
 

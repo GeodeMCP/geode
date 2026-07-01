@@ -5,6 +5,7 @@ import { api, type ToolView } from "../api";
 export function ToolPanel({ id }: { id: string }) {
   const [tool, setTool] = useState<ToolView | null>(null);
   const [result, setResult] = useState("");
+  const [inputs, setInputs] = useState<Record<string, string>>({});
   const [confirmInstall, setConfirmInstall] = useState(false);
   const [busy, setBusy] = useState(false);
   const [installError, setInstallError] = useState("");
@@ -20,9 +21,11 @@ export function ToolPanel({ id }: { id: string }) {
     return () => { live = false; };
   }, [id]);
 
-  const test = async (action: string) => {
+  const test = async (action: string, params: string[]) => {
     setResult("…");
-    try { setResult(JSON.stringify(await api.testAction(id, action, {}), null, 2)); }
+    const values: Record<string, string> = {};
+    for (const p of params) values[p] = inputs[`${action}::${p}`] ?? "";
+    try { setResult(JSON.stringify(await api.testAction(id, action, values), null, 2)); }
     catch (e) { setResult(e instanceof Error ? e.message : String(e)); }
   };
   const install = async () => {
@@ -88,9 +91,22 @@ export function ToolPanel({ id }: { id: string }) {
 
       <div className="eyebrow" style={{ marginTop: 16 }}>Actions</div>
       {tool.actions.map((a) => (
-        <div key={a.name} className="card" style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 8 }}>
-          <span className="fname" style={{ flex: 1 }}>{a.name}</span>
-          <button className="btn sm" onClick={() => test(a.name)}>Test</button>
+        <div key={a.name} className="card" style={{ display: "block", marginBottom: 8 }}>
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <span className="fname" style={{ flex: 1 }}>{a.name}</span>
+            <button className="btn sm" onClick={() => test(a.name, a.params)}>Test</button>
+          </div>
+          {a.params.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
+              {a.params.map((p) => (
+                <label key={p} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span className="fname" style={{ flex: "0 0 120px", color: "var(--faint)" }}>{p}</span>
+                  <input className="input" value={inputs[`${a.name}::${p}`] ?? ""} placeholder={`params.${p}`}
+                    onChange={(e) => setInputs((s) => ({ ...s, [`${a.name}::${p}`]: e.target.value }))} />
+                </label>
+              ))}
+            </div>
+          )}
         </div>
       ))}
       {result && <pre className="pre" style={{ border: "1px solid var(--border)", borderRadius: 10, marginTop: 10, maxHeight: 280 }}>{result}</pre>}

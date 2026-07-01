@@ -1,13 +1,13 @@
 import { existsSync, readdirSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { type SecretStore } from "../secrets.js";
-import { listToolIds, loadTool, connectionConfigured, type ToolManifest } from "../tools.js";
+import { listToolIds, loadTool, connectionConfigured, type ToolManifest, type ToolAction } from "../tools.js";
 import { readInstallState } from "../installer.js";
 
 /** Flattened dashboard view of a tool with per-connection configured status. */
 export interface ToolView {
   id: string; name: string; type: string; description: string;
-  actions: { name: string; description?: string }[];
+  actions: { name: string; description?: string; params: string[] }[];
   connections: { label: string; description?: string; configured: boolean }[];
   requires: string[];
   /** Whether this cli tool has been installed (image built + state recorded). Always false for non-cli tools. */
@@ -16,12 +16,30 @@ export interface ToolView {
   permissions: { network?: unknown; filesystem?: string[] } | undefined;
 }
 
+/** Matches `${params.X}` references (mirrors resolveTemplate's params branch). */
+const PARAMS_REF_RE = /\$\{params\.([\w-]+)\}/g;
+
+/** The param names an action needs: declared `params` plus any `${params.X}` referenced in its http/command template. */
+function actionParams(a: ToolAction): string[] {
+  const names = new Set<string>();
+  for (const p of a.params ?? []) names.add(p.name);
+  const scan = (s: string) => { for (const m of s.matchAll(PARAMS_REF_RE)) names.add(m[1]); };
+  if (a.http) {
+    scan(a.http.url);
+    for (const v of Object.values(a.http.headers ?? {})) scan(v);
+    for (const v of Object.values(a.http.query ?? {})) scan(v);
+    if (a.http.body !== undefined) scan(typeof a.http.body === "string" ? a.http.body : JSON.stringify(a.http.body));
+  }
+  for (const t of a.command ?? []) scan(t);
+  return [...names];
+}
+
 /** Maps a tool manifest to a ToolView, resolving per-connection configured status from the secret store. */
 async function toView(m: ToolManifest, toolsDir: string, secrets: Pick<SecretStore, "get">): Promise<ToolView> {
   const connections = [];
   for (const c of m.connections ?? []) connections.push({ label: c.label, description: c.description, configured: await connectionConfigured(secrets, m.id, c.label, m.requires ?? []) });
   const installState = m.type === "cli" ? await readInstallState(toolsDir, m.id) : null;
-  return { id: m.id, name: m.name, type: m.type, description: m.description, actions: Object.entries(m.actions).map(([name, a]) => ({ name, description: a.description })), connections, requires: m.requires ?? [], installed: installState !== null, permissions: m.permissions };
+  return { id: m.id, name: m.name, type: m.type, description: m.description, actions: Object.entries(m.actions).map(([name, a]) => ({ name, description: a.description, params: actionParams(a) })), connections, requires: m.requires ?? [], installed: installState !== null, permissions: m.permissions };
 }
 
 /** Reads all tools under <root>/tools and returns their views with connection status. */
