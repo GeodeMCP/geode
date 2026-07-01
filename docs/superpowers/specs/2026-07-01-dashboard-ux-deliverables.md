@@ -26,7 +26,7 @@ defined enough to be verifiable.
   `web/src/components/FileTree.tsx` (the `collapsed` set starts empty → all open).
   **Verify:** fresh load of Vault → no folder shows its children until clicked.
 
-- [ ] **D2 — Persist expand/collapse state across refresh** · _S_
+- [x] **D2 — Persist expand/collapse state across refresh** · _S_
   localStorage (there is currently zero client-side persistence).
   **Verify:** expand 2 folders, refresh → exactly those 2 remain open, the rest collapsed.
 

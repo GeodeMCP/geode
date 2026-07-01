@@ -1,8 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { TreeNode } from "../api";
 import { isToolPath } from "../fileType";
 import { isArtifactPath } from "../artifacts";
 import { ColHead } from "./ColHead";
+
+// Persisted set of expanded folder paths — survives refresh (localStorage).
+const TREE_STATE_KEY = "geode.tree.expanded";
 
 // Tree glyphs — identical to the marketing site (#ico-folder / #ico-file).
 const FolderIcon = () => (
@@ -32,10 +35,16 @@ export function FileTree({ tree, status, selected, onSelect, onCreate, onDelete 
   tree: TreeNode[]; status: { modified: string[]; created: string[] }; selected: string | null;
   onSelect: (p: string) => void; onCreate: (path: string) => void; onDelete: (path: string) => void;
 }) {
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState<Set<string>>(() => {
+    try { const raw = localStorage.getItem(TREE_STATE_KEY); return new Set<string>(raw ? JSON.parse(raw) : []); }
+    catch { return new Set<string>(); }
+  });
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const [confirming, setConfirming] = useState<string | null>(null);
+  useEffect(() => {
+    try { localStorage.setItem(TREE_STATE_KEY, JSON.stringify([...expanded])); } catch { /* ignore */ }
+  }, [expanded]);
   const toggle = (p: string) => setExpanded((s) => { const n = new Set(s); if (n.has(p)) n.delete(p); else n.add(p); return n; });
   const submitNew = () => { const v = name.trim(); if (!v) return; onCreate(v); setCreating(false); setName(""); };
   const cancelNew = () => { setCreating(false); setName(""); };
