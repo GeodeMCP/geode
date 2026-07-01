@@ -6,6 +6,7 @@ import type { RunManager } from "./runManager.js";
 import type { Workspace } from "./workspace.js";
 import { buildSkillsFooter } from "./skills.js";
 import { buildOverlay } from "./overlay.js";
+import { buildSandboxSettings, type SandboxPolicy } from "./agentSandbox.js";
 
 /** Dependencies injected into a query call, including the workspace, engine, and supporting services. */
 export interface QueryDeps {
@@ -14,6 +15,7 @@ export interface QueryDeps {
   runManager: RunManager;
   eventLog: EventLog;
   systemPrompt: string;
+  sandboxPolicy?: SandboxPolicy;
   model?: string;
   artifactsDir?: string;
   baseUrl?: string;
@@ -73,6 +75,7 @@ export async function query(
         systemPrompt: deps.systemPrompt + buildOverlay(deps.workspace.root) + buildSkillsFooter(deps.workspace.root),
         model: deps.model,
         abortController,
+        sandbox: buildSandboxSettings(deps.sandboxPolicy),
       })) {
         if (ev.type === "result") { finalText = ev.text; metrics = ev.metrics; }
         else onProgress?.(ev);

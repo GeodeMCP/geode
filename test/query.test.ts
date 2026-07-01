@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { query, type QueryDeps } from "../src/query.js";
 import { createRunManager } from "../src/runManager.js";
 import type { EngineEvent } from "../src/engine.js";
+import { resolveSandboxPolicy } from "../src/agentSandbox.js";
 
 function fakeWorkspace() {
   const calls: string[] = [];
@@ -116,4 +117,22 @@ test("engine receives systemPrompt that includes the resolved onboarding-skill p
   await query(d, "hi");
   expect(seenPrompt).toContain("onboard-tool.md");
   expect(seenPrompt).toContain("Your vault's conventions (overlay)"); // core ⊕ overlay ⊕ footer
+});
+
+test("engine receives sandbox settings built from the sandbox policy", async () => {
+  let seen: any;
+  const engine = async function* (opts: any) { seen = opts.sandbox; yield { type: "result", text: "ok" }; };
+  const d = deps({ engine: engine as any, sandboxPolicy: resolveSandboxPolicy({}, "/vault") } as any);
+  await query(d, "hi");
+  expect(seen).toBeDefined();
+  expect(seen.filesystem.allowWrite).toEqual(["/vault"]);
+  expect(seen.network.allowedDomains).toContain("api.anthropic.com");
+});
+
+test("engine receives no sandbox when the policy is absent", async () => {
+  let seen: any = "unset";
+  const engine = async function* (opts: any) { seen = opts.sandbox; yield { type: "result", text: "ok" }; };
+  const d = deps({ engine: engine as any });
+  await query(d, "hi");
+  expect(seen).toBeUndefined();
 });
