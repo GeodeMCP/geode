@@ -34,7 +34,7 @@ defined enough to be verifiable.
   Control in the FileTree column header (next to `+ New`).
   **Verify:** "Collapse all" collapses every folder in one click; "Expand all" expands every folder in one click.
 
-- [ ] **D4 — Remove fake status (`live`, `personal-vault`)** · _S_
+- [x] **D4 — Remove fake status (`live`, `personal-vault`)** · _S_
   `web/src/components/TopBar.tsx` (both are hardcoded literals wired to nothing).
   **Verify:** neither `live` nor `personal-vault` appears in the header. (Making them real = B1, deferred.)
 

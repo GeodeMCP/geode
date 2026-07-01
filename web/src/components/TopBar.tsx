@@ -24,12 +24,10 @@ export function TopBar({ view, onNav, hasTools, onLogout }: {
       <div className="brand">
         <GemMark size={22} />
         <span className="name">Geode</span>
-        <span className="ws">personal-vault</span>
       </div>
       <nav>{items.map((v) => <a key={v} className={v === view ? "active" : ""} onClick={() => onNav(v)} style={{ cursor: "pointer" }}>{v}</a>)}</nav>
       <div className="tb-right">
         <button className={`pill${view === "Connect" ? " active" : ""}`} onClick={() => onNav("Connect")} title="Connect a client"><ConnectIcon /> Connect</button>
-        <span className="chip live"><span className="pulse" />live</span>
         <span className="acct">
           <span className="avatar" onClick={() => setMenu((m) => !m)} title="Account" />
           {menu && <>
