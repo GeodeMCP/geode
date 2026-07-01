@@ -45,9 +45,21 @@ export function mountDashboard(app: Express, deps: DashboardDeps): void {
   app.use("/auth", authRouter);
 
   if (existsSync(deps.webDir)) {
-    app.use(express.static(deps.webDir));
-    // SPA fallback: any non-/api, non-/auth/, non-/mcp, non-/artifacts GET returns index.html
-    app.get(/^\/(?!api\/|auth\/|mcp$|artifacts\/).*/, (_req, res) => { res.sendFile(join(deps.webDir, "index.html")); });
+    app.use(express.static(deps.webDir, {
+      // index.html must always revalidate so a rebuilt bundle's new (content-hashed) asset
+      // filenames are picked up; the hashed assets themselves never change under a name, so
+      // cache them forever. Without this the browser serves a stale SPA after every rebuild.
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith("index.html")) res.setHeader("Cache-Control", "no-cache");
+        else if (/[\\/]assets[\\/]/.test(filePath)) res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      },
+    }));
+    // SPA fallback: any non-/api, non-/auth/, non-/mcp, non-/artifacts GET returns index.html.
+    // cacheControl:false so send() doesn't overwrite our no-cache with its default max-age=0.
+    app.get(/^\/(?!api\/|auth\/|mcp$|artifacts\/).*/, (_req, res) => {
+      res.setHeader("Cache-Control", "no-cache");
+      res.sendFile(join(deps.webDir, "index.html"), { cacheControl: false });
+    });
   } else {
     app.get(/^\/(?!api\/|auth\/|mcp$|artifacts\/).*/, (_req, res) => {
       res.status(503).type("text/plain").send("Dashboard SPA not built. Run: cd web && npm run build");
