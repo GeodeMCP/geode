@@ -25,6 +25,10 @@
   .tb-right{display:flex;align-items:center;gap:18px;color:var(--faint);}
   .chip{font-family:"Instrument Sans",sans-serif;font-weight:600;font-size:12.5px;border-radius:999px;border:1px solid var(--border-strong);color:var(--muted);padding:5px 11px;display:inline-flex;align-items:center;gap:7px;}
   .chip.live{color:var(--green);background:rgba(52,211,153,.10);border-color:rgba(52,211,153,.45);}
+  .tb-right .pill{border:1px solid var(--border-strong);background:var(--surface-2);color:var(--neutral-200);cursor:pointer;padding:5px 12px;font-size:13px;line-height:1;gap:6px;}
+  .tb-right .pill:hover{border-color:var(--emerald-500);color:var(--text);}
+  .tb-right .pill.active{border-color:var(--emerald-500);color:var(--emerald-300);}
+  .tb-right .pill svg{width:14px;height:14px;}
   .pulse{width:7px;height:7px;border-radius:999px;background:var(--green);box-shadow:0 0 8px var(--green);}
   .iconbtn{color:var(--muted);display:flex;cursor:pointer;}
   .avatar{width:30px;height:30px;border-radius:10px;background:var(--surface-2);border:1px solid var(--border-strong);}
