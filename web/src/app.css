@@ -199,6 +199,7 @@
   .row.open .chev{transform:rotate(90deg);}
   .row .lead{display:inline-flex;align-items:center;gap:8px;min-width:0;}
   .badge.mod{color:#e0b970;background:rgba(217,161,58,.12);border:1px solid rgba(217,161,58,.4);}
+  .badge.install{color:#e0b970;background:rgba(217,161,58,.12);border:1px solid rgba(217,161,58,.4);}
   .del-btn{opacity:0;background:transparent;border:none;color:var(--faint);cursor:pointer;display:flex;padding:3px;border-radius:6px;transition:opacity .12s var(--ease),color .12s var(--ease),background .12s var(--ease);}
   .row:hover .del-btn{opacity:1;}
   .del-btn:hover{color:#eaa;background:rgba(230,80,80,.14);}

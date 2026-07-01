@@ -35,9 +35,10 @@ const TrashIcon = () => (
 );
 
 /** Renders the vault file tree with collapsible folders, git-status badges, inline file creation, and per-file delete confirmation. */
-export function FileTree({ tree, status, selected, onSelect, onCreate, onDelete }: {
+export function FileTree({ tree, status, selected, onSelect, onCreate, onDelete, needsInstall }: {
   tree: TreeNode[]; status: { modified: string[]; created: string[] }; selected: string | null;
   onSelect: (p: string) => void; onCreate: (path: string) => void; onDelete: (path: string) => void;
+  needsInstall?: Set<string>;
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(() => {
     try { const raw = localStorage.getItem(TREE_STATE_KEY); return new Set<string>(raw ? JSON.parse(raw) : []); }
@@ -57,11 +58,13 @@ export function FileTree({ tree, status, selected, onSelect, onCreate, onDelete 
   const dirtyPaths = [...status.modified, ...status.created];
   const dirDirty = (p: string) => dirtyPaths.some((f) => f.startsWith(p + "/"));
   const pending = status.modified.length + status.created.length;
+  const hasInstallPending = (needsInstall?.size ?? 0) > 0;
 
   const render = (nodes: TreeNode[], depth = 0): React.ReactNode => nodes.map((n) => {
     const isDir = n.type === "dir";
     const open = isDir && expanded.has(n.path);
     const gen = isArtifactPath(n.path);
+    const toolNeedsInstall = isDir && /^tools\/[^/]+$/.test(n.path) && (needsInstall?.has(n.path.split("/")[1]) ?? false);
     return (
       <div key={n.path}>
         <div className={`row ${isDir && open ? "open" : ""} ${selected === n.path ? "active" : ""} ${gen ? "gen" : ""}`}
@@ -82,7 +85,8 @@ export function FileTree({ tree, status, selected, onSelect, onCreate, onDelete 
             <>
               {status.modified.includes(n.path) && <span className="badge mod">modified</span>}
               {status.created.includes(n.path) && <span className="badge new">new</span>}
-              {isDir && dirDirty(n.path) && <span className="dot-mod" title="Uncommitted changes inside" />}
+              {toolNeedsInstall && <span className="badge install" title="This tool must be installed before it can run">install</span>}
+              {isDir && (dirDirty(n.path) || (n.path === "tools" && hasInstallPending)) && <span className="dot-mod" title="Needs attention inside" />}
               {!gen && <button className="del-btn" title={`Delete ${n.name}`} onClick={(e) => { stop(e); setConfirming(n.path); }}><TrashIcon /></button>}
             </>
           )}

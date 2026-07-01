@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, type TreeNode, type SseEvent } from "../api";
+import { api, type TreeNode, type SseEvent, type ToolView } from "../api";
 import { isArtifactPath, buildArtifactTree } from "../artifacts";
 import { newFileDraft } from "../fileType";
 import { Chat } from "../components/Chat";
@@ -10,6 +10,7 @@ import { Viewer } from "../components/Viewer";
 export function VaultHome() {
   const [tree, setTree] = useState<TreeNode[]>([]);
   const [status, setStatus] = useState<{ modified: string[]; created: string[] }>({ modified: [], created: [] });
+  const [needsInstall, setNeedsInstall] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<string | null>(null);
   const [content, setContent] = useState("");
   const [diff, setDiff] = useState("");
@@ -17,11 +18,12 @@ export function VaultHome() {
   const [compose, setCompose] = useState<{ path: string; draft: string } | null>(null);
 
   const refresh = useCallback(async () => {
-    const [t, arts] = await Promise.all([api.tree(), api.artifacts().catch(() => [] as { path: string }[])]);
+    const [t, arts, tools] = await Promise.all([api.tree(), api.artifacts().catch(() => [] as { path: string }[]), api.tools().catch(() => [] as ToolView[])]);
     setTree(arts.length
       ? [...t, { name: "artifacts", path: "artifacts", type: "dir" as const, children: buildArtifactTree(arts.map((a) => a.path)) }]
       : t);
     setStatus(await api.status());
+    setNeedsInstall(new Set(tools.filter((x) => x.type === "cli" && !x.installed).map((x) => x.id)));
   }, []);
   useEffect(() => { refresh(); }, [refresh]);
   useEffect(() => {
@@ -61,7 +63,7 @@ export function VaultHome() {
   return (
     <div className="main">
       <Chat onSend={send} running={running} dirty={dirty} onCommit={commit} onDiscard={discard} />
-      <FileTree tree={tree} status={status} selected={selected} onSelect={select} onCreate={create} onDelete={del} />
+      <FileTree tree={tree} status={status} selected={selected} onSelect={select} onCreate={create} onDelete={del} needsInstall={needsInstall} />
       <Viewer path={selected} content={content} diff={diff} dirty={selectedDirty} compose={compose} onCommit={commit} onDiscard={discard} onSave={save} onOpenFile={select} />
     </div>
   );

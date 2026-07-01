@@ -75,7 +75,7 @@ defined enough to be verifiable.
 
 ### Pending-action legibility (B2 — first real design-spec)
 
-- [ ] **D11 — "Pending" indicator on the tool item in the file tree** · _M_
+- [x] **D11 — "Pending" indicator on the tool item in the file tree** · _M_
   A tool row shows a marker when something is pending for it: uncommitted changes to the
   tool's files, or (cli tools) not-yet-installed.
   **Verify:** create a tool via the agent (uncommitted) → the tool item shows a pending
