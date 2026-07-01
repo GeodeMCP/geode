@@ -114,7 +114,7 @@ export function makeInvokeHandler(deps: InvokeHandlerDeps) {
 // --- Server assembly (integration) ---
 
 /** Assembles and returns an MCP server with query, remember, list_capabilities, and optionally invoke tools registered. */
-export function buildMcpServer(queryDeps: QueryDeps, opts?: { secrets?: SecretStore; artifacts?: ArtifactStore; toolsDir?: string; docker?: import("./docker.js").Docker }): McpServer {
+export function buildMcpServer(queryDeps: QueryDeps, opts?: { secrets?: SecretStore; artifacts?: ArtifactStore; toolsDir?: string; docker?: import("./docker.js").Docker; connector?: import("./mcpProxy.js").McpConnector }): McpServer {
   const server = new McpServer({ name: "geode-kernel", version: "0.1.0" });
 
   const queryHandler = makeQueryHandler({
@@ -159,7 +159,7 @@ export function buildMcpServer(queryDeps: QueryDeps, opts?: { secrets?: SecretSt
   if (opts?.secrets) {
     const secrets = opts.secrets;
     const invokeHandler = makeInvokeHandler({
-      invoke: (a) => invoke({ root: queryDeps.workspace.root, secrets, toolsDir: opts.toolsDir, docker: opts.docker }, a),
+      invoke: (a) => invoke({ root: queryDeps.workspace.root, secrets, toolsDir: opts.toolsDir, docker: opts.docker, connector: opts.connector }, a),
     });
     server.registerTool(
       "invoke",

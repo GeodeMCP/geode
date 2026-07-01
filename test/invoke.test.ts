@@ -55,6 +55,8 @@ id: mcp1
 name: Mcp
 type: mcp
 description: d
+transport: { kind: http, url: "https://mcp.acme.com/mcp", headers: { Authorization: "Bearer \${conn.TOKEN}" } }
+requires: [TOKEN]
 connections: [{ label: default }]
 actions: { run: { remote_tool: "go" } }
 ---
@@ -65,9 +67,16 @@ test("cli invoke without configured deps throws not configured", async () => {
   await expect(invoke({ root, secrets: fakeSecrets({}) }, { tool: "cli1", action: "run" })).rejects.toThrow(/not configured/);
 });
 
-test("mcp executor is inert in slice #3b", async () => {
+test("mcp executor errors clearly when no connector is configured", async () => {
   const root = vaultWith("mcp1", MCP);
-  await expect(invoke({ root, secrets: fakeSecrets({}) }, { tool: "mcp1", action: "run" })).rejects.toThrow(/executor 'mcp' not available yet/);
+  await expect(invoke({ root, secrets: fakeSecrets({ "mcp1__default__TOKEN": "s" }) }, { tool: "mcp1", action: "run" })).rejects.toThrow(/mcp executor not configured/);
+});
+
+test("mcp executor proxies via the connector", async () => {
+  const root = vaultWith("mcp1", MCP);
+  const connector = { connectHttp: async () => ({ callTool: async () => ({ content: { ok: true }, isError: false }), close: async () => {} }) };
+  const r = await invoke({ root, secrets: fakeSecrets({ "mcp1__default__TOKEN": "s" }), connector } as any, { tool: "mcp1", action: "run" });
+  expect(r).toEqual({ status: 200, body: { ok: true } });
 });
 
 test("unknown tool + action errors", async () => {
