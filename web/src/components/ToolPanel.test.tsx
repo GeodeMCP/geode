@@ -52,3 +52,30 @@ it("ignores a stale load when id changes mid-flight", async () => {
   expect(await screen.findByText("Bravo")).toBeTruthy();
   expect(screen.queryByText("Alpha")).toBeNull();      // stale never shown
 });
+
+it("shows the real server error when the tool fails to load", async () => {
+  (api.tool as any).mockRejectedValue(new Error('tool cb: action "fetch" — command must be a non-empty array of argv tokens'));
+  render(<ToolPanel id="cb" />);
+  expect(await screen.findByText(/must be a non-empty array of argv tokens/)).toBeTruthy();
+  expect(screen.queryByText(/save the manifest first/)).toBeNull();
+});
+
+it("shows an install error in a contained error block", async () => {
+  (api.tool as any).mockResolvedValue(TOOL);
+  (api.installTool as any).mockRejectedValue(new Error("docker build failed:\nline1\nline2 exit code: 127"));
+  const { container } = render(<ToolPanel id="cb" />);
+  fireEvent.click(await screen.findByText("Install & trust"));
+  fireEvent.click(screen.getByText("Confirm install"));
+  expect(await screen.findByText(/docker build failed/)).toBeTruthy();
+  expect(container.querySelector(".tp-error")).toBeTruthy();
+});
+
+it("keeps the requested permissions legible in the confirm card", async () => {
+  (api.tool as any).mockResolvedValue({ ...TOOL, permissions: { network: "any" } });
+  const { container } = render(<ToolPanel id="cb" />);
+  fireEvent.click(await screen.findByText("Install & trust"));
+  const card = screen.getByText("Permissions requested").closest(".card")!;
+  expect(card.textContent).toContain("network");
+  expect(card.textContent).toContain("any");
+  expect(container.querySelector(".card")).toBeTruthy();
+});

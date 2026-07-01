@@ -8,17 +8,17 @@ export function ToolPanel({ id }: { id: string }) {
   const [confirmInstall, setConfirmInstall] = useState(false);
   const [busy, setBusy] = useState(false);
   const [installError, setInstallError] = useState("");
-  const [loadError, setLoadError] = useState(false);
+  const [loadError, setLoadError] = useState("");
 
-  const load = () => api.tool(id).then((t) => { setTool(t); setLoadError(false); }).catch(() => setLoadError(true));
+  const load = () => api.tool(id).then((t) => { setTool(t); setLoadError(""); }).catch((e) => setLoadError(e instanceof Error ? e.message : String(e)));
   useEffect(() => {
     let live = true;
     setResult(""); setConfirmInstall(false); setInstallError(""); setTool(null);
     api.tool(id)
-      .then((t) => { if (live) { setTool(t); setLoadError(false); } })
-      .catch(() => { if (live) setLoadError(true); });
+      .then((t) => { if (live) { setTool(t); setLoadError(""); } })
+      .catch((e) => { if (live) setLoadError(e instanceof Error ? e.message : String(e)); });
     return () => { live = false; };
-  }, [id]);  
+  }, [id]);
 
   const test = async (action: string) => {
     setResult("…");
@@ -38,8 +38,14 @@ export function ToolPanel({ id }: { id: string }) {
     finally { setBusy(false); }
   };
 
-  if (loadError) return <div className="pre"><div style={{ color: "var(--faint)" }}>Tool not loaded — save the manifest first.</div></div>;
-  if (!tool) return <div className="pre"><div style={{ color: "var(--faint)" }}>Loading…</div></div>;
+  if (loadError) return (
+    <div className="toolpanel" style={{ overflow: "auto", padding: "20px 22px" }}>
+      <div className="eyebrow" style={{ marginBottom: 8 }}>Couldn&apos;t load this tool</div>
+      <pre className="tp-error">{loadError}</pre>
+      <p style={{ color: "var(--faint)", fontSize: 13, marginTop: 8 }}>Fix the manifest via Source / Edit and save — the panel reloads.</p>
+    </div>
+  );
+  if (!tool) return <div className="toolpanel" style={{ padding: "20px 22px", color: "var(--faint)" }}>Loading…</div>;
   const isCli = tool.type === "cli";
   const perms = tool.permissions;
   return (
@@ -58,7 +64,7 @@ export function ToolPanel({ id }: { id: string }) {
         <button className="btn sm" style={{ marginTop: 8 }} onClick={() => setConfirmInstall(true)}>Install &amp; trust</button>
       )}
       {isCli && !tool.installed && confirmInstall && (
-        <div className="card" style={{ marginTop: 8, padding: "14px 16px" }}>
+        <div className="card" style={{ display: "block", marginTop: 8, padding: "14px 16px" }}>
           <div className="eyebrow" style={{ marginBottom: 8 }}>Permissions requested</div>
           {perms ? (
             <pre className="pre" style={{ border: "1px solid var(--border)", borderRadius: 8, marginBottom: 10 }}>{JSON.stringify(perms, null, 2)}</pre>
@@ -66,7 +72,7 @@ export function ToolPanel({ id }: { id: string }) {
             <p style={{ color: "var(--faint)", marginBottom: 10 }}>No special permissions declared.</p>
           )}
           <p style={{ color: "var(--muted)", fontSize: 13, marginBottom: 12 }}>Confirming will build the Docker image and trust this tool with the permissions above.</p>
-          {installError && <p style={{ color: "var(--red, #f87171)", fontSize: 13, marginBottom: 8 }}>{installError}</p>}
+          {installError && <pre className="tp-error">{installError}</pre>}
           <div style={{ display: "flex", gap: 8 }}>
             <button className="btn sm" onClick={install} disabled={busy}>{busy ? "Installing…" : "Confirm install"}</button>
             <button className="ghost sm" onClick={() => { setConfirmInstall(false); setInstallError(""); }}>Cancel</button>
@@ -74,8 +80,8 @@ export function ToolPanel({ id }: { id: string }) {
         </div>
       )}
       {isCli && tool.installed && (
-        <div style={{ display: "flex", gap: 8, marginTop: 8, alignItems: "center" }}>
-          {installError && <span style={{ color: "var(--red, #f87171)", fontSize: 13 }}>{installError}</span>}
+        <div style={{ marginTop: 8 }}>
+          {installError && <pre className="tp-error">{installError}</pre>}
           <button className="ghost sm" onClick={uninstall} disabled={busy}>{busy ? "Uninstalling…" : "Uninstall"}</button>
         </div>
       )}
@@ -87,7 +93,7 @@ export function ToolPanel({ id }: { id: string }) {
           <button className="btn sm" onClick={() => test(a.name)}>Test</button>
         </div>
       ))}
-      {result && <pre className="pre" style={{ border: "1px solid var(--border)", borderRadius: 10, marginTop: 10 }}>{result}</pre>}
+      {result && <pre className="pre" style={{ border: "1px solid var(--border)", borderRadius: 10, marginTop: 10, maxHeight: 280 }}>{result}</pre>}
       <div className="eyebrow" style={{ marginTop: 16 }}>Connections</div>
       {tool.connections.length === 0 && <p style={{ color: "var(--faint)" }}>No connections.</p>}
       {tool.connections.map((c) => (
