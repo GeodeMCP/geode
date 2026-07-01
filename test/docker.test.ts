@@ -24,6 +24,25 @@ test("buildDockerfile clones the pinned ref and runs install in the image", () =
   expect(df).not.toContain("${"); // no unresolved secrets ever in the image
 });
 
+test("buildDockerfile clones in a git stage so the base needs no git", () => {
+  const df = buildDockerfile(M);
+  expect(df).toContain("FROM alpine/git AS clone");
+  expect(df).toContain("COPY --from=clone /src /tool");
+  // git clone runs in the clone stage, BEFORE the base image
+  expect(df.indexOf("git clone")).toBeGreaterThan(-1);
+  expect(df.indexOf("git clone")).toBeLessThan(df.indexOf("FROM node:20-slim"));
+  // the base stage never runs git
+  expect(df.slice(df.indexOf("FROM node:20-slim"))).not.toContain("git clone");
+});
+
+test("buildDockerfile package source needs no git stage", () => {
+  const df = buildDockerfile({ ...M, source: { package: "pip:cloakbrowser" }, image: { base: "python:3.12-slim" } });
+  expect(df).toContain("FROM python:3.12-slim");
+  expect(df).toContain("RUN pip install cloakbrowser");
+  expect(df).not.toContain("alpine/git");
+  expect(df).not.toContain("git clone");
+});
+
 test("runArgs builds a locked-down docker run argv", () => {
   const args = runArgs({ name: "geode-cb-abc123", tag: "geode-tool/cb:v1", command: ["./cb", "fetch", "--url", "x"], envFile: "/tmp/e", network: "none", memoryMb: 256, cpus: 1, timeoutMs: 30000 });
   expect(args).toContain("run");

@@ -7,12 +7,18 @@ export function imageTag(m: ToolManifest): string { return `geode-tool/${m.id}:$
 /** Generates the Dockerfile that clones the pinned source and bakes the install — no secrets ever. */
 export function buildDockerfile(m: ToolManifest): string {
   const base = m.image?.base ?? "node:20-slim";
-  const lines = [`FROM ${base}`, "WORKDIR /tool"];
+  const lines: string[] = [];
   if (m.source?.repo) {
+    // Clone in a throwaway git stage: slim bases ship no git, and this keeps git
+    // out of the final runtime image the sandboxed tool executes in.
     const ref = m.source.ref ? ` --branch ${m.source.ref}` : "";
-    lines.push(`RUN git clone --depth 1${ref} ${m.source.repo} .`);
-  } else if (m.source?.package) {
-    lines.push(`RUN ${m.source.package.startsWith("pip:") ? `pip install ${m.source.package.slice(4)}` : `npm install -g ${m.source.package.replace(/^npm:/, "")}`}`);
+    lines.push("FROM alpine/git AS clone", "WORKDIR /src", `RUN git clone --depth 1${ref} ${m.source.repo} .`);
+    lines.push(`FROM ${base}`, "WORKDIR /tool", "COPY --from=clone /src /tool");
+  } else {
+    lines.push(`FROM ${base}`, "WORKDIR /tool");
+    if (m.source?.package) {
+      lines.push(`RUN ${m.source.package.startsWith("pip:") ? `pip install ${m.source.package.slice(4)}` : `npm install -g ${m.source.package.replace(/^npm:/, "")}`}`);
+    }
   }
   for (const cmd of m.install ?? []) lines.push(`RUN ${cmd}`);
   return lines.join("\n") + "\n";
