@@ -24,7 +24,7 @@ export interface ToolManifest {
   install?: string[];
   bin?: string;
   materialize?: { inject: "env" | "profile"; env?: Record<string,string>; profile?: { restore: string; into: string } };
-  transport?: { kind: "stdio" | "http"; command?: string; url?: string; ref?: string };
+  transport?: { kind: "stdio" | "http"; command?: string; url?: string; ref?: string; headers?: Record<string, string> };
   image?: { base: string };
   permissions?: { network?: "none" | "any" | string[]; filesystem?: string[] };
   limits?: { timeoutMs?: number; memoryMb?: number; cpus?: number };
