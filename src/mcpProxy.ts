@@ -20,7 +20,14 @@ export function realMcpConnector(): McpConnector {
       const { StreamableHTTPClientTransport } = await import("@modelcontextprotocol/sdk/client/streamableHttp.js");
       const transport = new StreamableHTTPClientTransport(new URL(url), { requestInit: { headers } });
       const client = new Client({ name: "geode-proxy", version: "0.1.0" });
-      await client.connect(transport);
+      // connect bounds the `initialize` JSON-RPC request by timeoutMs; the preceding TCP/TLS
+      // handshake is only OS/undici-bounded (no MCP-level timeout).
+      try {
+        await client.connect(transport, { timeout: timeoutMs });
+      } catch (e) {
+        await client.close().catch(() => {}); // close the transport we opened
+        throw e;
+      }
       return {
         async callTool(name, args) {
           const r = await client.callTool({ name, arguments: args }, undefined, { timeout: timeoutMs });
@@ -52,6 +59,6 @@ export async function runMcpTool(
     const r = await client.callTool(action.remote_tool, params);
     return { status: r.isError ? 502 : 200, body: r.content };
   } finally {
-    await client.close();
+    await client.close().catch(() => {});
   }
 }
