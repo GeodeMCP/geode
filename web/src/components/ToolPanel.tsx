@@ -90,25 +90,28 @@ export function ToolPanel({ id }: { id: string }) {
       )}
 
       <div className="eyebrow" style={{ marginTop: 16 }}>Actions</div>
-      {tool.actions.map((a) => (
-        <div key={a.name} className="card" style={{ display: "block", marginBottom: 8 }}>
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            <span className="fname" style={{ flex: 1 }}>{a.name}</span>
-            <button className="btn sm" onClick={() => test(a.name, a.params)}>Test</button>
-          </div>
-          {a.params.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
-              {a.params.map((p) => (
-                <label key={p} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span className="fname" style={{ flex: "0 0 120px", color: "var(--faint)" }}>{p}</span>
-                  <input className="input" value={inputs[`${a.name}::${p}`] ?? ""} placeholder={`params.${p}`}
-                    onChange={(e) => setInputs((s) => ({ ...s, [`${a.name}::${p}`]: e.target.value }))} />
-                </label>
-              ))}
+      {tool.actions.map((a) => {
+        const ps = a.params ?? [];
+        return (
+          <div key={a.name} className="card" style={{ display: "block", marginBottom: 8 }}>
+            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+              <span className="fname" style={{ flex: 1 }}>{a.name}</span>
+              <button className="btn sm" onClick={() => test(a.name, ps)}>Test</button>
             </div>
-          )}
-        </div>
-      ))}
+            {ps.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
+                {ps.map((p) => (
+                  <label key={p} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span className="fname" style={{ flex: "0 0 120px", color: "var(--faint)" }}>{p}</span>
+                    <input className="input" value={inputs[`${a.name}::${p}`] ?? ""} placeholder={`params.${p}`}
+                      onChange={(e) => setInputs((s) => ({ ...s, [`${a.name}::${p}`]: e.target.value }))} />
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
       {result && <pre className="pre" style={{ border: "1px solid var(--border)", borderRadius: 10, marginTop: 10, maxHeight: 280 }}>{result}</pre>}
       <div className="eyebrow" style={{ marginTop: 16 }}>Connections</div>
       {tool.connections.length === 0 && <p style={{ color: "var(--faint)" }}>No connections.</p>}
