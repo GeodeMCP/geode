@@ -33,3 +33,10 @@ test("buildOverlay returns '' for a frontmatter-only override", () => {
   writeFileSync(join(root, "AGENTS.md"), "---\ntype: schema\n---\n");
   expect(buildOverlay(root)).toBe("");
 });
+test("buildOverlay strips CRLF frontmatter (Windows line endings)", () => {
+  const root = mkdtempSync(join(tmpdir(), "geode-ov-"));
+  writeFileSync(join(root, "AGENTS.md"), "---\r\ntype: schema\r\n---\r\n\r\n# House rules\r\n- be terse\r\n");
+  const o = buildOverlay(root);
+  expect(o).toContain("House rules");
+  expect(o).not.toContain("type: schema");
+});

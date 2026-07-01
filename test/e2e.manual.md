@@ -20,9 +20,11 @@ Prereqs: a model is reachable (e.g. `ollama serve` with a tool-capable model, or
 
 ## Seeding (startup)
 
-4. On first boot the vault is seeded: verify `AGENTS.md` and `index.md` exist in `$GEODE_WORKSPACE`
-   and were committed (`chore: seed vault scaffolds …`). There is **no** `capabilities.md`
-   (discovery is derived). Verify `.gitignore` contains `artifacts/`.
+4. On first boot the vault is seeded: verify `index.md` exists in `$GEODE_WORKSPACE`
+   and was committed (`chore: seed vault scaffolds …`). There is **no** `capabilities.md`
+   (discovery is derived) and **no** `AGENTS.md`: the vault conventions are now injected as a
+   prompt overlay (kernel-default `kernel-skills/AGENTS.md`, overridable by a vault `AGENTS.md`).
+   Verify `.gitignore` contains `artifacts/`.
 
 ## `query` (agentic; prepares, never executes externally)
 
