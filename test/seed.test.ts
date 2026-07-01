@@ -8,12 +8,12 @@ let root: string;
 beforeEach(() => { root = mkdtempSync(join(tmpdir(), "geode-seed-")); });
 afterEach(() => { rmSync(root, { recursive: true, force: true }); });
 
-test("creates the two scaffold files on a fresh vault", async () => {
+test("creates only index.md on a fresh vault (AGENTS.md is no longer seeded)", async () => {
   const created = await seedVault(root);
-  expect(created.sort()).toEqual(["AGENTS.md", "index.md"]);
-  expect(existsSync(join(root, "AGENTS.md"))).toBe(true);
+  expect(created.sort()).toEqual(["index.md"]);
   expect(existsSync(join(root, "index.md"))).toBe(true);
-  expect(readFileSync(join(root, "AGENTS.md"), "utf8").startsWith("---")).toBe(true);
+  expect(existsSync(join(root, "AGENTS.md"))).toBe(false);
+  expect(readFileSync(join(root, "index.md"), "utf8").startsWith("---")).toBe(true);
 });
 
 test("is idempotent and never overwrites an existing file", async () => {

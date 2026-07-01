@@ -115,4 +115,5 @@ test("engine receives systemPrompt that includes the resolved onboarding-skill p
   const d = deps({ engine: engine as any });
   await query(d, "hi");
   expect(seenPrompt).toContain("onboard-tool.md");
+  expect(seenPrompt).toContain("Your vault's conventions (overlay)"); // core ⊕ overlay ⊕ footer
 });
