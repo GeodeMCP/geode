@@ -17,10 +17,12 @@
   .name{font-family:"Onest",sans-serif;font-weight:500;font-size:21px;letter-spacing:-.02em;}
   /* NAV (toegevoegd) */
   nav{display:flex;align-self:stretch;align-items:center;gap:24px;}
-  nav a{font-family:"Instrument Sans",sans-serif;font-weight:500;font-size:13.5px;color:var(--muted);text-decoration:none;height:100%;display:flex;align-items:center;position:relative;transition:color .15s var(--ease);cursor:pointer;}
+  nav a{font-family:"Instrument Sans",sans-serif;font-weight:500;font-size:13.5px;color:var(--muted);text-decoration:none;height:100%;display:flex;align-items:center;gap:7px;position:relative;transition:color .15s var(--ease);cursor:pointer;}
   nav a:hover{color:var(--text);}
   nav a.active{color:var(--text);}
   nav a.active::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--green);}
+  nav a svg{width:15px;height:15px;flex:none;opacity:.75;}
+  nav a:hover svg,nav a.active svg{opacity:1;}
   .tb-right{display:flex;align-items:center;gap:18px;color:var(--faint);}
   .chip{font-family:"Instrument Sans",sans-serif;font-weight:600;font-size:12.5px;border-radius:999px;border:1px solid var(--border-strong);color:var(--muted);padding:5px 11px;display:inline-flex;align-items:center;gap:7px;}
   .tb-right .pill{border:1px solid var(--border-strong);background:var(--surface-2);color:var(--neutral-200);cursor:pointer;padding:5px 12px;font-size:13px;line-height:1;gap:6px;}

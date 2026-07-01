@@ -42,7 +42,7 @@ defined enough to be verifiable.
   `.colhead` / `.colhead-actions` in `web/src/app.css` + inline styles.
   **Verify:** Clear / + New / Edit touch neither the title nor the column edge; ≥12px gap around them. (Visual sign-off by user.)
 
-- [ ] **D6 — Replace the wrench tool icon; add Vault/Secrets nav icons** · _S_
+- [x] **D6 — Replace the wrench tool icon; add Vault/Secrets nav icons** · _S_
   Bespoke inline SVGs — the codebase hand-draws every icon to match the marketing site;
   no icon library, and adding one for ~3 glyphs is speculative weight. `ToolIcon` in
   `FileTree.tsx`, nav in `TopBar.tsx`.

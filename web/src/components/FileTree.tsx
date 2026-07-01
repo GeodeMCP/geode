@@ -24,7 +24,7 @@ const FileIcon = () => (
 );
 const ToolIcon = () => (
   <svg className="ic tool" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-    <path d="M10.6 2.2a3 3 0 0 0-3.9 3.6L2.5 10a1.4 1.4 0 0 0 2 2l4.2-4.2a3 3 0 0 0 3.6-3.9l-1.8 1.8-1.5-.4-.4-1.5 1.8-1.8Z" />
+    <path d="M9.3 1.7 3.6 9h3.7l-.7 5.3L12.4 7H8.7z" />
   </svg>
 );
 const Chevron = () => (
