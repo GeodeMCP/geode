@@ -155,6 +155,7 @@
   .fname{font-family:"Geist Mono",monospace;font-size:13px;color:var(--emerald-300);}
   .uncommitted{display:inline-flex;align-items:center;gap:6px;color:#d9a13a;font-family:"Instrument Sans",sans-serif;font-size:12.5px;}
   .pre{flex:1;padding:20px;font-family:"Geist Mono",monospace;font-size:14px;line-height:1.85;color:var(--text);overflow:auto;}
+  .tp-error{margin:8px 0;padding:10px 12px;border:1px solid rgba(248,113,113,.4);border-radius:8px;background:rgba(248,113,113,.06);color:#f8b4b4;font-family:"Geist Mono",monospace;font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word;max-height:220px;overflow:auto;}
   .add{background:rgba(52,211,153,.14);}
   .del{background:rgba(230,80,80,.16);color:#eaa;}
   .btn{font-family:"Instrument Sans",sans-serif;font-weight:500;font-size:14px;background:var(--blue);border:1px solid var(--blue-500);color:var(--blue-100);border-radius:7px;padding:9px 16px;cursor:pointer;transition:.15s var(--ease);}
