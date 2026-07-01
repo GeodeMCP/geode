@@ -88,3 +88,19 @@ test("buildQueryOptions includes model only when provided", () => {
   expect("model" in buildQueryOptions(base)).toBe(false);
   expect(buildQueryOptions({ ...base, model: "m" }).model).toBe("m");
 });
+
+test("buildQueryOptions forwards sandbox settings when provided", () => {
+  const opts = buildQueryOptions({
+    instruction: "hi", cwd: "/vault", systemPrompt: "SYS", abortController: new AbortController(),
+    sandbox: { enabled: true, failIfUnavailable: true, autoAllowBashIfSandboxed: true,
+      filesystem: { allowWrite: ["/vault"] }, network: { allowedDomains: ["api.anthropic.com"] } },
+  });
+  expect(opts.sandbox).toMatchObject({ enabled: true, filesystem: { allowWrite: ["/vault"] } });
+  // non-interactive behaviour is retained alongside the sandbox
+  expect(opts.permissionMode).toBe("bypassPermissions");
+});
+
+test("buildQueryOptions omits sandbox when not provided", () => {
+  const opts = buildQueryOptions({ instruction: "hi", cwd: "/vault", systemPrompt: "SYS", abortController: new AbortController() });
+  expect(opts.sandbox).toBeUndefined();
+});

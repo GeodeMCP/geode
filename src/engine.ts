@@ -1,3 +1,5 @@
+import type { SandboxSettings } from "./agentSandbox.js";
+
 /** Represents a single to-do item tracked by the agent during a run. */
 export interface Todo { content: string; status: string }
 /** Timing, cost, and token usage collected at the end of a run. */
@@ -27,6 +29,7 @@ export interface EngineRunOptions {
   systemPrompt: string;
   model?: string;
   abortController: AbortController;
+  sandbox?: SandboxSettings;
 }
 
 /** Callable that starts an agent run and yields engine events as the agent makes progress. */
@@ -170,6 +173,7 @@ export function buildQueryOptions(opts: EngineRunOptions): Record<string, unknow
     settingSources: ["project"],
     abortController: opts.abortController,
     ...(opts.model ? { model: opts.model } : {}),
+    ...(opts.sandbox ? { sandbox: opts.sandbox } : {}),
   };
 }
 
