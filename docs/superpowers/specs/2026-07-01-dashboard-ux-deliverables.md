@@ -116,6 +116,21 @@ defined enough to be verifiable.
   connections) without raw JSON dumps; matches the `/frontend-design` mini-spec; not the
   current green-box style.
 
+### Delete integrity (added 2026-07-01, mid-flow — first concrete slice of B7)
+
+- [x] **D16 — UI delete routes through the agent via a `/delete` slash command** · _M_
+  The tree's delete button no longer does a raw `rm` (`api.deletePath`); it posts a
+  `/delete <path>` chat message that the agent executes — removing the path AND doing its
+  vault housekeeping (remove the index.md entry, append a log.md line, fix/flag references).
+  Introduces a minimal client-side slash-command layer (`resolveCommand` in `Chat.tsx`, only
+  `/delete` for now — no framework/autocomplete/registry yet). Language issue resolved: the
+  visible token is the neutral `/delete`; the expanded instruction is English (no Dutch in the
+  codebase). Frontend-only (agent uses its existing vault access) — no kernel restart needed.
+  **Verify:** deleting a file via the tree posts `/delete <path>` in chat; the agent removes
+  the file and updates index.md/log.md; edits land uncommitted for the human to commit.
+  _Limitation: deletes clicked while a run is already in flight are last-wins (a small queue
+  is a future improvement)._
+
 ---
 
 ## B. Deferred to their own spec (not yet verifiable)

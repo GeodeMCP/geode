@@ -11,6 +11,7 @@ export function VaultHome() {
   const [tree, setTree] = useState<TreeNode[]>([]);
   const [status, setStatus] = useState<{ modified: string[]; created: string[] }>({ modified: [], created: [] });
   const [needsInstall, setNeedsInstall] = useState<Set<string>>(new Set());
+  const [autoRun, setAutoRun] = useState<{ id: number; text: string } | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [content, setContent] = useState("");
   const [diff, setDiff] = useState("");
@@ -54,15 +55,15 @@ export function VaultHome() {
     setSelected(nf.path);
   };
   const select = (p: string) => { setCompose(null); setSelected(p); };
-  const del = async (p: string) => {
-    await api.deletePath(p);
+  const del = (p: string) => {
+    // Route deletes through the agent so it removes the path AND keeps index.md/log.md/references consistent.
+    setAutoRun({ id: Date.now(), text: `/delete ${p}` });
     if (selected === p || (selected && selected.startsWith(p + "/"))) { setSelected(null); setCompose(null); }
-    await refresh();
   };
 
   return (
     <div className="main">
-      <Chat onSend={send} running={running} dirty={dirty} onCommit={commit} onDiscard={discard} />
+      <Chat onSend={send} running={running} dirty={dirty} onCommit={commit} onDiscard={discard} autoRun={autoRun} />
       <FileTree tree={tree} status={status} selected={selected} onSelect={select} onCreate={create} onDelete={del} needsInstall={needsInstall} />
       <Viewer path={selected} content={content} diff={diff} dirty={selectedDirty} compose={compose} onCommit={commit} onDiscard={discard} onSave={save} onOpenFile={select} />
     </div>

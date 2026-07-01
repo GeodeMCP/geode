@@ -172,10 +172,18 @@ function Notice({ noticeKind, text }: { noticeKind: "compact" | "memory" | "retr
   return <div className="divider">{text}</div>;
 }
 
+/** Expands a chat slash command into the instruction sent to the agent; returns null for a plain message. */
+function resolveCommand(text: string): string | null {
+  const m = /^\/delete\s+(.+)$/.exec(text.trim());
+  if (m) return `Delete \`${m[1].trim()}\` from the vault (it may be a file or a folder), then do your vault housekeeping: remove any entry for it in index.md, append a concise line to log.md noting the deletion, and fix or flag any remaining references to it. Do not recreate it and make no unrelated changes.`;
+  return null;
+}
+
 /** Renders the full chat column: message history, SSE-driven live updates, and the send input. */
-export function Chat({ onSend, running, dirty, onCommit, onDiscard }: {
+export function Chat({ onSend, running, dirty, onCommit, onDiscard, autoRun }: {
   onSend: (instruction: string, onEvent: (e: SseEvent) => void) => Promise<void>;
   running: boolean; dirty: boolean; onCommit: () => void; onDiscard: () => void;
+  autoRun?: { id: number; text: string } | null;
 }) {
   const [msgs, setMsgs] = useState<Item[]>([]);
   useEffect(() => { api.history().then((h) => setMsgs(buildFromHistory(h))).catch(() => {}); }, []);
@@ -183,17 +191,24 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard }: {
   const endRef = useRef<HTMLDivElement>(null);
   useEffect(() => { endRef.current?.scrollIntoView({ block: "end" }); }, [msgs, running]);
 
-  const submit = async () => {
-    const instruction = text.trim();
-    if (!instruction || running) return; // dirty no longer blocks — review-mode runs accumulate onto the draft
-    setText("");
-    setMsgs((m) => [...m, { kind: "user", text: instruction, ts: Date.now() }]);
+  const submit = async (forced?: string) => {
+    const raw = (forced ?? text).trim();
+    if (!raw || running) return; // dirty no longer blocks — review-mode runs accumulate onto the draft
+    if (forced === undefined) setText("");
+    const instruction = resolveCommand(raw) ?? raw; // slash commands expand; the bubble still shows the raw command
+    setMsgs((m) => [...m, { kind: "user", text: raw, ts: Date.now() }]);
     await onSend(instruction, (e) => {
       if (e.event === "progress") setMsgs((m) => applyProgress(m, e.data, Date.now()));
       else if (e.event === "result") setMsgs((m) => applyResult(m, e.data, Date.now()));
       else if (e.event === "error") setMsgs((m) => [...m, { kind: "error", text: e.data.message, ts: Date.now() }]);
     });
   };
+  // Fire a programmatic run (e.g. the tree's /delete) once the chat is idle; runs during a
+  // live run wait for it to finish. Last-wins if several are queued while a run is in flight.
+  const lastAuto = useRef<number>(0);
+  useEffect(() => {
+    if (autoRun && autoRun.id !== lastAuto.current && !running) { lastAuto.current = autoRun.id; submit(autoRun.text); }
+  }, [autoRun, running]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const lastIdx = msgs.length - 1;
   return (
