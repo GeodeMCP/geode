@@ -56,7 +56,15 @@ test("writeFile writes a knowledge file (creating parent dirs) and rejects machi
   expect(await ws.fileContent("notes/new.md")).toContain("# Hi");
   await expect(ws.writeFile("../escape.md", "x")).rejects.toThrow(/outside|not allowed/);
   await expect(ws.writeFile(".git/hooks/evil", "x")).rejects.toThrow(/not allowed/);
-  await expect(ws.writeFile("tools/x/TOOL.md", "{}")).rejects.toThrow(/not allowed/);
+});
+
+test("allows reading + writing tools/ manifests, still blocks other machinery dirs", async () => {
+  const ws = createWorkspace(root); await ws.init();
+  await ws.writeFile("tools/cb/TOOL.md", "---\nid: cb\n---\nbody\n");
+  expect(await ws.fileContent("tools/cb/TOOL.md")).toContain("id: cb");
+  await expect(ws.fileContent("artifacts/x.txt")).rejects.toThrow(/not allowed/);
+  await expect(ws.writeFile("node_modules/pkg/i.js", "y")).rejects.toThrow(/not allowed/);
+  await expect(ws.fileContent(".git/config")).rejects.toThrow(/not allowed/);
 });
 
 test("deletePath removes a file and a folder (recursive); rejects machinery/traversal", async () => {

@@ -21,7 +21,10 @@ export interface Workspace {
 
 /** Creates a Workspace backed by a Git repository at the given root, with symlink-safe path resolution that blocks traversal outside the vault. */
 export function createWorkspace(root: string): Workspace {
-  const HIDDEN_FIRST = new Set([".git", "tools", "artifacts", "node_modules"]);
+  // `tools/` is intentionally NOT blocked: the dashboard file editor reads/edits/deletes
+  // tool manifests (tools/<id>/TOOL.md) through this API. `.git`/`node_modules` are real
+  // machinery and `artifacts/` is served via its own endpoints, so those stay blocked.
+  const HIDDEN_FIRST = new Set([".git", "artifacts", "node_modules"]);
   // Resolve a vault-relative path safely: reject traversal + machinery dirs, and
   // follow symlinks (realpath) so a symlink inside the vault can't point outside it.
   const safeResolve = async (relPath: string): Promise<string> => {
