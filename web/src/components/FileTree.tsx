@@ -32,18 +32,18 @@ export function FileTree({ tree, status, selected, onSelect, onCreate, onDelete 
   tree: TreeNode[]; status: { modified: string[]; created: string[] }; selected: string | null;
   onSelect: (p: string) => void; onCreate: (path: string) => void; onDelete: (path: string) => void;
 }) {
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const [confirming, setConfirming] = useState<string | null>(null);
-  const toggle = (p: string) => setCollapsed((s) => { const n = new Set(s); if (n.has(p)) n.delete(p); else n.add(p); return n; });
+  const toggle = (p: string) => setExpanded((s) => { const n = new Set(s); if (n.has(p)) n.delete(p); else n.add(p); return n; });
   const submitNew = () => { const v = name.trim(); if (!v) return; onCreate(v); setCreating(false); setName(""); };
   const cancelNew = () => { setCreating(false); setName(""); };
   const stop = (e: React.MouseEvent) => e.stopPropagation();
 
   const render = (nodes: TreeNode[], depth = 0): React.ReactNode => nodes.map((n) => {
     const isDir = n.type === "dir";
-    const open = isDir && !collapsed.has(n.path);
+    const open = isDir && expanded.has(n.path);
     const gen = isArtifactPath(n.path);
     return (
       <div key={n.path}>

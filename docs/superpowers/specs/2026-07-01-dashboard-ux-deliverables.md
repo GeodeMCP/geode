@@ -22,7 +22,7 @@ defined enough to be verifiable.
 
 ### Polish sweep (can run in parallel)
 
-- [ ] **D1 — Folders collapsed by default** · _S_
+- [x] **D1 — Folders collapsed by default** · _S_
   `web/src/components/FileTree.tsx` (the `collapsed` set starts empty → all open).
   **Verify:** fresh load of Vault → no folder shows its children until clicked.
 
