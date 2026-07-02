@@ -10,6 +10,8 @@ export interface ToolDoc { name: string; description: string; params: { name: st
 export interface ConnectInfo { mcpUrl: string; authToken: string; tools: ToolDoc[]; publicBaseUrl: string | null }
 /** Authentication state indicating whether the server needs setup or login, and whether the user is currently authenticated. */
 export interface AuthInfo { mode: "setup" | "login"; authed: boolean }
+/** The kernel's most recent MCP activity since it started. */
+export interface McpStatus { lastAt: string | null; lastTool: string | null; count: number }
 /** A persisted agent run record including the instruction, SSE events, result, and optional error. */
 export interface TranscriptRecord {
   runId: string;
@@ -57,6 +59,7 @@ export const api = {
   discard: () => json<{ ok: true }>("/api/discard", { method: "POST" }),
   history: () => json<TranscriptRecord[]>("/api/history"),
   connect: () => json<ConnectInfo>("/api/connect"),
+  mcpStatus: () => json<McpStatus>("/api/mcp-status"),
   clearHistory: () => json<{ ok: true }>("/api/history", { method: "DELETE" }),
   tools: () => json<ToolView[]>("/api/tools"),
   tool: (id: string) => json<ToolView>(`/api/tools/${encodeURIComponent(id)}`),
