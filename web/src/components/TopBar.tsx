@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { GemMark } from "./Logo";
+import { McpStatus } from "./McpStatus";
 
 /** Ordered list of all navigable dashboard views. */
 export const VIEWS = ["Vault", "Connect", "Secrets"] as const;
@@ -44,6 +45,7 @@ export function TopBar({ view, onNav, hasTools, onLogout }: {
       </div>
       <nav>{items.map((v) => <a key={v} className={v === view ? "active" : ""} onClick={() => onNav(v)} style={{ cursor: "pointer" }}>{NAV_ICON[v]}{v}</a>)}</nav>
       <div className="tb-right">
+        <McpStatus />
         <button className={`pill${view === "Connect" ? " active" : ""}`} onClick={() => onNav("Connect")} title="Connect a client"><ConnectIcon /> Connect</button>
         <span className="acct">
           <span className="avatar" onClick={() => setMenu((m) => !m)} title="Account" />

@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { loadConfig } from "../src/config.js";
+import { loadConfig, ensureWorkspaceDir } from "../src/config.js";
 
 const base = { GEODE_AUTH_TOKEN: "secret", GEODE_WORKSPACE: "/tmp/vault" };
 
@@ -55,4 +55,9 @@ test("ownerEmail/ownerPassword are undefined by default and read from env", () =
 test("accountDir defaults to ~/.geode and can be overridden", () => {
   expect(loadConfig(base).accountDir).toMatch(/\/.geode$/);
   expect(loadConfig({ ...base, GEODE_ACCOUNT_DIR: "/run/geode" }).accountDir).toBe("/run/geode");
+});
+
+test("ensureWorkspaceDir throws a clear error for a missing dir and is a no-op when present", () => {
+  expect(() => ensureWorkspaceDir("/nope", () => false)).toThrow(/GEODE_WORKSPACE directory does not exist/);
+  expect(() => ensureWorkspaceDir("/yes", () => true)).not.toThrow();
 });

@@ -1,4 +1,4 @@
-import { loadConfig } from "./config.js";
+import { loadConfig, ensureWorkspaceDir } from "./config.js";
 import { createWorkspace } from "./workspace.js";
 import { createEventLog } from "./eventLog.js";
 import { createRunManager } from "./runManager.js";
@@ -17,6 +17,7 @@ import { createAccountStore } from "./account.js";
 import { invoke } from "./invoke.js";
 import { realDocker } from "./docker.js";
 import { realMcpConnector } from "./mcpProxy.js";
+import { createMcpActivity } from "./mcpActivity.js";
 import { dirname, join } from "node:path";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -28,6 +29,7 @@ import { createRateLimiter } from "./dashboard/rateLimit.js";
 /** Bootstraps the full GeodeMCP server: loads config, initialises all stores, and starts the MCP and HTTP listeners. */
 async function main() {
   const config = loadConfig();
+  ensureWorkspaceDir(config.workspaceRoot);
   const workspace = createWorkspace(config.workspaceRoot);
   await workspace.init();
 
@@ -63,11 +65,13 @@ async function main() {
   };
 
   const oauth = createOAuth({ signKey: loadOrCreateKey(join(config.secretsDir, "oauth"), process.env.GEODE_OAUTH_KEY), baseUrl: config.baseUrl });
+  const activity = createMcpActivity();
   const app = buildHttpApp(
     () => buildMcpServer(queryDeps, { secrets, artifacts, toolsDir: join(homedir(), ".geode", "tools"), docker: realDocker(), connector: realMcpConnector() }),
     config.authToken,
     artifacts,
     { verify: (t) => !!oauth.verifyAccessToken(t), resourceMetadataUrl: `${config.baseUrl}/.well-known/oauth-protected-resource` },
+    activity,
   );
 
   const sessionKey = loadOrCreateKey(join(config.secretsDir, "session"), process.env.GEODE_SESSION_KEY);
@@ -96,6 +100,7 @@ async function main() {
     authToken: config.authToken,
     invoke: (args) => invoke({ root: workspace.root, secrets, toolsDir: join(homedir(), ".geode", "tools"), docker: realDocker(), connector: realMcpConnector() }, args),
     linkKey: loadOrCreateKey(join(config.secretsDir, "link"), process.env.GEODE_LINK_KEY),
+    activity,
   });
   console.log(`Dashboard enabled at ${config.baseUrl}/`);
 

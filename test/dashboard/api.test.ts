@@ -9,6 +9,7 @@ import { createWorkspace } from "../../src/workspace.js";
 import { createTranscriptStore } from "../../src/transcripts.js";
 import { createAccountStore } from "../../src/account.js";
 import type { Docker } from "../../src/docker.js";
+import { createMcpActivity } from "../../src/mcpActivity.js";
 
 const stubDocker: Docker = {
   available: async () => false,
@@ -48,6 +49,7 @@ async function boot() {
     invoke: async () => ({ status: 200, body: {} }),
     docker: stubDocker,
     toolsDir: root,
+    activity: createMcpActivity(),
   }));
   await new Promise<void>((r) => { server = app.listen(0, () => { url = `http://localhost:${(server.address() as any).port}`; r(); }); });
 }
@@ -212,6 +214,15 @@ test("no-owner kernel: setup needs no cookie, then login switches to the account
   } finally {
     srv3.close(); rmSync(root3, { recursive: true, force: true });
   }
+});
+
+test("GET /api/mcp-status requires a session and returns the activity snapshot", async () => {
+  const res = await fetch(`${url}/api/mcp-status`);
+  expect(res.status).toBe(401);
+  const cookie = await login();
+  const ok = await fetch(`${url}/api/mcp-status`, { headers: { cookie } });
+  expect(ok.status).toBe(200);
+  expect(await ok.json()).toEqual({ lastAt: null, lastTool: null, count: 0 });
 });
 
 test("login is rate-limited after repeated failures", async () => {

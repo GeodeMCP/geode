@@ -11,6 +11,8 @@ import { invoke, type InvokeArgs, type InvokeResult } from "./invoke.js";
 import type { SecretStore } from "./secrets.js";
 import type { ArtifactStore } from "./artifacts.js";
 import { toolDescription } from "./toolCatalog.js";
+import type { McpActivity } from "./mcpActivity.js";
+import { toolFromBody } from "./mcpActivity.js";
 
 /** Verifies that an Authorization header exactly matches the expected Bearer token using a timing-safe comparison. */
 export function checkAuth(header: string | undefined, token: string): boolean {
@@ -175,7 +177,7 @@ export function buildMcpServer(queryDeps: QueryDeps, opts?: { secrets?: SecretSt
 }
 
 /** Builds an Express app that serves the MCP endpoint with Bearer auth, optional artifact file serving, and optional OAuth support. */
-export function buildHttpApp(makeServer: () => McpServer, authToken: string, artifacts?: ArtifactStore, oauth?: { verify: (t: string) => boolean; resourceMetadataUrl: string }) {
+export function buildHttpApp(makeServer: () => McpServer, authToken: string, artifacts: ArtifactStore | undefined, oauth: { verify: (t: string) => boolean; resourceMetadataUrl: string } | undefined, activity: McpActivity) {
   const app = express();
   app.use(express.json({ limit: "8mb" }));
   if (artifacts) {
@@ -206,6 +208,8 @@ export function buildHttpApp(makeServer: () => McpServer, authToken: string, art
       res.status(401).json({ error: "unauthorized" });
       return;
     }
+    // auth passed
+    activity.record(toolFromBody(req.body));
     const server = makeServer();
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
     res.on("close", () => { void transport.close(); void server.close(); });

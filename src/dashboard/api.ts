@@ -39,6 +39,8 @@ export interface ApiDeps {
   docker: Docker;
   /** Directory where installed cli tool state is stored (e.g. ~/.geode/tools). */
   toolsDir: string;
+  /** In-memory recorder of the most recent authenticated MCP request. */
+  activity: import("../mcpActivity.js").McpActivity;
 }
 
 const SAFE_NAME = /^[A-Za-z0-9_-]+$/;
@@ -145,6 +147,8 @@ export function createApiRouter(deps: ApiDeps): Router {
     const isLoopback = /(^https?:\/\/)?(localhost|127\.0\.0\.1|\[::1\])(:|\/|$)/.test(deps.baseUrl);
     res.json({ mcpUrl: `${deps.baseUrl}/mcp`, authToken: deps.authToken, tools: TOOL_CATALOG, publicBaseUrl: isLoopback ? null : deps.baseUrl });
   });
+
+  router.get("/mcp-status", (_req, res) => { res.json(deps.activity.snapshot()); });
 
   router.get("/tools", async (_req, res) => { res.json(await listTools(deps.workspace.root, deps.toolsDir, deps.secrets)); });
   router.get("/tools/:id", async (req, res) => {

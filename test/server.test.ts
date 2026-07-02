@@ -1,6 +1,8 @@
 import { expect, test } from "vitest";
 import { checkAuth, checkMcpAuth, makeQueryHandler, buildMcpServer, makeInvokeHandler } from "../src/server.js";
 import { makeRememberHandler, makeListCapabilitiesHandler } from "../src/server.js";
+import { buildHttpApp } from "../src/server.js";
+import { createMcpActivity } from "../src/mcpActivity.js";
 
 test("checkAuth accepts the correct bearer token and rejects others", () => {
   expect(checkAuth("Bearer secret", "secret")).toBe(true);
@@ -83,4 +85,21 @@ test("invoke handler returns a structured error when invoke throws", async () =>
   const res = await handler({ integration: "x", action: "y" } as any, {});
   expect(res.isError).toBe(true);
   expect(res.content[0].text).toContain("boom");
+});
+
+test("buildHttpApp records MCP activity for an authenticated /mcp request, not for an unauthorized one", async () => {
+  const activity = createMcpActivity();
+  const deps = { workspace: { root: "/vault" }, engine: async function* () {}, runManager: { run: async (fn: any) => fn(new AbortController(), "r") }, eventLog: { append: async () => {} }, systemPrompt: "SYS" } as any;
+  const app = buildHttpApp(() => buildMcpServer(deps), "tok", undefined, undefined, activity);
+  const srv = app.listen(0);
+  const port = (srv.address() as any).port;
+  const body = JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "t", version: "0" } } });
+  const headers = { "content-type": "application/json", accept: "application/json, text/event-stream" };
+  const r1 = await fetch(`http://localhost:${port}/mcp`, { method: "POST", headers, body });
+  expect(r1.status).toBe(401);
+  expect(activity.snapshot().count).toBe(0);
+  await fetch(`http://localhost:${port}/mcp`, { method: "POST", headers: { ...headers, authorization: "Bearer tok" }, body });
+  expect(activity.snapshot().count).toBe(1);
+  expect(activity.snapshot().lastTool).toBe("initialize");
+  srv.close();
 });
