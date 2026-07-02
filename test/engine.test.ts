@@ -89,18 +89,36 @@ test("buildQueryOptions includes model only when provided", () => {
   expect(buildQueryOptions({ ...base, model: "m" }).model).toBe("m");
 });
 
-test("buildQueryOptions forwards sandbox settings when provided", () => {
-  const opts = buildQueryOptions({
-    instruction: "hi", cwd: "/vault", systemPrompt: "SYS", abortController: new AbortController(),
-    sandbox: { enabled: true, failIfUnavailable: true, autoAllowBashIfSandboxed: true,
-      filesystem: { allowWrite: ["/vault"] }, network: { allowedDomains: ["api.anthropic.com"] } },
-  });
-  expect(opts.sandbox).toMatchObject({ enabled: true, filesystem: { allowWrite: ["/vault"] } });
-  // non-interactive behaviour is retained alongside the sandbox
-  expect(opts.permissionMode).toBe("bypassPermissions");
+const sandboxedOpts = () => buildQueryOptions({
+  instruction: "hi", cwd: "/vault", systemPrompt: "SYS", abortController: new AbortController(),
+  sandbox: {
+    enabled: true, failIfUnavailable: true, autoAllowBashIfSandboxed: true, allowUnsandboxedCommands: false,
+    filesystem: { allowWrite: ["/vault"] }, network: { allowedDomains: ["api.anthropic.com"] },
+  },
 });
 
-test("buildQueryOptions omits sandbox when not provided", () => {
+test("a sandboxed run enforces: it forwards the sandbox, uses permissionMode 'default', never bypasses, and carries a handler", () => {
+  const opts = sandboxedOpts();
+  expect(opts.sandbox).toMatchObject({ enabled: true, filesystem: { allowWrite: ["/vault"] } });
+  // The OS sandbox derives its file/network boundary from permission rules; bypassPermissions would
+  // skip exactly those. So a sandboxed run must NOT bypass — and must attach a programmatic handler
+  // (non-interactive: it decides every tool call without prompting).
+  expect(opts.permissionMode).toBe("default");
+  expect(opts.allowDangerouslySkipPermissions).toBeUndefined();
+  expect(typeof opts.canUseTool).toBe("function");
+});
+
+test("the sandboxed run's permission handler denies tool egress and confines writes to the vault", async () => {
+  const can = sandboxedOpts().canUseTool as (n: string, i: Record<string, unknown>) => Promise<{ behavior: string }>;
+  expect((await can("WebFetch", { url: "https://evil.com" })).behavior).toBe("deny");
+  expect((await can("Write", { file_path: "/etc/passwd" })).behavior).toBe("deny");
+  expect((await can("Write", { file_path: "notes/ok.md" })).behavior).toBe("allow");
+});
+
+test("an unsandboxed (dev) run stays unconfined: bypassPermissions, no sandbox, no handler", () => {
   const opts = buildQueryOptions({ instruction: "hi", cwd: "/vault", systemPrompt: "SYS", abortController: new AbortController() });
-  expect(opts.sandbox).toBeUndefined();
+  expect("sandbox" in opts).toBe(false);
+  expect(opts.permissionMode).toBe("bypassPermissions");
+  expect(opts.allowDangerouslySkipPermissions).toBe(true);
+  expect("canUseTool" in opts).toBe(false);
 });

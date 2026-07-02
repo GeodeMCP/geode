@@ -1,3 +1,5 @@
+import { isAbsolute, resolve, sep } from "node:path";
+
 /** Resolved OS-sandbox policy for the vault agent, derived once from env + the vault root. */
 export interface SandboxPolicy {
   enabled: boolean;
@@ -12,9 +14,20 @@ export interface SandboxSettings {
   enabled: boolean;
   failIfUnavailable: boolean;
   autoAllowBashIfSandboxed: boolean;
+  allowUnsandboxedCommands: boolean;
   filesystem: { allowWrite: string[]; allowRead?: string[] };
   network: { allowedDomains: string[]; allowLocalBinding?: boolean };
 }
+
+/** A single tool-call permission decision (mirrors the SDK's PermissionResult). */
+export type ToolPermission = { behavior: "allow" } | { behavior: "deny"; message: string };
+
+/** Non-interactive permission handler: decides each tool call without prompting (mirrors the SDK's CanUseTool). */
+export type PermissionHandler = (toolName: string, input: Record<string, unknown>) => Promise<ToolPermission>;
+
+// Tools that mutate the filesystem in the host process (outside the OS command sandbox that bounds
+// Bash). These must be confined to the vault at the permission layer.
+const WRITE_TOOLS = new Set(["Edit", "Write", "MultiEdit", "NotebookEdit"]);
 
 // Hosts the agent legitimately reaches while onboarding a tool (repo clone / package fetch).
 const DEFAULT_ONBOARDING_DOMAINS = [
@@ -59,11 +72,52 @@ export function buildSandboxSettings(policy: SandboxPolicy | undefined, extraRea
     enabled: true,
     failIfUnavailable: policy.failIfUnavailable,
     autoAllowBashIfSandboxed: true,
+    // The model must not opt a command out of the sandbox (Bash `dangerouslyDisableSandbox`).
+    allowUnsandboxedCommands: false,
     filesystem: extraReadDirs.length
       ? { allowWrite: policy.allowWrite, allowRead: extraReadDirs }
       : { allowWrite: policy.allowWrite },
     network: policy.allowLocalBinding
       ? { allowedDomains: policy.allowedDomains, allowLocalBinding: true }
       : { allowedDomains: policy.allowedDomains },
+  };
+}
+
+/** True when `target` (resolved against the first write root if relative) lands inside one of `roots`. */
+function writeAllowed(target: string, roots: string[]): boolean {
+  const base = roots[0] ?? "";
+  const abs = isAbsolute(target) ? resolve(target) : resolve(base, target);
+  return roots.some((root) => {
+    const r = resolve(root);
+    return abs === r || abs.startsWith(r + sep);
+  });
+}
+
+/**
+ * Builds the non-interactive permission handler that partners the OS sandbox. The sandbox bounds
+ * Bash at the syscall level; this handler bounds the host-process tools the sandbox doesn't cover:
+ * it denies network egress via WebFetch/WebSearch, refuses any Bash that opts out of the sandbox,
+ * and confines file mutations to `writeRoots` (the vault). Everything else (reads, search, sandboxed
+ * bash) is allowed. It never prompts — the vault agent runs without a human to answer mid-run.
+ */
+export function buildPermissionHandler(writeRoots: string[]): PermissionHandler {
+  const deny = (message: string): ToolPermission => ({ behavior: "deny", message });
+  return async (toolName, input) => {
+    if (toolName === "Bash" && input.dangerouslyDisableSandbox === true) {
+      return deny("running commands outside the sandbox is not permitted");
+    }
+    if (toolName === "WebFetch" || toolName === "WebSearch") {
+      return deny(`${toolName} is disabled for the vault agent (network egress is off by default)`);
+    }
+    if (toolName === "AskUserQuestion") {
+      return deny("interactive questions are disabled; state an assumption and proceed");
+    }
+    if (WRITE_TOOLS.has(toolName)) {
+      const path = (input.file_path ?? input.notebook_path) as string | undefined;
+      if (!path || !writeAllowed(path, writeRoots)) {
+        return deny(`writes are confined to the vault; ${path ?? "(no path)"} is outside it`);
+      }
+    }
+    return { behavior: "allow" };
   };
 }

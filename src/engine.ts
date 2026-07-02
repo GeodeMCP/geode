@@ -1,4 +1,4 @@
-import type { SandboxSettings } from "./agentSandbox.js";
+import { buildPermissionHandler, type SandboxSettings } from "./agentSandbox.js";
 
 /** Represents a single to-do item tracked by the agent during a run. */
 export interface Todo { content: string; status: string }
@@ -160,7 +160,7 @@ export function eventText(ev: ProgressEvent): string {
 // the wrong place, so nothing lands in the vault. (Diagnosed 2026-06-17.)
 /** Builds the Agent SDK query options object from run options, attaching the claude_code preset system prompt, tool set, and permission settings. */
 export function buildQueryOptions(opts: EngineRunOptions): Record<string, unknown> {
-  return {
+  const base = {
     cwd: opts.cwd,
     systemPrompt: { type: "preset", preset: "claude_code", append: opts.systemPrompt },
     tools: { type: "preset", preset: "claude_code" },
@@ -168,12 +168,28 @@ export function buildQueryOptions(opts: EngineRunOptions): Record<string, unknow
     // AskUserQuestion would just fail and the agent narrates a confusing "you skipped the question".
     // Remove it — the agent proceeds with a stated assumption instead (reinforced in the constitution).
     disallowedTools: ["AskUserQuestion"],
-    permissionMode: "bypassPermissions",
-    allowDangerouslySkipPermissions: true,
     settingSources: ["project"],
     abortController: opts.abortController,
     ...(opts.model ? { model: opts.model } : {}),
-    ...(opts.sandbox ? { sandbox: opts.sandbox } : {}),
+  };
+  // Sandbox ON (default/production): the OS sandbox is the enforcement boundary. It derives its
+  // file/network limits from the permission rules, so we must NOT bypass permissions — that would
+  // skip exactly those checks and leave the sandbox inert. Instead run permissionMode "default" with
+  // a programmatic handler that decides every tool call without prompting (non-interactive), denying
+  // tool egress and confining host-process writes to the vault.
+  if (opts.sandbox) {
+    return {
+      ...base,
+      sandbox: opts.sandbox,
+      permissionMode: "default",
+      canUseTool: buildPermissionHandler(opts.sandbox.filesystem.allowWrite),
+    };
+  }
+  // Sandbox OFF (GEODE_SANDBOX_DISABLE=1, dev only): run genuinely unconfined, loudly opted in.
+  return {
+    ...base,
+    permissionMode: "bypassPermissions",
+    allowDangerouslySkipPermissions: true,
   };
 }
 

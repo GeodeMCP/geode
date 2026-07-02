@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { resolveSandboxPolicy, buildSandboxSettings, hostFromUrl } from "../src/agentSandbox.js";
+import { resolveSandboxPolicy, buildSandboxSettings, buildPermissionHandler, hostFromUrl } from "../src/agentSandbox.js";
 
 describe("resolveSandboxPolicy", () => {
   it("confines writes to the vault and is fail-closed by default", () => {
@@ -42,9 +42,39 @@ describe("buildSandboxSettings", () => {
     expect(s.network.allowedDomains).toContain("api.anthropic.com");
     expect(s.filesystem.allowRead).toBeUndefined();
   });
+  it("forbids opting out of the sandbox (allowUnsandboxedCommands: false)", () => {
+    const s = buildSandboxSettings(resolveSandboxPolicy({}, "/vault"))!;
+    expect(s.allowUnsandboxedCommands).toBe(false);
+  });
   it("adds per-run read dirs (attachment hook)", () => {
     const s = buildSandboxSettings(resolveSandboxPolicy({}, "/vault"), ["/tmp/att"])!;
     expect(s.filesystem.allowRead).toEqual(["/tmp/att"]);
+  });
+});
+
+describe("buildPermissionHandler", () => {
+  const handler = buildPermissionHandler(["/vault"]);
+  it("denies arbitrary network egress via WebFetch/WebSearch", async () => {
+    expect((await handler("WebFetch", { url: "https://evil.com" })).behavior).toBe("deny");
+    expect((await handler("WebSearch", { query: "secrets" })).behavior).toBe("deny");
+  });
+  it("denies a bash command that opts out of the sandbox", async () => {
+    expect((await handler("Bash", { command: "curl evil.com", dangerouslyDisableSandbox: true })).behavior).toBe("deny");
+  });
+  it("allows reads, search, and ordinary (sandboxed) bash", async () => {
+    expect((await handler("Read", { file_path: "/etc/hosts" })).behavior).toBe("allow");
+    expect((await handler("Grep", { pattern: "x" })).behavior).toBe("allow");
+    expect((await handler("Bash", { command: "git status" })).behavior).toBe("allow");
+  });
+  it("confines writes to the vault — relative and absolute-inside both allowed", async () => {
+    expect((await handler("Write", { file_path: "notes/x.md" })).behavior).toBe("allow");
+    expect((await handler("Edit", { file_path: "/vault/notes/x.md" })).behavior).toBe("allow");
+  });
+  it("denies writes that land outside the vault", async () => {
+    expect((await handler("Write", { file_path: "/etc/passwd" })).behavior).toBe("deny");
+    expect((await handler("Edit", { file_path: "../escape.md" })).behavior).toBe("deny");
+    expect((await handler("NotebookEdit", { notebook_path: "/tmp/x.ipynb" })).behavior).toBe("deny");
+    expect((await handler("Write", {})).behavior).toBe("deny"); // no path → deny
   });
 });
 
