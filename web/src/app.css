@@ -263,3 +263,10 @@
 .connect .pchip.opt{opacity:.7;}
 .connect .trust{margin-top:18px;padding:13px 14px;border:1px solid rgba(52,211,153,.3);border-radius:12px;background:rgba(52,211,153,.06);color:var(--muted);font-size:12.5px;line-height:1.55;}
 .connect .trust code{font-family:"Geist Mono",monospace;font-size:11px;color:var(--emerald-300);}
+.connect .clientpicker{display:flex;flex-wrap:wrap;gap:7px;margin:18px 0 2px;}
+.connect .clienttab{font-family:"Instrument Sans",sans-serif;font-size:12.5px;font-weight:500;color:var(--muted);background:var(--surface-2);border:1px solid var(--border-strong);border-radius:8px;padding:6px 12px;cursor:pointer;}
+.connect .clienttab:hover{color:var(--neutral-200);border-color:var(--faint);}
+.connect .clienttab.active{color:var(--emerald-300);background:rgba(52,211,153,.1);border-color:rgba(52,211,153,.5);}
+.connect .confighint{color:var(--muted);font-size:12.5px;line-height:1.5;margin:12px 0 0;}
+.connect .mnote{color:var(--faint);font-size:12.5px;line-height:1.5;margin:11px 0 0;}
+.connect .checkline{color:var(--emerald-300);font-size:12.5px;line-height:1.5;margin:9px 0 0;}
