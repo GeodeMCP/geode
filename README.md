@@ -32,6 +32,8 @@ The sandboxed agent enforces OS-level confinement (via seatbelt on macOS, bubble
 
 **Linux runtime dependencies:** the sandbox requires `bubblewrap` and `socat` to be installed. The deploy image must include them (e.g., `apt-get install -y bubblewrap socat`). macOS has no additional requirements (seatbelt is built-in). If these binaries are missing and `GEODE_SANDBOX_DISABLE=1` is not set, the agent run will fail closed.
 
+**Verify confinement on deploy:** `scripts/verify-sandbox.ts` runs a real sandboxed agent that attempts to escape (write outside the vault, reach a non-allowlisted domain) and asserts the outcomes. Run it on the Linux deploy image — `npx tsx --env-file=.env scripts/verify-sandbox.ts` — and confirm it reports network egress **BLOCKED** before relying on network confinement in production (per-domain filtering is only active where `socat` is present; on macOS dev that check is skipped).
+
 Connect any MCP client to `http://localhost:8787/mcp` with header `Authorization: Bearer $GEODE_AUTH_TOKEN`.
 Tools: `query` (ask the vault — returns an answer or an executable `invoke` plan), `remember` (file a distilled note), `list_capabilities` (the derived menu of recipes + integrations), and `invoke` (the caller runs one integration action; the server injects the secret). The vault prepares and explains; the caller executes via `invoke`.
 
