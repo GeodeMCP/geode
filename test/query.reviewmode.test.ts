@@ -2,6 +2,7 @@ import { expect, test } from "vitest";
 import { query, type QueryDeps } from "../src/query.js";
 import { createRunManager } from "../src/runManager.js";
 import type { EngineEvent } from "../src/engine.js";
+import { resolveSandboxPolicy } from "../src/agentSandbox.js";
 
 function fakeWorkspace() {
   const calls: string[] = [];
@@ -23,6 +24,7 @@ function deps(over: Partial<QueryDeps>): QueryDeps {
     runManager: createRunManager({ maxRuntimeMs: 1000, queueLimit: 4 }),
     eventLog: { append: async () => {} } as any,
     systemPrompt: "SYS",
+    sandboxPolicy: resolveSandboxPolicy({ GEODE_SANDBOX_DISABLE: "1" }, "/vault"),
     ...over,
   };
 }

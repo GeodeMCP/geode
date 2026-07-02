@@ -3,6 +3,7 @@ import { createWorkspace } from "./workspace.js";
 import { createEventLog } from "./eventLog.js";
 import { createRunManager } from "./runManager.js";
 import { claudeAgentEngine } from "./engine.js";
+import { resolveSandboxPolicy } from "./agentSandbox.js";
 import { CONSTITUTION } from "./constitution.js";
 import { buildMcpServer, buildHttpApp } from "./server.js";
 import type { QueryDeps } from "./query.js";
@@ -55,6 +56,7 @@ async function main() {
     runManager: createRunManager({ maxRuntimeMs: config.maxRuntimeMs, queueLimit: config.queueLimit }),
     eventLog: createEventLog(config.workspaceRoot),
     systemPrompt: CONSTITUTION,
+    sandboxPolicy: resolveSandboxPolicy(process.env, config.workspaceRoot),
     model: config.model,
     artifactsDir: config.artifactsDir,
     baseUrl: config.baseUrl,

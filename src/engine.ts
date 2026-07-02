@@ -1,3 +1,5 @@
+import { buildPermissionHandler, type SandboxSettings } from "./agentSandbox.js";
+
 /** Represents a single to-do item tracked by the agent during a run. */
 export interface Todo { content: string; status: string }
 /** Timing, cost, and token usage collected at the end of a run. */
@@ -27,6 +29,7 @@ export interface EngineRunOptions {
   systemPrompt: string;
   model?: string;
   abortController: AbortController;
+  sandbox?: SandboxSettings;
 }
 
 /** Callable that starts an agent run and yields engine events as the agent makes progress. */
@@ -157,19 +160,40 @@ export function eventText(ev: ProgressEvent): string {
 // the wrong place, so nothing lands in the vault. (Diagnosed 2026-06-17.)
 /** Builds the Agent SDK query options object from run options, attaching the claude_code preset system prompt, tool set, and permission settings. */
 export function buildQueryOptions(opts: EngineRunOptions): Record<string, unknown> {
-  return {
+  const base = {
     cwd: opts.cwd,
     systemPrompt: { type: "preset", preset: "claude_code", append: opts.systemPrompt },
     tools: { type: "preset", preset: "claude_code" },
-    // The vault agent runs non-interactively: there is no channel to answer a question mid-run, so
-    // AskUserQuestion would just fail and the agent narrates a confusing "you skipped the question".
-    // Remove it — the agent proceeds with a stated assumption instead (reinforced in the constitution).
-    disallowedTools: ["AskUserQuestion"],
-    permissionMode: "bypassPermissions",
-    allowDangerouslySkipPermissions: true,
-    settingSources: ["project"],
+    // AskUserQuestion: the run is non-interactive (no channel to answer mid-run) — the agent proceeds
+    // with a stated assumption instead. Task: subagents may not inherit our canUseTool, and their
+    // host-process Write/Edit would escape the vault confinement — so the vault agent stays single-threaded.
+    disallowedTools: ["AskUserQuestion", "Task"],
+    // [] = SDK isolation mode: do NOT load filesystem settings. The cwd is the agent-writable vault,
+    // so settingSources:["project"] would let a prompt-injected `<vault>/.claude/settings.json`
+    // (an in-vault write we allow) grant permission rules that bypass canUseTool on the next run.
+    // The agent's guidance comes from the explicit systemPrompt, not from auto-loaded CLAUDE.md.
+    settingSources: [],
     abortController: opts.abortController,
     ...(opts.model ? { model: opts.model } : {}),
+  };
+  // Sandbox ON (default/production): the OS sandbox is the enforcement boundary. It derives its
+  // file/network limits from the permission rules, so we must NOT bypass permissions — that would
+  // skip exactly those checks and leave the sandbox inert. Instead run permissionMode "default" with
+  // a programmatic handler that decides every tool call without prompting (non-interactive), denying
+  // tool egress and confining host-process writes to the vault.
+  if (opts.sandbox) {
+    return {
+      ...base,
+      sandbox: opts.sandbox,
+      permissionMode: "default",
+      canUseTool: buildPermissionHandler(opts.sandbox.filesystem.allowWrite),
+    };
+  }
+  // Sandbox OFF (GEODE_SANDBOX_DISABLE=1, dev only): run genuinely unconfined, loudly opted in.
+  return {
+    ...base,
+    permissionMode: "bypassPermissions",
+    allowDangerouslySkipPermissions: true,
   };
 }
 
