@@ -1,8 +1,15 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { TreeNode } from "../api";
 import { isToolPath } from "../fileType";
 import { isArtifactPath } from "../artifacts";
 import { ColHead } from "./ColHead";
+
+// Persisted set of expanded folder paths — survives refresh (localStorage).
+const TREE_STATE_KEY = "geode.tree.expanded";
+
+// All directory paths in the tree — used by expand-all.
+const allDirPaths = (nodes: TreeNode[]): string[] =>
+  nodes.flatMap((n) => (n.type === "dir" ? [n.path, ...allDirPaths(n.children ?? [])] : []));
 
 // Tree glyphs — identical to the marketing site (#ico-folder / #ico-file).
 const FolderIcon = () => (
@@ -17,7 +24,7 @@ const FileIcon = () => (
 );
 const ToolIcon = () => (
   <svg className="ic tool" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-    <path d="M10.6 2.2a3 3 0 0 0-3.9 3.6L2.5 10a1.4 1.4 0 0 0 2 2l4.2-4.2a3 3 0 0 0 3.6-3.9l-1.8 1.8-1.5-.4-.4-1.5 1.8-1.8Z" />
+    <path d="M9.3 1.7 3.6 9h3.7l-.7 5.3L12.4 7H8.7z" />
   </svg>
 );
 const Chevron = () => (
@@ -28,23 +35,36 @@ const TrashIcon = () => (
 );
 
 /** Renders the vault file tree with collapsible folders, git-status badges, inline file creation, and per-file delete confirmation. */
-export function FileTree({ tree, status, selected, onSelect, onCreate, onDelete }: {
+export function FileTree({ tree, status, selected, onSelect, onCreate, onDelete, needsInstall }: {
   tree: TreeNode[]; status: { modified: string[]; created: string[] }; selected: string | null;
   onSelect: (p: string) => void; onCreate: (path: string) => void; onDelete: (path: string) => void;
+  needsInstall?: Set<string>;
 }) {
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState<Set<string>>(() => {
+    try { const raw = localStorage.getItem(TREE_STATE_KEY); return new Set<string>(raw ? JSON.parse(raw) : []); }
+    catch { return new Set<string>(); }
+  });
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const [confirming, setConfirming] = useState<string | null>(null);
-  const toggle = (p: string) => setCollapsed((s) => { const n = new Set(s); if (n.has(p)) n.delete(p); else n.add(p); return n; });
+  useEffect(() => {
+    try { localStorage.setItem(TREE_STATE_KEY, JSON.stringify([...expanded])); } catch { /* ignore */ }
+  }, [expanded]);
+  const toggle = (p: string) => setExpanded((s) => { const n = new Set(s); if (n.has(p)) n.delete(p); else n.add(p); return n; });
+  const toggleAll = () => setExpanded((s) => (s.size ? new Set<string>() : new Set(allDirPaths(tree))));
   const submitNew = () => { const v = name.trim(); if (!v) return; onCreate(v); setCreating(false); setName(""); };
   const cancelNew = () => { setCreating(false); setName(""); };
   const stop = (e: React.MouseEvent) => e.stopPropagation();
+  const dirtyPaths = [...status.modified, ...status.created];
+  const dirDirty = (p: string) => dirtyPaths.some((f) => f.startsWith(p + "/"));
+  const pending = status.modified.length + status.created.length;
+  const hasInstallPending = (needsInstall?.size ?? 0) > 0;
 
   const render = (nodes: TreeNode[], depth = 0): React.ReactNode => nodes.map((n) => {
     const isDir = n.type === "dir";
-    const open = isDir && !collapsed.has(n.path);
+    const open = isDir && expanded.has(n.path);
     const gen = isArtifactPath(n.path);
+    const toolNeedsInstall = isDir && /^tools\/[^/]+$/.test(n.path) && (needsInstall?.has(n.path.split("/")[1]) ?? false);
     return (
       <div key={n.path}>
         <div className={`row ${isDir && open ? "open" : ""} ${selected === n.path ? "active" : ""} ${gen ? "gen" : ""}`}
@@ -65,6 +85,8 @@ export function FileTree({ tree, status, selected, onSelect, onCreate, onDelete 
             <>
               {status.modified.includes(n.path) && <span className="badge mod">modified</span>}
               {status.created.includes(n.path) && <span className="badge new">new</span>}
+              {toolNeedsInstall && <span className="badge install" title="This tool must be installed before it can run">install</span>}
+              {isDir && (dirDirty(n.path) || (n.path === "tools" && hasInstallPending)) && <span className="dot-mod" title="Needs attention inside" />}
               {!gen && <button className="del-btn" title={`Delete ${n.name}`} onClick={(e) => { stop(e); setConfirming(n.path); }}><TrashIcon /></button>}
             </>
           )}
@@ -76,7 +98,8 @@ export function FileTree({ tree, status, selected, onSelect, onCreate, onDelete 
 
   return (
     <div className="col tree">
-      <ColHead title="Vault">
+      <ColHead title="Vault" note={pending > 0 ? <span style={{ color: "#d9a13a" }}>{pending} pending</span> : undefined}>
+        <button className="ghost sm" onClick={toggleAll} title={expanded.size ? "Collapse all folders" : "Expand all folders"} style={{ textTransform: "none", letterSpacing: 0 }}>{expanded.size ? "Collapse all" : "Expand all"}</button>
         <button className={`ghost sm${creating ? " on" : ""}`} onClick={() => (creating ? cancelNew() : setCreating(true))} style={{ textTransform: "none", letterSpacing: 0 }}>+ New</button>
       </ColHead>
       {creating && (
