@@ -1,4 +1,5 @@
-import { isAbsolute, resolve, sep } from "node:path";
+import { existsSync, realpathSync } from "node:fs";
+import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path";
 
 /** Resolved OS-sandbox policy for the vault agent, derived once from env + the vault root. */
 export interface SandboxPolicy {
@@ -19,8 +20,8 @@ export interface SandboxSettings {
   network: { allowedDomains: string[]; allowLocalBinding?: boolean };
 }
 
-/** A single tool-call permission decision (mirrors the SDK's PermissionResult). */
-export type ToolPermission = { behavior: "allow" } | { behavior: "deny"; message: string };
+/** A single tool-call permission decision (mirrors the SDK's PermissionResult). `allow` echoes the tool input back as `updatedInput` — the SDK's runtime schema requires it. */
+export type ToolPermission = { behavior: "allow"; updatedInput: Record<string, unknown> } | { behavior: "deny"; message: string };
 
 /** Non-interactive permission handler: decides each tool call without prompting (mirrors the SDK's CanUseTool). */
 export type PermissionHandler = (toolName: string, input: Record<string, unknown>) => Promise<ToolPermission>;
@@ -83,14 +84,30 @@ export function buildSandboxSettings(policy: SandboxPolicy | undefined, extraRea
   };
 }
 
-/** True when `target` (resolved against the first write root if relative) lands inside one of `roots`. */
+/**
+ * Canonicalizes a path by realpath-ing its longest existing ancestor (the target file may not exist
+ * yet) and re-appending the rest. This resolves symlinks — e.g. macOS `/var`→`/private/var`,
+ * `/tmp`→`/private/tmp` — so a lexical prefix check compares like for like instead of falsely
+ * rejecting a legitimate in-vault write.
+ */
+function canonicalPath(p: string): string {
+  let cur = resolve(p);
+  const rest: string[] = [];
+  while (!existsSync(cur)) {
+    const parent = dirname(cur);
+    if (parent === cur) return resolve(p);
+    rest.unshift(basename(cur));
+    cur = parent;
+  }
+  try { cur = realpathSync(cur); } catch { /* fall back to the resolved (non-symlink-followed) path */ }
+  return rest.length ? join(cur, ...rest) : cur;
+}
+
+/** True when `target` (resolved against the first write root if relative) lands inside one of the already-canonicalized `roots`. */
 function writeAllowed(target: string, roots: string[]): boolean {
   const base = roots[0] ?? "";
-  const abs = isAbsolute(target) ? resolve(target) : resolve(base, target);
-  return roots.some((root) => {
-    const r = resolve(root);
-    return abs === r || abs.startsWith(r + sep);
-  });
+  const abs = canonicalPath(isAbsolute(target) ? target : join(base, target));
+  return roots.some((r) => abs === r || abs.startsWith(r + sep));
 }
 
 /**
@@ -101,6 +118,7 @@ function writeAllowed(target: string, roots: string[]): boolean {
  * bash) is allowed. It never prompts — the vault agent runs without a human to answer mid-run.
  */
 export function buildPermissionHandler(writeRoots: string[]): PermissionHandler {
+  const roots = writeRoots.map(canonicalPath);
   const deny = (message: string): ToolPermission => ({ behavior: "deny", message });
   return async (toolName, input) => {
     if (toolName === "Bash" && input.dangerouslyDisableSandbox === true) {
@@ -114,10 +132,10 @@ export function buildPermissionHandler(writeRoots: string[]): PermissionHandler 
     }
     if (WRITE_TOOLS.has(toolName)) {
       const path = (input.file_path ?? input.notebook_path) as string | undefined;
-      if (!path || !writeAllowed(path, writeRoots)) {
+      if (!path || !writeAllowed(path, roots)) {
         return deny(`writes are confined to the vault; ${path ?? "(no path)"} is outside it`);
       }
     }
-    return { behavior: "allow" };
+    return { behavior: "allow", updatedInput: input };
   };
 }

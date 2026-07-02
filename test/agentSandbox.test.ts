@@ -66,6 +66,10 @@ describe("buildPermissionHandler", () => {
     expect((await handler("Grep", { pattern: "x" })).behavior).toBe("allow");
     expect((await handler("Bash", { command: "git status" })).behavior).toBe("allow");
   });
+  it("echoes the tool input back as updatedInput on allow (the SDK's runtime schema requires it)", async () => {
+    // A bare { behavior: "allow" } fails the SDK's PermissionResult validation and breaks the tool call.
+    expect(await handler("Read", { file_path: "/x" })).toEqual({ behavior: "allow", updatedInput: { file_path: "/x" } });
+  });
   it("confines writes to the vault — relative and absolute-inside both allowed", async () => {
     expect((await handler("Write", { file_path: "notes/x.md" })).behavior).toBe("allow");
     expect((await handler("Edit", { file_path: "/vault/notes/x.md" })).behavior).toBe("allow");
