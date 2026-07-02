@@ -24,7 +24,7 @@ npm start
 
 ### Agent sandbox
 
-The sandboxed agent enforces OS-level confinement (via seatbelt on macOS, bubblewrap on Linux) to restrict file writes and network egress:
+The sandboxed agent enforces OS-level confinement (via seatbelt on macOS, bubblewrap on Linux). It runs with `permissionMode: "default"` plus a non-interactive permission handler — never `bypassPermissions` — that confines file writes to the vault, denies `WebFetch`/`WebSearch`, and refuses any command that opts out of the sandbox. **File-write confinement holds on both macOS and Linux.** Per-domain **network egress** allowlisting relies on the sandbox proxy and is **enforced on Linux only** (it needs `socat`); on macOS (dev) bash network egress is not restricted, so treat macOS as a development environment, not a hardened one. Configuration:
 
 - `GEODE_AGENT_ALLOWED_DOMAINS` — comma-separated extra domains the sandboxed agent may reach (on top of the LLM host + git/package hosts used for tool onboarding). Default: none.
 - `ANTHROPIC_BASE_URL` — override the LLM endpoint (e.g. a local Anthropic-compatible gateway). Its host (loopback included) is auto-added to the network allowlist — this is how a local model is used.
