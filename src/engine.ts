@@ -164,11 +164,15 @@ export function buildQueryOptions(opts: EngineRunOptions): Record<string, unknow
     cwd: opts.cwd,
     systemPrompt: { type: "preset", preset: "claude_code", append: opts.systemPrompt },
     tools: { type: "preset", preset: "claude_code" },
-    // The vault agent runs non-interactively: there is no channel to answer a question mid-run, so
-    // AskUserQuestion would just fail and the agent narrates a confusing "you skipped the question".
-    // Remove it — the agent proceeds with a stated assumption instead (reinforced in the constitution).
-    disallowedTools: ["AskUserQuestion"],
-    settingSources: ["project"],
+    // AskUserQuestion: the run is non-interactive (no channel to answer mid-run) — the agent proceeds
+    // with a stated assumption instead. Task: subagents may not inherit our canUseTool, and their
+    // host-process Write/Edit would escape the vault confinement — so the vault agent stays single-threaded.
+    disallowedTools: ["AskUserQuestion", "Task"],
+    // [] = SDK isolation mode: do NOT load filesystem settings. The cwd is the agent-writable vault,
+    // so settingSources:["project"] would let a prompt-injected `<vault>/.claude/settings.json`
+    // (an in-vault write we allow) grant permission rules that bypass canUseTool on the next run.
+    // The agent's guidance comes from the explicit systemPrompt, not from auto-loaded CLAUDE.md.
+    settingSources: [],
     abortController: opts.abortController,
     ...(opts.model ? { model: opts.model } : {}),
   };

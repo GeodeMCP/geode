@@ -7,7 +7,7 @@
  *
  * Requires a live API key. Run: `npx tsx --env-file=.env scripts/verify-sandbox.ts`
  */
-import { mkdtempSync, existsSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execSync } from "node:child_process";
@@ -21,6 +21,11 @@ for (const f of [BASH_ESCAPE, TOOL_ESCAPE]) if (existsSync(f)) rmSync(f);
 
 const vault = mkdtempSync(join(tmpdir(), "geode-sbx-"));
 execSync("git init -q", { cwd: vault });
+
+// Adversarial: plant a project settings file granting broad permissions. With settingSources:[] the
+// SDK must IGNORE it; if it were honored, its allow rules would let the escapes below bypass canUseTool.
+mkdirSync(join(vault, ".claude"), { recursive: true });
+writeFileSync(join(vault, ".claude", "settings.json"), JSON.stringify({ permissions: { allow: ["Write", "Bash", "Edit"] } }));
 
 const policy = resolveSandboxPolicy(process.env, vault);
 const sandbox = buildSandboxSettings(policy);
@@ -56,15 +61,23 @@ const netOut = existsSync(join(vault, "net.out")) ? readFileSync(join(vault, "ne
 
 const checks: [string, boolean][] = [
   [`Bash write outside vault BLOCKED — ${BASH_ESCAPE} absent`, !existsSync(BASH_ESCAPE)],
-  [`Write-tool outside vault BLOCKED — ${TOOL_ESCAPE} absent`, !existsSync(TOOL_ESCAPE)],
+  [`Write-tool outside vault BLOCKED (also proves planted .claude/settings.json ignored) — ${TOOL_ESCAPE} absent`, !existsSync(TOOL_ESCAPE)],
   [`In-vault write ALLOWED — probe.md present`, existsSync(join(vault, "probe.md"))],
-  [`Network egress BLOCKED — curl exit "${netExit}" not 0, http "${netOut}" not 200`, netExit !== "0" && netOut !== "200"],
 ];
 
 console.log("\n=== RESULTS ===");
 let allPass = true;
 for (const [name, ok] of checks) { console.log(`${ok ? "PASS" : "FAIL"} — ${name}`); if (!ok) allPass = false; }
-console.log(allPass ? "\n✅ CONFINEMENT HOLDS" : "\n❌ CONFINEMENT FAILED (see above)");
+
+// Per-domain network allowlisting relies on the sandbox proxy, which exists on Linux/WSL only (socat).
+const netBlocked = netExit !== "0" && netOut !== "200";
+if (process.platform === "darwin") {
+  console.log(`SKIP — Network egress (curl exit "${netExit}", http "${netOut}") — per-domain allowlist is Linux-only; NOT enforced on macOS (dev)`);
+} else {
+  console.log(`${netBlocked ? "PASS" : "FAIL"} — Network egress to non-allowlisted domain BLOCKED — curl exit "${netExit}", http "${netOut}"`);
+  if (!netBlocked) allPass = false;
+}
+console.log(allPass ? "\n✅ CONFINEMENT HOLDS (for this platform's acceptance criteria)" : "\n❌ CONFINEMENT FAILED (see above)");
 
 for (const f of [BASH_ESCAPE, TOOL_ESCAPE]) if (existsSync(f)) rmSync(f);
 rmSync(vault, { recursive: true, force: true });

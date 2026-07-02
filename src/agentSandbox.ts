@@ -27,7 +27,9 @@ export type ToolPermission = { behavior: "allow"; updatedInput: Record<string, u
 export type PermissionHandler = (toolName: string, input: Record<string, unknown>) => Promise<ToolPermission>;
 
 // Tools that mutate the filesystem in the host process (outside the OS command sandbox that bounds
-// Bash). These must be confined to the vault at the permission layer.
+// Bash). These must be confined to the vault at the permission layer — canUseTool is their ONLY
+// boundary. Must track the claude_code preset's host-process write tools: if the SDK adds a new
+// file-mutating tool, add it here or it inherits the allow-by-default posture (see spec follow-ups).
 const WRITE_TOOLS = new Set(["Edit", "Write", "MultiEdit", "NotebookEdit"]);
 
 // Hosts the agent legitimately reaches while onboarding a tool (repo clone / package fetch).
@@ -131,9 +133,9 @@ export function buildPermissionHandler(writeRoots: string[]): PermissionHandler 
       return deny("interactive questions are disabled; state an assumption and proceed");
     }
     if (WRITE_TOOLS.has(toolName)) {
-      const path = (input.file_path ?? input.notebook_path) as string | undefined;
-      if (!path || !writeAllowed(path, roots)) {
-        return deny(`writes are confined to the vault; ${path ?? "(no path)"} is outside it`);
+      const path = input.file_path ?? input.notebook_path;
+      if (typeof path !== "string" || !writeAllowed(path, roots)) {
+        return deny(`writes are confined to the vault; ${typeof path === "string" ? path : "(no path)"} is outside it`);
       }
     }
     return { behavior: "allow", updatedInput: input };

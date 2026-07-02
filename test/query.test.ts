@@ -38,6 +38,7 @@ function deps(over: Partial<QueryDeps>): QueryDeps {
     runManager: createRunManager({ maxRuntimeMs: 1000, queueLimit: 4 }),
     eventLog: fakeLog() as any,
     systemPrompt: "SYS",
+    sandboxPolicy: resolveSandboxPolicy({ GEODE_SANDBOX_DISABLE: "1" }, "/vault"), // disabled by default; tests opt in
     ...over,
   };
 }
@@ -129,10 +130,10 @@ test("engine receives sandbox settings built from the sandbox policy", async () 
   expect(seen.network.allowedDomains).toContain("api.anthropic.com");
 });
 
-test("engine receives no sandbox when the policy is absent", async () => {
+test("engine receives no sandbox when the policy is disabled (GEODE_SANDBOX_DISABLE)", async () => {
   let seen: any = "unset";
   const engine = async function* (opts: any) { seen = opts.sandbox; yield { type: "result", text: "ok" }; };
-  const d = deps({ engine: engine as any });
+  const d = deps({ engine: engine as any, sandboxPolicy: resolveSandboxPolicy({ GEODE_SANDBOX_DISABLE: "1" }, "/vault") });
   await query(d, "hi");
   expect(seen).toBeUndefined();
 });

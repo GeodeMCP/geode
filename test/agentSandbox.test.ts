@@ -1,4 +1,7 @@
 import { describe, it, expect } from "vitest";
+import { mkdtempSync, symlinkSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { resolveSandboxPolicy, buildSandboxSettings, buildPermissionHandler, hostFromUrl } from "../src/agentSandbox.js";
 
 describe("resolveSandboxPolicy", () => {
@@ -77,8 +80,25 @@ describe("buildPermissionHandler", () => {
   it("denies writes that land outside the vault", async () => {
     expect((await handler("Write", { file_path: "/etc/passwd" })).behavior).toBe("deny");
     expect((await handler("Edit", { file_path: "../escape.md" })).behavior).toBe("deny");
+    expect((await handler("MultiEdit", { file_path: "/etc/hosts" })).behavior).toBe("deny");
     expect((await handler("NotebookEdit", { notebook_path: "/tmp/x.ipynb" })).behavior).toBe("deny");
     expect((await handler("Write", {})).behavior).toBe("deny"); // no path → deny
+    expect((await handler("Write", { file_path: 42 })).behavior).toBe("deny"); // non-string path → deny
+  });
+});
+
+describe("buildPermissionHandler symlink resolution (real filesystem)", () => {
+  it("realpaths both sides: allows an in-vault write through a symlinked root, denies an escape via an in-vault symlink", async () => {
+    const vault = mkdtempSync(join(tmpdir(), "geode-vault-"));
+    const outside = mkdtempSync(join(tmpdir(), "geode-outside-"));
+    symlinkSync(outside, join(vault, "escape")); // <vault>/escape -> /outside
+    const handler = buildPermissionHandler([vault]);
+    // legit in-vault write — root canonicalization (e.g. macOS /var->/private/var) must not false-deny it
+    expect((await handler("Write", { file_path: join(vault, "notes.md") })).behavior).toBe("allow");
+    // write THROUGH an in-vault symlink whose target is outside the vault — must be denied
+    expect((await handler("Write", { file_path: join(vault, "escape", "x.md") })).behavior).toBe("deny");
+    rmSync(vault, { recursive: true, force: true });
+    rmSync(outside, { recursive: true, force: true });
   });
 });
 

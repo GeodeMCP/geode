@@ -106,6 +106,10 @@ test("a sandboxed run enforces: it forwards the sandbox, uses permissionMode 'de
   expect(opts.permissionMode).toBe("default");
   expect(opts.allowDangerouslySkipPermissions).toBeUndefined();
   expect(typeof opts.canUseTool).toBe("function");
+  // Do not load filesystem settings: the agent-writable vault cwd could otherwise re-grant
+  // permission rules that bypass canUseTool. And no subagents (they may not inherit the handler).
+  expect(opts.settingSources).toEqual([]);
+  expect(opts.disallowedTools).toContain("Task");
 });
 
 test("the sandboxed run's permission handler denies tool egress and confines writes to the vault", async () => {

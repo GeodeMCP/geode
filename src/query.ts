@@ -15,7 +15,9 @@ export interface QueryDeps {
   runManager: RunManager;
   eventLog: EventLog;
   systemPrompt: string;
-  sandboxPolicy?: SandboxPolicy;
+  // Required (not optional) so a run can never silently ship unconfined: to run the agent without a
+  // sandbox you must pass a policy with enabled:false (GEODE_SANDBOX_DISABLE=1), not omit it.
+  sandboxPolicy: SandboxPolicy;
   model?: string;
   artifactsDir?: string;
   baseUrl?: string;
