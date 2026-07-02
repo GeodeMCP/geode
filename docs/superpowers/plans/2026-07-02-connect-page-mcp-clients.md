@@ -1,3 +1,93 @@
+# Per-Client Connect Page Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Replace the Connect page's single, misleading local-connect snippet with a per-client picker (Claude Code, Cursor, VS Code, Claude Desktop, Other) that renders the correct MCP config for each client.
+
+**Architecture:** Front-end only. `web/src/views/Connect.tsx` gains a small `CLIENTS` data array; each entry produces the right snippet(s) from the existing `GET /api/connect` values (`mcpUrl`, `authToken`). A segmented picker swaps which client's block is shown. The bearer token is pre-injected into every snippet, masked by default behind the existing reveal/copy control. The "Add with a URL" (remote OAuth) method and the right-hand tools rail are unchanged. No backend/API/type changes.
+
+**Tech Stack:** React 18 + TypeScript, Vite, Vitest + @testing-library/react (jsdom), CSS in `web/src/app.css`.
+
+## Global Constraints
+
+- **All UI strings English** (memory `english-only-app-strings`). No Dutch in the codebase.
+- **Front-end only** — do NOT touch `src/`, the dashboard API, or the `ConnectInfo`/`ToolDoc` types. Snippets derive solely from `info.mcpUrl` and `info.authToken`.
+- **Token hygiene:** the real token is pre-filled into snippets but **masked by default**; a single reveal toggle governs all snippets; `Copy` always copies the real (unmasked) text.
+- **Reuse existing CSS language** (`.method`, `.code`, `.codebar`, `.copy`, `.divnote`, `.reveal`); new classes scoped under `.connect`.
+- **Keep the URL method and the tools rail byte-for-byte** from the current `Connect.tsx`.
+- Run web commands from `web/`: tests `npm test`, typecheck `npm run typecheck`, build `npm run build`.
+
+---
+
+### Task 1: Client picker + per-client snippets in `Connect.tsx` (with tests)
+
+**Files:**
+- Modify: `web/src/views/Connect.tsx` (full rewrite of the component; `CopyButton` unchanged)
+- Test: `web/src/views/Connect.test.tsx` (add 5 tests; keep the existing 3)
+
+**Interfaces:**
+- Consumes: `api.connect(): Promise<ConnectInfo>` where `ConnectInfo = { mcpUrl: string; authToken: string; tools: ToolDoc[]; publicBaseUrl: string | null }` (unchanged).
+- Produces: the `Connect` React component (default export via named `export function Connect()`), unchanged signature — App routing already imports it.
+
+- [ ] **Step 1: Add the failing tests**
+
+Append these tests to `web/src/views/Connect.test.tsx` (keep the three existing tests as-is):
+
+```tsx
+test("defaults to Claude Code with an http config and the one-liner", async () => {
+  render(<Connect />);
+  await screen.findByText("query");
+  expect(screen.getAllByText(/"type": "http"/).length).toBeGreaterThan(0);
+  expect(screen.getAllByText(/claude mcp add --transport http geode/).length).toBeGreaterThan(0);
+});
+
+test("VS Code uses the servers key", async () => {
+  render(<Connect />);
+  await screen.findByText("query");
+  fireEvent.click(screen.getByRole("tab", { name: "VS Code" }));
+  expect(screen.getAllByText(/"servers":/).length).toBeGreaterThan(0);
+});
+
+test("Claude Desktop shows the mcp-remote bridge with --allow-http", async () => {
+  render(<Connect />);
+  await screen.findByText("query");
+  fireEvent.click(screen.getByRole("tab", { name: "Claude Desktop" }));
+  expect(screen.getAllByText(/mcp-remote/).length).toBeGreaterThan(0);
+  expect(screen.getAllByText(/--allow-http/).length).toBeGreaterThan(0);
+  expect(screen.getAllByText(/AUTH_HEADER/).length).toBeGreaterThan(0);
+});
+
+test("Other shows the raw URL and both config shapes", async () => {
+  render(<Connect />);
+  await screen.findByText("query");
+  fireEvent.click(screen.getByRole("tab", { name: "Other MCP client" }));
+  expect(screen.getAllByText(/localhost:8794\/mcp/).length).toBeGreaterThan(0);
+  expect(screen.getAllByText(/"type": "http"/).length).toBeGreaterThan(0);
+  expect(screen.getAllByText(/mcp-remote/).length).toBeGreaterThan(0);
+});
+
+test("Copy sends the real (unmasked) config to the clipboard", async () => {
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  Object.assign(navigator, { clipboard: { writeText } });
+  render(<Connect />);
+  await screen.findByText("query");
+  expect(screen.queryByText(/secret-token-123/)).toBeNull(); // masked on screen
+  fireEvent.click(screen.getAllByText("Copy")[0]);
+  expect(writeText).toHaveBeenCalled();
+  expect(writeText.mock.calls[0][0]).toContain("secret-token-123");
+});
+```
+
+- [ ] **Step 2: Run tests to verify they fail**
+
+Run: `cd web && npm test -- Connect`
+Expected: FAIL — the new tests error (no `role="tab"` elements yet; default snippet has no `claude mcp add` line). The 3 existing tests still pass.
+
+- [ ] **Step 3: Rewrite `Connect.tsx`**
+
+Replace the entire contents of `web/src/views/Connect.tsx` with:
+
+```tsx
 import { useEffect, useState } from "react";
 import { api, type ConnectInfo } from "../api";
 
@@ -215,3 +305,107 @@ export function Connect() {
     </div>
   );
 }
+```
+
+- [ ] **Step 4: Run tests and typecheck**
+
+Run: `cd web && npm test -- Connect && npm run typecheck`
+Expected: all 8 Connect tests PASS; `tsc --noEmit` reports no errors.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add web/src/views/Connect.tsx web/src/views/Connect.test.tsx
+git commit -m "feat(connect): per-client MCP config picker
+
+Claude Code / Cursor / VS Code / Claude Desktop / Other, each with the correct
+snippet (VS Code servers key; Desktop mcp-remote --allow-http bridge). Token
+pre-injected, masked with reveal, Copy sends the real config. Front-end only.
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
+```
+
+---
+
+### Task 2: Picker styling in `app.css`
+
+**Files:**
+- Modify: `web/src/app.css` (append after line 265; new rules scoped under `.connect`)
+
+**Interfaces:**
+- Consumes: the class names emitted by Task 1 — `.clientpicker`, `.clienttab`, `.clienttab.active`, `.confighint`, `.mnote`, `.checkline`.
+- Produces: nothing consumed by other tasks (pure styling).
+
+- [ ] **Step 1: Append the styles**
+
+Add to the end of `web/src/app.css`:
+
+```css
+.connect .clientpicker{display:flex;flex-wrap:wrap;gap:7px;margin:18px 0 2px;}
+.connect .clienttab{font-family:"Instrument Sans",sans-serif;font-size:12.5px;font-weight:500;color:var(--muted);background:var(--surface-2);border:1px solid var(--border-strong);border-radius:8px;padding:6px 12px;cursor:pointer;}
+.connect .clienttab:hover{color:var(--neutral-200);border-color:var(--faint);}
+.connect .clienttab.active{color:var(--emerald-300);background:rgba(52,211,153,.1);border-color:rgba(52,211,153,.5);}
+.connect .confighint{color:var(--muted);font-size:12.5px;line-height:1.5;margin:12px 0 0;}
+.connect .mnote{color:var(--faint);font-size:12.5px;line-height:1.5;margin:11px 0 0;}
+.connect .checkline{color:var(--emerald-300);font-size:12.5px;line-height:1.5;margin:9px 0 0;}
+```
+
+- [ ] **Step 2: Build the SPA to confirm it compiles**
+
+Run: `cd web && npm run build`
+Expected: `tsc -b && vite build` succeeds, writes `web/dist/`.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add web/src/app.css
+git commit -m "style(connect): client picker + hint/note/check styling
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
+```
+
+---
+
+### Task 3: Live validation
+
+**Files:** none (verification only).
+
+**Interfaces:** none.
+
+- [ ] **Step 1: Run the full web test suite and typecheck**
+
+Run: `cd web && npm test && npm run typecheck`
+Expected: all tests PASS, no type errors.
+
+- [ ] **Step 2: Build and run the kernel from the worktree**
+
+The worktree has no `.env` (gitignored). Reuse the main checkout's env and a free port:
+
+```bash
+# from the worktree root
+cd web && npm run build && cd ..
+GEODE_PORT=8788 npx tsx --env-file=/Users/robbertvermeulen/Projects/geodemcp-2/.env src/index.ts
+```
+Expected: `Geode kernel listening on http://localhost:8788/mcp`.
+
+- [ ] **Step 3: Click through the Connect page**
+
+Open `http://localhost:8788/` → log in → **Connect**. Verify:
+- The picker shows five tabs; **Claude Code** is selected by default and shows the `mcp.json` + `claude mcp add …` one-liner.
+- **VS Code** tab → snippet's top-level key is `servers`.
+- **Claude Desktop** tab → snippet is the `npx mcp-remote … --allow-http` bridge with `AUTH_HEADER` in `env`, and the "custom-connector field is HTTPS-only" hint shows.
+- **Other** tab → raw server URL + both shapes.
+- `reveal token` shows the real token in the visible snippet; `Copy` on the Claude Code block puts the real (unmasked) config on the clipboard.
+- The **Add with a URL** card and the right-hand tools rail are unchanged.
+
+- [ ] **Step 4: Stop the validation kernel**
+
+Stop the port-8788 kernel (Ctrl-C / kill the background process). Leave the original :8787 kernel running.
+
+---
+
+## Self-Review
+
+- **Spec coverage:** picker with 5 clients (Task 1) ✓; per-client correct snippets incl. VS Code `servers` + Desktop `mcp-remote --allow-http` + env token (Task 1) ✓; generic "Other" fallback (Task 1) ✓; pre-injected masked token + reveal + real-copy (Task 1) ✓; URL method + rail unchanged (Task 1, verbatim) ✓; no backend change (constraints + Task 1 uses only `mcpUrl`/`authToken`) ✓; styling (Task 2) ✓; live validation incl. re-verified Claude Code path (Task 3) ✓. Deferred items (deeplinks, test-connection, rotation) intentionally absent.
+- **Placeholder scan:** none — all code and commands are literal.
+- **Type consistency:** `httpConfig(key, url, token, withType)`, `bridgeConfig(url, token)`, `mask(text, token, revealed)`, `ClientDef.snippets(url, token) → Snippet[]`, `Snippet = {lbl, text}` — used consistently across the component and referenced class names match Task 2's CSS.

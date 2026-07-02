@@ -75,3 +75,46 @@ test("on localhost the Add-with-a-URL card shows the managed-tunnel teaser, CTA 
   const button = screen.getByRole("button", { name: /managed tunnel/i });
   expect((button as HTMLButtonElement).disabled).toBe(true);
 });
+
+test("defaults to Claude Code with an http config and the one-liner", async () => {
+  render(<Connect />);
+  await screen.findByText("query");
+  expect(screen.getAllByText(/"type": "http"/).length).toBeGreaterThan(0);
+  expect(screen.getAllByText(/claude mcp add --transport http geode/).length).toBeGreaterThan(0);
+});
+
+test("VS Code uses the servers key", async () => {
+  render(<Connect />);
+  await screen.findByText("query");
+  fireEvent.click(screen.getByRole("tab", { name: "VS Code" }));
+  expect(screen.getAllByText(/"servers":/).length).toBeGreaterThan(0);
+});
+
+test("Claude Desktop shows the mcp-remote bridge with --allow-http", async () => {
+  render(<Connect />);
+  await screen.findByText("query");
+  fireEvent.click(screen.getByRole("tab", { name: "Claude Desktop" }));
+  expect(screen.getAllByText(/mcp-remote/).length).toBeGreaterThan(0);
+  expect(screen.getAllByText(/--allow-http/).length).toBeGreaterThan(0);
+  expect(screen.getAllByText(/AUTH_HEADER/).length).toBeGreaterThan(0);
+});
+
+test("Other shows the raw URL and both config shapes", async () => {
+  render(<Connect />);
+  await screen.findByText("query");
+  fireEvent.click(screen.getByRole("tab", { name: "Other MCP client" }));
+  expect(screen.getAllByText(/localhost:8794\/mcp/).length).toBeGreaterThan(0);
+  expect(screen.getAllByText(/"type": "http"/).length).toBeGreaterThan(0);
+  expect(screen.getAllByText(/mcp-remote/).length).toBeGreaterThan(0);
+});
+
+test("Copy sends the real (unmasked) config to the clipboard", async () => {
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  Object.assign(navigator, { clipboard: { writeText } });
+  render(<Connect />);
+  await screen.findByText("query");
+  expect(screen.queryByText(/secret-token-123/)).toBeNull(); // masked on screen
+  fireEvent.click(screen.getAllByText("Copy")[0]);
+  expect(writeText).toHaveBeenCalled();
+  expect(writeText.mock.calls[0][0]).toContain("secret-token-123");
+});
