@@ -1,5 +1,6 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { existsSync } from "node:fs";
 
 /** All runtime configuration values resolved from environment variables. */
 export interface Config {
@@ -42,4 +43,11 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     ownerPassword: env.GEODE_OWNER_PASSWORD || undefined,
     accountDir: env.GEODE_ACCOUNT_DIR || join(homedir(), ".geode"),
   };
+}
+
+/** Throws a clear error if the configured workspace directory does not exist (avoids a misleading `spawn git ENOENT` later). */
+export function ensureWorkspaceDir(root: string, exists: (p: string) => boolean = existsSync): void {
+  if (!exists(root)) {
+    throw new Error(`GEODE_WORKSPACE directory does not exist: ${root} — create it or point GEODE_WORKSPACE at an existing directory.`);
+  }
 }

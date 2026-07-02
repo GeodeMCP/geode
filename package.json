@@ -10,6 +10,7 @@
     "test": "vitest run",
     "build": "tsc",
     "start": "tsx src/index.ts",
+    "dev": "tsx --env-file=.env src/index.ts",
     "secret": "tsx src/secretCli.ts",
     "owner": "tsx src/ownerCli.ts",
     "lint": "eslint .",

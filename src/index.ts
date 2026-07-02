@@ -1,4 +1,4 @@
-import { loadConfig } from "./config.js";
+import { loadConfig, ensureWorkspaceDir } from "./config.js";
 import { createWorkspace } from "./workspace.js";
 import { createEventLog } from "./eventLog.js";
 import { createRunManager } from "./runManager.js";
@@ -29,6 +29,7 @@ import { createRateLimiter } from "./dashboard/rateLimit.js";
 /** Bootstraps the full GeodeMCP server: loads config, initialises all stores, and starts the MCP and HTTP listeners. */
 async function main() {
   const config = loadConfig();
+  ensureWorkspaceDir(config.workspaceRoot);
   const workspace = createWorkspace(config.workspaceRoot);
   await workspace.init();
 
