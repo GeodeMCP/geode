@@ -1,9 +1,10 @@
-import { afterEach, expect, it, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, test, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { FileTree } from "./FileTree";
 import type { TreeNode } from "../api";
 
 afterEach(cleanup);
+beforeEach(() => localStorage.clear()); // folders start collapsed (D1) with a clean expand-state each test
 
 const tree: TreeNode[] = [
   { name: "clients", path: "clients", type: "dir", children: [
@@ -19,13 +20,16 @@ const noop = () => {};
 
 test("renders nested files/folders; folders collapse and expand", () => {
   render(<FileTree tree={tree} status={status} selected={null} onSelect={noop} onCreate={noop} onDelete={noop} />);
-  for (const t of ["clients", "acme", "deep.md", "x.md", "index.md"]) expect(screen.getByText(t)).toBeTruthy();
-  fireEvent.click(screen.getByText("clients"));            // collapse top folder
+  // folders start collapsed (D1): top-level dirs + root files show, nested items hidden
+  for (const t of ["clients", "index.md"]) expect(screen.getByText(t)).toBeTruthy();
   expect(screen.queryByText("acme")).toBeNull();
-  expect(screen.queryByText("deep.md")).toBeNull();
-  expect(screen.getByText("index.md")).toBeTruthy();       // sibling unaffected
-  fireEvent.click(screen.getByText("clients"));            // expand again
+  fireEvent.click(screen.getByText("clients"));            // expand top folder
+  for (const t of ["acme", "x.md"]) expect(screen.getByText(t)).toBeTruthy();
+  fireEvent.click(screen.getByText("acme"));               // expand nested folder
   expect(screen.getByText("deep.md")).toBeTruthy();
+  fireEvent.click(screen.getByText("clients"));            // collapse top again
+  expect(screen.queryByText("acme")).toBeNull();
+  expect(screen.getByText("index.md")).toBeTruthy();       // sibling unaffected
 });
 
 test("selecting a file calls onSelect; a modified file shows a 'modified' pill", () => {
@@ -90,6 +94,10 @@ it("renders a tool icon for a tool manifest row but not for a note row", () => {
     <FileTree tree={toolTree} status={{ modified: [], created: [] }} selected={null}
       onSelect={noop} onCreate={noop} onDelete={noop} />,
   );
+  // expand folders (collapsed by default) to reveal the nested rows
+  fireEvent.click(screen.getByText("notes"));
+  fireEvent.click(screen.getByText("tools"));
+  fireEvent.click(screen.getByText("cb"));
   const toolIcon = container.querySelector(".ic.tool");
   expect(toolIcon).toBeTruthy();
   const toolRow = screen.getByLabelText("TOOL.md");
@@ -109,6 +117,9 @@ it("dims artifact rows and suppresses their trash button", () => {
   ];
   render(<FileTree tree={artTree} status={{ modified: [], created: [] }} selected={null}
     onSelect={noop} onCreate={noop} onDelete={noop} />);
+  // expand folders (collapsed by default) to reveal the nested rows
+  fireEvent.click(screen.getByText("notes"));
+  fireEvent.click(screen.getByText("artifacts"));
   const artRow = screen.getByLabelText("report.md");
   expect(artRow.className).toContain("gen");
   expect(artRow.querySelector(".del-btn")).toBeFalsy();
