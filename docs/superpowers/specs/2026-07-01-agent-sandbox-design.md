@@ -69,11 +69,24 @@ confined by the same OS boundary.
 - Implemented via the SDK network config (`allowedDomains` + the sandbox proxy); Linux needs
   `socat` alongside `bwrap`.
 
-### Permissions
-- The **OS sandbox is the authoritative boundary.** Runs stay non-interactive (no prompts).
-- Prefer to drop `allowDangerouslySkipPermissions` in favour of sandbox auto-allow where the SDK
-  supports it; the exact `permissionMode` + sandbox combination is finalized during
-  implementation under the constraint: **no interactive prompts + OS confinement is authoritative.**
+### Permissions (finalized 2026-07-02)
+The initial cut kept `permissionMode: "bypassPermissions"` alongside the sandbox. Review + live
+verification proved this **inert**: the SDK derives the sandbox's filesystem/network boundary from
+the permission rules, and `bypassPermissions` skips exactly those, while `allowUnsandboxedCommands`
+defaults to `true` (Bash can opt out via `dangerouslyDisableSandbox`). The finalized model:
+
+- **Sandbox ON (default/production):** `permissionMode: "default"` + a programmatic `canUseTool`
+  handler (`buildPermissionHandler`) that decides every tool call **without prompting** — denying
+  `WebFetch`/`WebSearch`, refusing any Bash that sets `dangerouslyDisableSandbox`, and confining
+  host-process writes (`Edit`/`Write`/`MultiEdit`/`NotebookEdit`) to the vault (paths canonicalized
+  via realpath so symlinks don't cause false denials). `allow` echoes `updatedInput` (SDK requires
+  it). The sandbox sets `allowUnsandboxedCommands: false`. **No `bypassPermissions`.**
+- **Sandbox OFF (`GEODE_SANDBOX_DISABLE=1`, dev only):** genuinely unconfined — `bypassPermissions`.
+- **Invariant:** the engine builds the handler from the sandbox's own `allowWrite`, so
+  "sandbox present ⇒ not bypass ⇒ handler attached" is structural, not a convention.
+- The vault agent may still ask the user questions in its **chat reply** (answered in the next turn);
+  what it must not do is trigger an interactive **tool/MCP** prompt mid-run — hence `canUseTool`
+  never returns "ask", `AskUserQuestion` is denied, and no `onElicitation` handler is wired.
 
 ### Availability & deploy (fail-closed)
 - `sandbox.enabled = true`, `failIfUnavailable = true` — if the sandbox deps are missing, the run
@@ -130,6 +143,27 @@ can reach the vault + that one dir only (least privilege). Both earlier objectio
   with a clear error (does not silently run unconfined).
 - [ ] **Local-model path:** with `ANTHROPIC_BASE_URL` set to a loopback gateway, the run reaches
   it (loopback allowlisted) and otherwise stays confined.
+
+## Verification (2026-07-02)
+Verified live with `scripts/verify-sandbox.ts` — a real sandboxed agent attempting to escape in a
+throwaway vault. Results on **macOS (seatbelt)**, repeated across runs:
+
+| Vector | Result |
+| --- | --- |
+| Bash write outside the vault (`echo > /tmp/…`) | **Blocked** — seatbelt: `operation not permitted` |
+| Write **tool** outside the vault | **Blocked** — `canUseTool` deny |
+| In-vault write (bash + Write tool) | **Allowed** (after the realpath + `updatedInput` fixes) |
+| `WebFetch`/`WebSearch` | **Denied** — `canUseTool` |
+| Bash `dangerouslyDisableSandbox` | **Denied** — `canUseTool` + `allowUnsandboxedCommands: false` |
+| Bash network egress to a non-allowlisted domain (`curl example.com`) | **macOS: NOT blocked** |
+
+**Platform caveat (network):** per-domain network allowlisting relies on the sandbox proxy, which is
+**Linux/WSL only** (`socatPath` is documented Linux/WSL-only). On **Linux (production)** bash network
+egress is confined to `allowedDomains`; on **macOS (dev)** seatbelt does not enforce it, so a
+prompt-injected agent could exfiltrate via `curl` in dev. Filesystem confinement (the hard boundary —
+"where damage happens") and tool-egress denial hold on **both** platforms. Since production is Linux
+and macOS is dev-only, this is an accepted residual — but **D12 attachments (untrusted input) must
+only be enabled where network egress is enforced (Linux)**, or with an added macOS network guard.
 
 ## Follow-ups (out of scope here)
 - D12 attachments (builds on the per-run `allowRead` hook).
