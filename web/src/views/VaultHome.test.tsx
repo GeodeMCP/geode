@@ -9,6 +9,7 @@ vi.mock("../api", () => ({
     tree: vi.fn().mockResolvedValue([{ name: "note.md", path: "note.md", type: "file" }]),
     status: vi.fn().mockResolvedValue({ modified: [], created: [] }),
     artifacts: vi.fn().mockRejectedValue(new Error("500")),
+    tools: vi.fn().mockResolvedValue([]),
   },
 }));
 afterEach(cleanup);
