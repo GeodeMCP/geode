@@ -17,6 +17,7 @@ import { createAccountStore } from "./account.js";
 import { invoke } from "./invoke.js";
 import { realDocker } from "./docker.js";
 import { realMcpConnector } from "./mcpProxy.js";
+import { createMcpActivity } from "./mcpActivity.js";
 import { dirname, join } from "node:path";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -63,11 +64,13 @@ async function main() {
   };
 
   const oauth = createOAuth({ signKey: loadOrCreateKey(join(config.secretsDir, "oauth"), process.env.GEODE_OAUTH_KEY), baseUrl: config.baseUrl });
+  const activity = createMcpActivity();
   const app = buildHttpApp(
     () => buildMcpServer(queryDeps, { secrets, artifacts, toolsDir: join(homedir(), ".geode", "tools"), docker: realDocker(), connector: realMcpConnector() }),
     config.authToken,
     artifacts,
     { verify: (t) => !!oauth.verifyAccessToken(t), resourceMetadataUrl: `${config.baseUrl}/.well-known/oauth-protected-resource` },
+    activity,
   );
 
   const sessionKey = loadOrCreateKey(join(config.secretsDir, "session"), process.env.GEODE_SESSION_KEY);
@@ -96,6 +99,7 @@ async function main() {
     authToken: config.authToken,
     invoke: (args) => invoke({ root: workspace.root, secrets, toolsDir: join(homedir(), ".geode", "tools"), docker: realDocker(), connector: realMcpConnector() }, args),
     linkKey: loadOrCreateKey(join(config.secretsDir, "link"), process.env.GEODE_LINK_KEY),
+    activity,
   });
   console.log(`Dashboard enabled at ${config.baseUrl}/`);
 
