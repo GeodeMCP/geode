@@ -125,4 +125,7 @@ test("an unsandboxed (dev) run stays unconfined: bypassPermissions, no sandbox, 
   expect(opts.permissionMode).toBe("bypassPermissions");
   expect(opts.allowDangerouslySkipPermissions).toBe(true);
   expect("canUseTool" in opts).toBe(false);
+  // shared base hardening applies on the dev branch too
+  expect(opts.settingSources).toEqual([]);
+  expect(opts.disallowedTools).toContain("Task");
 });
