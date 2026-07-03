@@ -50,3 +50,22 @@ describe("stageFiles", () => {
     rmSync(base, { recursive: true, force: true });
   });
 });
+
+import { createUploadStore } from "../../src/dashboard/uploads.js";
+
+describe("createUploadStore", () => {
+  it("stages to a uuid dir, resolves it, and cleans it up", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "geode-uploads-"));
+    const store = createUploadStore({ dir });
+    const { uploadId } = await store.stage([{ relPath: "a.md", buffer: Buffer.from("hi") }]);
+    expect(store.resolve(uploadId)).toBe(join(dir, uploadId));
+    expect(readFileSync(join(dir, uploadId, "a.md"), "utf8")).toBe("hi");
+    await store.cleanup(uploadId);
+    expect(existsSync(join(dir, uploadId))).toBe(false);
+    rmSync(dir, { recursive: true, force: true });
+  });
+  it("rejects a bogus uploadId in resolve", () => {
+    const store = createUploadStore({ dir: "/tmp/x" });
+    expect(() => store.resolve("../../etc")).toThrow(/invalid uploadId/);
+  });
+});

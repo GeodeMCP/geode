@@ -1,5 +1,6 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import { dirname, resolve, sep } from "node:path";
+import { mkdir, writeFile, rm } from "node:fs/promises";
+import { dirname, resolve, sep, join } from "node:path";
+import { randomUUID } from "node:crypto";
 import AdmZip from "adm-zip";
 
 /** One uploaded file: its path relative to the upload root, and its raw bytes. */
@@ -31,3 +32,31 @@ export async function stageFiles(baseDir: string, files: UploadFile[]): Promise<
   }
   return written;
 }
+
+/** A staged-upload store: writes each upload into its own UUID temp dir and resolves/cleans them. */
+export interface UploadStore {
+  stage(files: UploadFile[]): Promise<{ uploadId: string; dir: string }>;
+  resolve(uploadId: string): string;
+  cleanup(uploadId: string): Promise<void>;
+}
+
+const UPLOAD_ID_RE = /^[0-9a-f-]{36}$/;
+
+/** Creates an UploadStore rooted at `opts.dir`; each upload gets a fresh UUID subdirectory. */
+export function createUploadStore(opts: { dir: string }): UploadStore {
+  const dirFor = (id: string): string => {
+    if (!UPLOAD_ID_RE.test(id)) throw new Error("invalid uploadId");
+    return join(opts.dir, id);
+  };
+  return {
+    async stage(files) {
+      const uploadId = randomUUID();
+      const dir = join(opts.dir, uploadId);
+      await stageFiles(dir, files);
+      return { uploadId, dir };
+    },
+    resolve(uploadId) { return dirFor(uploadId); },
+    async cleanup(uploadId) { await rm(dirFor(uploadId), { recursive: true, force: true }); },
+  };
+}
+
