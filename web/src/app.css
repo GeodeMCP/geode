@@ -127,6 +127,14 @@
   .ctrl{padding:16px 20px;border-top:1px solid var(--border);}
   .staged{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
   .staged .chip button{background:none;border:none;color:inherit;cursor:pointer;font-size:13px;line-height:1;padding:0;margin-left:2px;}
+  .ctrl-row{display:flex;align-items:center;gap:10px;}
+  .ctrl-row .input{flex:1;}
+  .attach{display:flex;align-items:center;justify-content:center;width:34px;height:34px;flex:none;border:1px solid var(--border);border-radius:9px;background:none;color:var(--muted);cursor:pointer;padding:0;transition:border-color .15s,color .15s;}
+  .attach:hover:not(:disabled){color:var(--green);border-color:var(--border-strong);}
+  .attach:disabled{opacity:.4;cursor:default;}
+  .attach svg{width:18px;height:18px;}
+  .msg-atts{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px;justify-content:flex-end;}
+  .att-chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:3px 10px;}
   .input{width:100%;background:var(--input);border:1px solid var(--border-strong);border-radius:9px;padding:12px 14px;color:var(--text);font-family:"Geist",sans-serif;font-size:14.5px;}
   .input::placeholder{color:var(--faint);}
   .input:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(52,211,153,.22);}

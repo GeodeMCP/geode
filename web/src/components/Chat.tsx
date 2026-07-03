@@ -193,7 +193,6 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard, autoRun }: {
 
   const [staged, setStaged] = useState<File[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
-  const dirRef = useRef<HTMLInputElement>(null);
   const addFiles = (list: FileList | null) => { if (list) setStaged((s) => [...s, ...Array.from(list)]); };
 
   const submit = async (forced?: string) => {
@@ -201,7 +200,8 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard, autoRun }: {
     if (!raw || running) return; // dirty no longer blocks — review-mode runs accumulate onto the draft
     if (forced === undefined) setText("");
     const instruction = resolveCommand(raw) ?? raw; // slash commands expand; the bubble still shows the raw command
-    setMsgs((m) => [...m, { kind: "user", text: raw, ts: Date.now() }]);
+    const attachments = staged.map((f) => (f as any).webkitRelativePath || f.name);
+    setMsgs((m) => [...m, { kind: "user", text: raw, ts: Date.now(), ...(attachments.length ? { attachments } : {}) }]);
     let uploadId: string | undefined;
     if (staged.length) {
       try {
@@ -245,6 +245,9 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard, autoRun }: {
             case "user": return (
               <div key={i} className="msg-wrap me">
                 <div className="bubble me">{m.text}</div>
+                {m.attachments && m.attachments.length > 0 && (
+                  <div className="msg-atts">{m.attachments.map((a, j) => <span key={j} className="att-chip">{a}</span>)}</div>
+                )}
                 <span className="msg-time" title={fullTime(m.ts)}>{fmtTime(m.ts)}</span>
               </div>
             );
@@ -276,14 +279,15 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard, autoRun }: {
               <button onClick={() => setStaged((s) => s.filter((_, j) => j !== i))}>×</button></span>
           ))}</div>
         )}
-        <input ref={fileRef} type="file" multiple hidden onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
-        <input ref={dirRef} type="file" hidden onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }}
-          {...({ webkitdirectory: "", directory: "" } as any)} />
-        <button className="ghost sm" title="Attach files" disabled={running} onClick={() => fileRef.current?.click()}>📎</button>
-        <button className="ghost sm" title="Attach folder" disabled={running} onClick={() => dirRef.current?.click()}>📁</button>
-        <input className="input" value={text} disabled={running}
-          placeholder={running ? "Working…" : "Talk to your vault…"}
-          onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} />
+        <div className="ctrl-row">
+          <input ref={fileRef} type="file" multiple hidden onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
+          <button className="attach" title="Attach files (zip a folder to add one)" aria-label="Attach files" disabled={running} onClick={() => fileRef.current?.click()}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
+          </button>
+          <input className="input" value={text} disabled={running}
+            placeholder={running ? "Working…" : "Talk to your vault…"}
+            onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} />
+        </div>
       </div>
     </div>
   );

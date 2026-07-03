@@ -6,7 +6,7 @@ export type Step = { toolId: string; name: string; summary?: string; detail?: st
 export type Metrics = { durationMs: number; costUsd: number; tokens: number };
 /** A discriminated union of all timeline item variants rendered in the chat view. */
 export type Item =
-  | { kind: "user"; text: string; ts: number }
+  | { kind: "user"; text: string; ts: number; attachments?: string[] }
   | { kind: "thinking"; text: string; ts: number }
   | { kind: "activity"; steps: Step[]; ts: number }
   | { kind: "todos"; items: { content: string; status: string }[]; ts: number }
