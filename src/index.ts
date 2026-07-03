@@ -89,6 +89,7 @@ async function main() {
     workspace,
     webDir,
     runQuery: (instruction, onProgress, opts) => query(queryDeps, instruction, onProgress, { commit: false, attachmentDirs: opts?.attachmentDirs, history: opts?.history }),
+    cancelQuery: () => queryDeps.runManager.cancel(),
     runRemember: (args, onProgress) => remember(queryDeps, args, onProgress, { commit: false }),
     secrets,
     artifacts,

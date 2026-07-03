@@ -84,6 +84,8 @@ export const api = {
   attachments: () => json<{ files: string[] }>("/api/attachments"),
   /** Empties the conversation's attachment folder. */
   clearAttachments: () => json<{ ok: true }>("/api/attachments", { method: "DELETE" }),
+  /** Aborts the currently-running agent run (Stop / Esc). */
+  cancel: () => json<{ ok: true }>("/api/cancel", { method: "POST" }),
   /** Stream an agent run; calls onEvent for each SSE event until the stream closes. */
   async run(path: "/api/query" | "/api/remember", body: object, onEvent: (e: SseEvent) => void): Promise<void> {
     const res = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });

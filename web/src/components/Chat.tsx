@@ -218,6 +218,12 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard, autoRun }: {
   const refreshFolder = () => { api.attachments().then((r) => setFolderFiles(r.files)).catch(() => {}); };
   useEffect(() => { refreshFolder(); }, []);
   const clearFolder = async () => { await api.clearAttachments().catch(() => {}); refreshFolder(); };
+  useEffect(() => {
+    if (!running) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") api.cancel().catch(() => {}); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [running]);
 
   const submit = async (forced?: string) => {
     const raw = (forced ?? text).trim();
@@ -329,6 +335,7 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard, autoRun }: {
           <input className="input" value={text} disabled={running}
             placeholder={running ? "Working…" : "Talk to your vault…"}
             onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} />
+          {running && <button className="btn sm" title="Stop (Esc)" onClick={() => api.cancel().catch(() => {})}>Stop</button>}
         </div>
       </div>
     </div>

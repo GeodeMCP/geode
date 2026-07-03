@@ -57,3 +57,37 @@ Use `invoke(cloakbrowser, fetch, { url })`. Owner installs via "Install & trust"
 ```
 
 **Avoid** authoring an action as an inline interpreter script when a CLI exists — prefer `command: ["fetch", "--url", "${params.url}"]` over `command: ["-c", "from cloakbrowser import launch; launch().goto('${params.url}') …"]`. The latter guesses the library API and interpolates an untrusted value into source.
+
+## Worked example (an `http` API — connections, per-connection secret+config, named actions)
+You already know this format — author it directly; you do NOT need to read an existing tool to copy conventions.
+```yaml
+---
+id: moneybird
+name: Moneybird
+type: http
+description: Moneybird bookkeeping REST API.
+# Per-connection values injected server-side via ${conn.KEY}. Both a real secret (API_TOKEN)
+# and non-secret-but-per-connection config (ADMIN_ID) are declared here; one manifest serves
+# several administrations, one connection each.
+requires: [API_TOKEN, ADMIN_ID]
+connections:
+  - { label: mijnwebontwikkelaar }
+  - { label: roverm }
+actions:
+  list_administrations:                       # bootstrap — no admin id in the URL
+    http: { method: GET, url: "https://moneybird.com/api/v2/administrations.json",
+            headers: { Authorization: "Bearer ${conn.API_TOKEN}" } }
+  get:                                         # generic GET; caller passes the resource path
+    params: [{ name: path, required: true }]   # e.g. "contacts.json?query=strato"
+    http: { method: GET, url: "https://moneybird.com/api/v2/${conn.ADMIN_ID}/${params.path}",
+            headers: { Authorization: "Bearer ${conn.API_TOKEN}" } }
+  create_purchase_invoice:
+    params: [{ name: body, required: true }]   # a JSON string, templated into the request body
+    http: { method: POST, url: "https://moneybird.com/api/v2/${conn.ADMIN_ID}/documents/purchase_invoices.json",
+            headers: { Authorization: "Bearer ${conn.API_TOKEN}", "Content-Type": "application/json" },
+            body: "${params.body}" }
+---
+Set `moneybird__mijnwebontwikkelaar__API_TOKEN` + `__ADMIN_ID` (and the roverm pair) in the dashboard.
+```
+
+**The `http` executor cannot do multipart / file upload yet.** If a tool needs to upload a file (e.g. attach a PDF), do NOT author a broken `http` action for it — record it as a `type: gap` backlog page noting "needs multipart support" so it's built later.

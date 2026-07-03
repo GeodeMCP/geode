@@ -30,6 +30,8 @@ export interface ApiDeps {
   /** Extended: forwards attachment dirs (and, later, conversation history) into the run. */
   runQuery: (instruction: string, onProgress: (event: ProgressEvent) => void, opts?: { attachmentDirs?: string[]; history?: string }) => Promise<QueryResult>;
   runRemember: (args: RememberArgs, onProgress: (event: ProgressEvent) => void) => Promise<QueryResult>;
+  /** Aborts the currently-running agent run (Stop / Esc from the dashboard). */
+  cancelQuery: () => void;
   linkKey: Buffer;
   secrets: Pick<SecretStore, "get" | "list" | "delete" | "set">;
   artifacts: Pick<ArtifactStore, "mintPublicUrl" | "resolve">;
@@ -102,6 +104,7 @@ export function createApiRouter(deps: ApiDeps): Router {
   });
   router.get("/attachments", async (_req, res) => { res.json({ files: await deps.attachments.list() }); });
   router.delete("/attachments", async (_req, res) => { await deps.attachments.clear(); res.json({ ok: true }); });
+  router.post("/cancel", (_req, res) => { deps.cancelQuery(); res.json({ ok: true }); });
 
   const stream = (
     run: (op: (event: ProgressEvent) => void) => Promise<QueryResult>,

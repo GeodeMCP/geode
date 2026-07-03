@@ -46,7 +46,14 @@ export function VaultHome() {
   const send = async (instruction: string, onEvent: (e: SseEvent) => void, attachments?: string[]) => {
     setRunning(true);
     try {
-      await api.run("/api/query", { instruction, attachments }, (e) => { onEvent(e); if (e.event === "result") { const f = e.data.filesTouched?.[0]; if (f) setSelected(f); } });
+      await api.run("/api/query", { instruction, attachments }, (e) => {
+        onEvent(e);
+        if (e.event === "result") { const f = e.data.filesTouched?.[0]; if (f) setSelected(f); }
+        else if (e.event === "progress" && e.data?.type === "tool" && ["Write", "Edit", "MultiEdit"].includes(e.data.name) && e.data.summary) {
+          setSelected(e.data.summary); // live: focus the file the agent is writing
+          void refresh();               // and refresh the tree/status so it appears immediately
+        }
+      });
       await refresh();
       await refreshTools();
     } finally { setRunning(false); }

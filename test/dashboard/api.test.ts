@@ -48,6 +48,7 @@ async function boot() {
     accounts,
     invoke: async () => ({ status: 200, body: {} }),
     docker: stubDocker,
+    cancelQuery: () => {},
     toolsDir: root,
     attachments: stubAttachments,
   }));
@@ -100,6 +101,7 @@ test("POST /api/query passes the attachment folder to runQuery when it is non-em
     transcripts: createTranscriptStore(join(root4, ".transcripts")),
     artifactsDir: root4, baseUrl: "http://h", accounts: accounts4, invoke: async () => ({ status: 200, body: {} }),
     docker: stubDocker,
+    cancelQuery: () => {},
     toolsDir: root4,
     attachments: { dir: "/att", add: async () => [], list: async () => ["administratie/x.md"], clear: async () => {} },
   }));
@@ -132,6 +134,7 @@ test("POST /api/query passes recent history to runQuery so follow-ups have conte
     transcripts: { list: async () => [{ runId: "r", ts: 0, instruction: "boek q1", events: [], result: { text: "done 3 rows" } }], append: async () => {}, clear: async () => {} },
     artifactsDir: root5, baseUrl: "http://h", accounts: accounts5, invoke: async () => ({ status: 200, body: {} }),
     docker: stubDocker,
+    cancelQuery: () => {},
     toolsDir: root5,
     attachments: stubAttachments,
   }));
@@ -218,6 +221,7 @@ test("an errored query run is still recorded with error + a generated runId", as
     transcripts: createTranscriptStore(join(root2, ".transcripts")),
     artifactsDir: root2, baseUrl: "http://h", accounts: accounts2, invoke: async () => ({ status: 200, body: {} }),
     docker: stubDocker,
+    cancelQuery: () => {},
     toolsDir: root2,
     attachments: stubAttachments,
   }));
@@ -265,6 +269,7 @@ test("no-owner kernel: setup needs no cookie, then login switches to the account
     transcripts: createTranscriptStore(join(root3, ".transcripts")),
     artifactsDir: root3, baseUrl: "http://h", accounts: createAccountStore(join(root3, ".accounts")), invoke: async () => ({ status: 200, body: {} }),
     docker: stubDocker,
+    cancelQuery: () => {},
     toolsDir: root3,
     attachments: stubAttachments,
   }));
