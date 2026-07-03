@@ -180,6 +180,24 @@ function resolveCommand(text: string): string | null {
   return null;
 }
 
+/** The chip-grouping key for a staged file: its top-level folder (suffixed "/"), or the file name for a loose file. */
+function topKey(relPath: string): string {
+  const slash = relPath.indexOf("/");
+  return slash >= 0 ? `${relPath.slice(0, slash)}/` : relPath;
+}
+
+/** Collapses staged files into display chips — one per top-level folder (with a file count), one per loose file. */
+function stagedChips(staged: Picked[]): { key: string; label: string }[] {
+  const counts = new Map<string, number>();
+  const order: string[] = [];
+  for (const p of staged) {
+    const key = topKey(p.relPath);
+    if (!counts.has(key)) { counts.set(key, 0); order.push(key); }
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return order.map((key) => key.endsWith("/") ? { key, label: `${key.slice(0, -1)} · ${counts.get(key) ?? 0} files` } : { key, label: key });
+}
+
 /** Renders the full chat column: message history, SSE-driven live updates, and the send input. */
 export function Chat({ onSend, running, dirty, onCommit, onDiscard, autoRun }: {
   onSend: (instruction: string, onEvent: (e: SseEvent) => void, uploadId?: string) => Promise<void>;
@@ -278,12 +296,18 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard, autoRun }: {
         <div ref={endRef} />
       </div>
       <div className="ctrl">
-        {staged.length > 0 && (
-          <div className="staged">{staged.map((p, i) => (
-            <span key={i} className="chip">{p.relPath}
-              <button onClick={() => setStaged((s) => s.filter((_, j) => j !== i))}>×</button></span>
-          ))}</div>
-        )}
+        {staged.length > 0 && (() => {
+          const chips = stagedChips(staged);
+          return (
+            <div className="staged">
+              {chips.slice(0, 5).map((c) => (
+                <span key={c.key} className="chip">{c.label}
+                  <button onClick={() => setStaged((s) => s.filter((p) => topKey(p.relPath) !== c.key))}>×</button></span>
+              ))}
+              {chips.length > 5 && <span className="chip more">+{chips.length - 5} more</span>}
+            </div>
+          );
+        })()}
         <div className="ctrl-row">
           <input ref={fileRef} type="file" multiple hidden onChange={(e) => { addFiles(pickedFromInput(e.target.files)); e.target.value = ""; }} />
           <button className="attach" title="Attach files (zip a folder to add one)" aria-label="Attach files" disabled={running} onClick={() => fileRef.current?.click()}>
