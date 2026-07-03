@@ -13,7 +13,9 @@ export function resolveSkill(vaultRoot: string, name: string): string {
   return existsSync(override) ? override : join(kernelSkillsDir(), name);
 }
 
-/** A short system-prompt footer telling the agent where its onboarding skill lives (loaded on demand). */
+/** A short system-prompt footer telling the agent which skills exist and where to read them on demand. */
 export function buildSkillsFooter(vaultRoot: string): string {
-  return `\n\nYour onboarding skill: when the user asks you to onboard/install a tool, repo, API or MCP, read \`${resolveSkill(vaultRoot, "onboard-tool.md")}\` and follow it.`;
+  return `\n\nYour skills (read on demand):\n`
+    + `- Onboard a single tool/repo/API/MCP: \`${resolveSkill(vaultRoot, "onboard-tool.md")}\`\n`
+    + `- Onboard a whole dropped workspace (a folder/zip of reference docs, skills, and credentialed tools) into the vault: \`${resolveSkill(vaultRoot, "onboard-workspace.md")}\``;
 }
