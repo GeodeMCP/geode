@@ -220,7 +220,7 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard, autoRun }: {
     if (!raw || running) return; // dirty no longer blocks — review-mode runs accumulate onto the draft
     if (forced === undefined) setText("");
     const instruction = resolveCommand(raw) ?? raw; // slash commands expand; the bubble still shows the raw command
-    const attachments = staged.map((p) => p.relPath);
+    const attachments = stagedChips(staged).map((c) => c.label);
     setMsgs((m) => [...m, { kind: "user", text: raw, ts: Date.now(), ...(attachments.length ? { attachments } : {}) }]);
     let uploadId: string | undefined;
     if (staged.length) {
@@ -269,7 +269,10 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard, autoRun }: {
               <div key={i} className="msg-wrap me">
                 <div className="bubble me">{m.text}</div>
                 {m.attachments && m.attachments.length > 0 && (
-                  <div className="msg-atts">{m.attachments.map((a, j) => <span key={j} className="att-chip">{a}</span>)}</div>
+                  <div className="msg-atts">
+                    {m.attachments.slice(0, 5).map((a, j) => <span key={j} className="att-chip">{a}</span>)}
+                    {m.attachments.length > 5 && <span className="att-chip">+{m.attachments.length - 5} more</span>}
+                  </div>
                 )}
                 <span className="msg-time" title={fullTime(m.ts)}>{fmtTime(m.ts)}</span>
               </div>
