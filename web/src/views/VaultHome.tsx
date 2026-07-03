@@ -35,10 +35,10 @@ export function VaultHome() {
   const dirty = status.modified.length + status.created.length > 0;
   const selectedDirty = !!selected && (status.modified.includes(selected) || status.created.includes(selected));
 
-  const send = async (instruction: string, onEvent: (e: SseEvent) => void) => {
+  const send = async (instruction: string, onEvent: (e: SseEvent) => void, uploadId?: string) => {
     setRunning(true);
     try {
-      await api.run("/api/query", { instruction }, (e) => { onEvent(e); if (e.event === "result") { const f = e.data.filesTouched?.[0]; if (f) setSelected(f); } });
+      await api.run("/api/query", { instruction, uploadId }, (e) => { onEvent(e); if (e.event === "result") { const f = e.data.filesTouched?.[0]; if (f) setSelected(f); } });
       await refresh();
     } finally { setRunning(false); }
   };

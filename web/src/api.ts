@@ -71,6 +71,14 @@ export const api = {
   artifactPublicLink: (path: string) => json<{ url: string }>("/api/artifacts/public-link", { method: "POST", body: JSON.stringify({ path }) }),
   writeFile: (path: string, content: string) => json<{ ok: true }>("/api/file", { method: "POST", body: JSON.stringify({ path, content }) }),
   deletePath: (path: string) => json<{ ok: true }>(`/api/file?path=${encodeURIComponent(path)}`, { method: "DELETE" }),
+  /** Upload staged attachments (files carry their folder-relative path as the filename); returns the uploadId to pass to /api/query. */
+  upload: async (files: File[]): Promise<{ uploadId: string }> => {
+    const fd = new FormData();
+    for (const f of files) fd.append("files", f, (f as any).webkitRelativePath || f.name);
+    const res = await fetch("/api/uploads", { method: "POST", body: fd });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  },
   /** Stream an agent run; calls onEvent for each SSE event until the stream closes. */
   async run(path: "/api/query" | "/api/remember", body: object, onEvent: (e: SseEvent) => void): Promise<void> {
     const res = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });

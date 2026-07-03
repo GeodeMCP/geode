@@ -174,7 +174,7 @@ function Notice({ noticeKind, text }: { noticeKind: "compact" | "memory" | "retr
 
 /** Renders the full chat column: message history, SSE-driven live updates, and the send input. */
 export function Chat({ onSend, running, dirty, onCommit, onDiscard }: {
-  onSend: (instruction: string, onEvent: (e: SseEvent) => void) => Promise<void>;
+  onSend: (instruction: string, onEvent: (e: SseEvent) => void, uploadId?: string) => Promise<void>;
   running: boolean; dirty: boolean; onCommit: () => void; onDiscard: () => void;
 }) {
   const [msgs, setMsgs] = useState<Item[]>([]);
@@ -183,16 +183,23 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard }: {
   const endRef = useRef<HTMLDivElement>(null);
   useEffect(() => { endRef.current?.scrollIntoView({ block: "end" }); }, [msgs, running]);
 
+  const [staged, setStaged] = useState<File[]>([]);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const dirRef = useRef<HTMLInputElement>(null);
+  const addFiles = (list: FileList | null) => { if (list) setStaged((s) => [...s, ...Array.from(list)]); };
+
   const submit = async () => {
     const instruction = text.trim();
     if (!instruction || running) return; // dirty no longer blocks — review-mode runs accumulate onto the draft
     setText("");
     setMsgs((m) => [...m, { kind: "user", text: instruction, ts: Date.now() }]);
+    let uploadId: string | undefined;
+    if (staged.length) { uploadId = (await api.upload(staged)).uploadId; setStaged([]); }
     await onSend(instruction, (e) => {
       if (e.event === "progress") setMsgs((m) => applyProgress(m, e.data, Date.now()));
       else if (e.event === "result") setMsgs((m) => applyResult(m, e.data, Date.now()));
       else if (e.event === "error") setMsgs((m) => [...m, { kind: "error", text: e.data.message, ts: Date.now() }]);
-    });
+    }, uploadId);
   };
 
   const lastIdx = msgs.length - 1;
@@ -240,6 +247,17 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard }: {
         <div ref={endRef} />
       </div>
       <div className="ctrl">
+        {staged.length > 0 && (
+          <div className="staged">{staged.map((f, i) => (
+            <span key={i} className="chip">{(f as any).webkitRelativePath || f.name}
+              <button onClick={() => setStaged((s) => s.filter((_, j) => j !== i))}>×</button></span>
+          ))}</div>
+        )}
+        <input ref={fileRef} type="file" multiple hidden onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
+        <input ref={dirRef} type="file" hidden onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }}
+          {...({ webkitdirectory: "", directory: "" } as any)} />
+        <button className="ghost sm" title="Attach files" disabled={running} onClick={() => fileRef.current?.click()}>📎</button>
+        <button className="ghost sm" title="Attach folder" disabled={running} onClick={() => dirRef.current?.click()}>📁</button>
         <input className="input" value={text} disabled={running}
           placeholder={running ? "Working…" : "Talk to your vault…"}
           onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} />
