@@ -10,6 +10,8 @@ export interface ToolDoc { name: string; description: string; params: { name: st
 export interface ConnectInfo { mcpUrl: string; authToken: string; tools: ToolDoc[]; publicBaseUrl: string | null }
 /** Authentication state indicating whether the server needs setup or login, and whether the user is currently authenticated. */
 export interface AuthInfo { mode: "setup" | "login"; authed: boolean }
+/** A vault "gap" page (frontmatter `type: gap`) describing a planned but unbuilt capability. */
+export interface GapItem { title: string; kind?: string; description: string; path: string }
 /** A persisted agent run record including the instruction, SSE events, result, and optional error. */
 export interface TranscriptRecord {
   runId: string;
@@ -67,6 +69,7 @@ export const api = {
   secrets: () => json<{ ref: string; requiredBy: string[] }[]>("/api/secrets"),
   secretLink: (ref: string) => json<{ url: string }>(`/api/secrets/${encodeURIComponent(ref)}/link`, { method: "POST" }),
   deleteSecret: (ref: string) => json<{ ok: true }>(`/api/secrets/${encodeURIComponent(ref)}`, { method: "DELETE" }),
+  gaps: () => json<{ gaps: GapItem[] }>("/api/gaps"),
   artifacts: () => json<{ path: string }[]>("/api/artifacts"),
   artifactDownload: (path: string) => `/api/artifacts/download?path=${encodeURIComponent(path)}`,
   artifactPublicLink: (path: string) => json<{ url: string }>("/api/artifacts/public-link", { method: "POST", body: JSON.stringify({ path }) }),

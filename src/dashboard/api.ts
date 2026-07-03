@@ -20,6 +20,7 @@ import { mintSecretLink } from "./secretLinks.js";
 import { TOOL_CATALOG } from "../toolCatalog.js";
 import { installTool, uninstallTool } from "../installer.js";
 import { loadTool } from "../tools.js";
+import { deriveCapabilities } from "../capabilities.js";
 import type { Docker } from "../docker.js";
 
 /** Dependencies injected into the API router, covering auth, workspace, query execution, and storage. */
@@ -214,6 +215,10 @@ export function createApiRouter(deps: ApiDeps): Router {
   router.delete("/secrets/:ref", async (req, res) => {
     if (!SAFE_NAME.test(req.params.ref)) { res.status(400).json({ error: "invalid ref" }); return; }
     await deps.secrets.delete(req.params.ref); res.json({ ok: true });
+  });
+
+  router.get("/gaps", async (_req, res) => {
+    res.json({ gaps: (await deriveCapabilities(deps.workspace.root, deps.secrets)).gaps });
   });
 
   router.get("/artifacts", async (_req, res) => { res.json(listArtifacts(deps.artifactsDir)); });

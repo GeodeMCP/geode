@@ -2,10 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { api, type TreeNode, type SseEvent, type ToolView } from "../api";
 import { isArtifactPath, buildArtifactTree } from "../artifacts";
 import { newFileDraft } from "../fileType";
-import { pendingSetup, type SetupItem } from "../setup";
 import { Chat } from "../components/Chat";
 import { FileTree } from "../components/FileTree";
-import { SetupStrip } from "../components/SetupStrip";
 import { Viewer } from "../components/Viewer";
 
 /** Renders the main vault view with a chat panel, file tree, and file viewer/editor for browsing and editing vault context files. */
@@ -19,7 +17,6 @@ export function VaultHome() {
   const [diff, setDiff] = useState("");
   const [running, setRunning] = useState(false);
   const [compose, setCompose] = useState<{ path: string; draft: string } | null>(null);
-  const [setup, setSetup] = useState<SetupItem[]>([]);
 
   const refresh = useCallback(async () => {
     const [t, arts, tools] = await Promise.all([api.tree(), api.artifacts().catch(() => [] as { path: string }[]), api.tools().catch(() => [] as ToolView[])]);
@@ -30,8 +27,6 @@ export function VaultHome() {
     setNeedsInstall(new Set(tools.filter((x) => x.type === "cli" && !x.installed).map((x) => x.id)));
   }, []);
   useEffect(() => { refresh(); }, [refresh]);
-  const refreshTools = useCallback(async () => { setSetup(pendingSetup(await api.tools().catch(() => []))); }, []);
-  useEffect(() => { refreshTools(); }, [refreshTools]);
   useEffect(() => {
     if (!selected) { setContent(""); setDiff(""); return; }
     if (isArtifactPath(selected)) { setContent(""); setDiff(""); return; }
@@ -55,7 +50,6 @@ export function VaultHome() {
         }
       });
       await refresh();
-      await refreshTools();
     } finally { setRunning(false); }
   };
   const commit = async () => { await api.commit(); await refresh(); setDiff(""); };
@@ -76,7 +70,6 @@ export function VaultHome() {
 
   return (
     <div className="col" style={{ flex: 1 }}>
-      <SetupStrip items={setup} onDone={refreshTools} />
       <div className="main">
         <Chat onSend={send} running={running} dirty={dirty} onCommit={commit} onDiscard={discard} autoRun={autoRun} />
         <FileTree tree={tree} status={status} selected={selected} onSelect={select} onCreate={create} onDelete={del} needsInstall={needsInstall} />

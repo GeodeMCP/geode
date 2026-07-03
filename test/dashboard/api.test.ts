@@ -287,6 +287,16 @@ test("no-owner kernel: setup needs no cookie, then login switches to the account
   }
 });
 
+test("GET /api/gaps requires a session and returns backlog gap pages derived from the vault", async () => {
+  expect((await fetch(`${url}/api/gaps`)).status).toBe(401);
+  const cookie = await login();
+  writeFileSync(join(root, "backlog.md"), "---\ntype: gap\ntitle: Add CRM tool\nkind: tool\ndescription: need X\n---\n");
+  const res = await fetch(`${url}/api/gaps`, { headers: { cookie } });
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.gaps).toEqual([{ title: "Add CRM tool", kind: "tool", description: "need X", path: "backlog.md" }]);
+});
+
 test("login is rate-limited after repeated failures", async () => {
   let last = 200;
   for (let i = 0; i < 12; i++) {
