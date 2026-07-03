@@ -13,6 +13,7 @@ import type { UploadStore, UploadFile } from "./uploads.js";
 import { signSession, requireSession, setSessionCookie, clearSessionCookie, sessionFromCookie } from "./session.js";
 import { createRateLimiter } from "./rateLimit.js";
 import { buildKnowledgeTree, parseStatus } from "./knowledge.js";
+import { buildHistoryPreamble } from "./history.js";
 import { openSse } from "./sse.js";
 import { listTools, getTool, listSecrets, listArtifacts } from "./ops.js";
 import { mintSecretLink } from "./secretLinks.js";
@@ -118,14 +119,15 @@ export function createApiRouter(deps: ApiDeps): Router {
       sse.close();
     }
   };
-  router.post("/query", (req, res) => {
+  router.post("/query", async (req, res) => {
     const instruction = String(req.body?.instruction ?? "");
     const uploadId = typeof req.body?.uploadId === "string" ? req.body.uploadId : undefined;
     let attachmentDirs: string[] | undefined;
     try { attachmentDirs = uploadId ? [deps.uploads.resolve(uploadId)] : undefined; }
     catch { res.status(400).json({ error: "bad uploadId" }); return; }
+    const history = buildHistoryPreamble(await deps.transcripts.list(), 6);
     stream(
-      (op) => deps.runQuery(instruction, op, { attachmentDirs }),
+      (op) => deps.runQuery(instruction, op, { attachmentDirs, history }),
       async (events, outcome) => {
         // Safe to append serially: the runManager queue serializes runs, so two /query records never interleave.
         const rec: TranscriptRecord = "result" in outcome

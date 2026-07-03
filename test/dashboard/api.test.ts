@@ -114,6 +114,38 @@ test("POST /api/query resolves uploadId to an attachment dir and passes it to ru
   }
 });
 
+test("POST /api/query passes recent history to runQuery so follow-ups have context", async () => {
+  // Self-contained app: needs a fake transcripts store with a prior turn and a runQuery that captures opts.
+  const calls: any[] = [];
+  const root5 = mkdtempSync(join(tmpdir(), "geode-api-history-"));
+  const ws5 = createWorkspace(root5); await ws5.init();
+  const app5 = express(); app5.use(express.json());
+  const accounts5 = createAccountStore(join(root5, ".accounts"));
+  accounts5.createOwner({ email: "owner@test.dev", password: "owner-password-1" });
+  app5.use("/api", createApiRouter({
+    sessionKey: KEY, secure: false, workspace: ws5,
+    runQuery: async (instruction, _onProgress, opts) => { calls.push({ instruction, opts }); return { runId: "run-2", text: "ok", commit: null, filesTouched: [] }; },
+    runRemember: async () => ({ runId: "r", text: "", commit: null, filesTouched: [] }),
+    linkKey: KEY,
+    secrets: { list: async () => [], delete: async () => {}, set: async () => {} } as any,
+    artifacts: {} as any,
+    transcripts: { list: async () => [{ runId: "r", ts: 0, instruction: "boek q1", events: [], result: { text: "done 3 rows" } }], append: async () => {}, clear: async () => {} },
+    artifactsDir: root5, baseUrl: "http://h", accounts: accounts5, invoke: async () => ({ status: 200, body: {} }),
+    docker: stubDocker,
+    toolsDir: root5,
+    uploads: stubUploads,
+  }));
+  const srv5 = await new Promise<Server>((r) => { const s = app5.listen(0, () => r(s)); });
+  try {
+    const u5 = `http://localhost:${(srv5.address() as any).port}`;
+    const cookie = (await fetch(`${u5}/api/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "owner@test.dev", password: "owner-password-1" }) })).headers.get("set-cookie")!.split(";")[0];
+    await fetch(`${u5}/api/query`, { method: "POST", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ instruction: "go 1,3" }) }).then((r) => r.text());
+    expect(calls[0].opts.history).toContain("boek q1");
+  } finally {
+    srv5.close(); rmSync(root5, { recursive: true, force: true });
+  }
+});
+
 test("commit then discard operate on the working tree", async () => {
   const cookie = await login();
   writeFileSync(join(root, "index.md"), "# Index\nedited\n");
