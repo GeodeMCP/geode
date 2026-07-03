@@ -55,3 +55,7 @@ Needs a reachable model (`ANTHROPIC_API_KEY` or local Ollama). Build the SPA fir
 ## Upload intake (manual)
 
 29. `curl -F file=@some.md $BASE/api/uploads` (with session cookie) returns `{uploadId}`; POST `/api/query` with `{instruction, uploadId}` and confirm the agent's transcript shows it Read the staged path.
+
+## Setup strip in chat (manual)
+
+30. Author a tool with an unconfigured connection (e.g. the `httpbin` sample from step 9, before adding its secret) → open **Vault** → the setup strip appears above the chat/tree/viewer columns listing the tool/connection and a **Set …** button per required secret. Click **Set …** → it opens the capture link in a new tab (same single-use auth screen as step 10). Enter the secret value there, then back in the vault click **Test** on the strip → it reports "✓ … works (HTTP …)" and the strip drops that connection (re-run a query or reload to confirm it no longer lists a fully-configured tool).
