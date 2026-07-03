@@ -6,8 +6,8 @@ export function pickedFromInput(list: FileList | null): Picked[] {
   return list ? Array.from(list).map((file) => ({ file, relPath: file.webkitRelativePath || file.name })) : [];
 }
 
-// Universal VCS/build/OS noise — never worth uploading when a folder is dropped.
-const SKIP = new Set([".git", "node_modules", ".pytest_cache", "__pycache__", ".venv", ".DS_Store"]);
+// VCS/build/runtime/OS noise — never worth uploading when a folder is dropped for onboarding.
+const SKIP = new Set([".git", "node_modules", ".pytest_cache", "__pycache__", ".venv", ".DS_Store", "data", "dist", "build", "coverage", ".next", ".cache", ".idea", ".vscode"]);
 
 /** Recursively reads a filesystem entry into `out` (draining directory readers in ~100-entry batches), preserving relative paths and skipping noise dirs. */
 function readAll(entry: FileSystemEntry, prefix: string, out: Picked[]): Promise<void> {

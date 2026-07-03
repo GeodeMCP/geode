@@ -5,7 +5,9 @@ description: Turn a folder/zip the owner dropped into the chat into vault conten
 
 # Onboarding a dropped workspace
 
-The owner staged a folder or zip (read-only) and asked you to bring it into the vault. Work in two turns: **inspect + propose**, then **write on approval**. You cannot ask questions mid-run — end your first turn with the plan and an explicit question, and wait for the owner's next message.
+The owner staged a folder or zip (read-only) and asked you to bring it into the vault. Work in two turns: **inspect + propose**, then **write on approval**.
+
+**In turn 1 you write NOTHING to the vault — no files, no folders, no edits — even if the task seems obvious.** Ending your turn with a proposal and a yes/no question is the expected, correct flow; it is NOT the disallowed "asking a question mid-run" (you are completing your turn normally, and the owner replies in their next message). Creating or editing vault files before they approve is a mistake — do not rationalize your way past this gate.
 
 ## Turn 1 — inspect and propose (write nothing yet)
 1. Explore the staged directory named in the request. Read READMEs, any `CLAUDE.md`/`AGENTS.md`, `config`, `reference/`, `.claude/skills/*`, and `bin/`.

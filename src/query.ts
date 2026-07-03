@@ -72,7 +72,7 @@ export async function query(
     let metrics: Metrics | undefined;
     try {
       const attachmentNote = opts?.attachmentDirs?.length
-        ? `Attachments for this request are staged (read-only) at: ${opts.attachmentDirs.join(", ")}. Inspect them there; never assume other paths.\n\n`
+        ? `Attachments for this request are staged (read-only) at: ${opts.attachmentDirs.join(", ")}. Inspect them there; never assume other paths. If the owner wants these added/processed/onboarded into the vault, follow your onboard-workspace skill: in THIS turn only inspect and PROPOSE a filing plan (what goes where, which tools/skills to author, which secrets they must set), then STOP — end your turn with that plan and a yes/no question. Do NOT create or edit any vault files until they approve in their next message; ending your turn with a proposal is the expected flow, not disallowed mid-run interaction. If they only asked a question about the attachment, just answer it.\n\n`
         : "";
       const historyNote = opts?.history ? `${opts.history}\n\n` : "";
       const engineInstruction = `${historyNote}${attachmentNote}${instruction}`;
