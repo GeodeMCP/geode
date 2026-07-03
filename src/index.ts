@@ -13,6 +13,7 @@ import { seedVault, ensureArtifactsIgnored } from "./seed.js";
 import { createSecretStore, loadOrCreateKey } from "./secrets.js";
 import { createArtifactStore } from "./artifacts.js";
 import { createTranscriptStore } from "./transcripts.js";
+import { createUploadStore } from "./dashboard/uploads.js";
 import { createAccountStore } from "./account.js";
 import { invoke } from "./invoke.js";
 import { realDocker } from "./docker.js";
@@ -49,6 +50,7 @@ async function main() {
     signKey: loadOrCreateKey(join(config.secretsDir, "sign"), process.env.GEODE_SIGN_KEY),
   });
   const transcripts = createTranscriptStore(config.transcriptsDir);
+  const uploads = createUploadStore({ dir: join(homedir(), ".geode", "uploads") });
 
   const queryDeps: QueryDeps = {
     workspace,
@@ -86,11 +88,12 @@ async function main() {
     secure: config.baseUrl.startsWith("https://"),
     workspace,
     webDir,
-    runQuery: (instruction, onProgress) => query(queryDeps, instruction, onProgress, { commit: false }),
+    runQuery: (instruction, onProgress, opts) => query(queryDeps, instruction, onProgress, { commit: false, attachmentDirs: opts?.attachmentDirs, history: opts?.history }),
     runRemember: (args, onProgress) => remember(queryDeps, args, onProgress, { commit: false }),
     secrets,
     artifacts,
     transcripts,
+    uploads,
     artifactsDir: config.artifactsDir,
     baseUrl: config.baseUrl,
     authToken: config.authToken,

@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from "express";
+import busboy from "busboy";
 import { randomUUID } from "node:crypto";
 import type { Workspace } from "../workspace.js";
 import type { QueryResult } from "../query.js";
@@ -8,6 +9,7 @@ import type { SecretStore } from "../secrets.js";
 import type { ArtifactStore } from "../artifacts.js";
 import type { TranscriptStore, TranscriptRecord } from "../transcripts.js";
 import type { AccountStore } from "../account.js";
+import type { UploadStore, UploadFile } from "./uploads.js";
 import { signSession, requireSession, setSessionCookie, clearSessionCookie, sessionFromCookie } from "./session.js";
 import { createRateLimiter } from "./rateLimit.js";
 import { buildKnowledgeTree, parseStatus } from "./knowledge.js";
@@ -24,7 +26,8 @@ export interface ApiDeps {
   sessionKey: Buffer;
   secure: boolean;
   workspace: Workspace;
-  runQuery: (instruction: string, onProgress: (event: ProgressEvent) => void) => Promise<QueryResult>;
+  /** Extended: forwards attachment dirs (and, later, conversation history) into the run. */
+  runQuery: (instruction: string, onProgress: (event: ProgressEvent) => void, opts?: { attachmentDirs?: string[]; history?: string }) => Promise<QueryResult>;
   runRemember: (args: RememberArgs, onProgress: (event: ProgressEvent) => void) => Promise<QueryResult>;
   linkKey: Buffer;
   secrets: Pick<SecretStore, "get" | "list" | "delete" | "set">;
@@ -39,6 +42,8 @@ export interface ApiDeps {
   docker: Docker;
   /** Directory where installed cli tool state is stored (e.g. ~/.geode/tools). */
   toolsDir: string;
+  /** Staged-upload store backing the chat's attachment intake. */
+  uploads: UploadStore;
 }
 
 const SAFE_NAME = /^[A-Za-z0-9_-]+$/;
@@ -77,6 +82,24 @@ export function createApiRouter(deps: ApiDeps): Router {
   // everything below requires a session
   router.use(requireSession(deps.sessionKey));
 
+  router.post("/uploads", (req, res) => {
+    const bb = busboy({ headers: req.headers, limits: { fileSize: 25 * 1024 * 1024, files: 300 } });
+    const files: UploadFile[] = [];
+    const pending: Promise<void>[] = [];
+    bb.on("file", (_field, stream, info) => {
+      const bufs: Buffer[] = [];
+      stream.on("data", (d: Buffer) => bufs.push(d));
+      pending.push(new Promise<void>((resolve) => stream.on("end", () => { files.push({ relPath: info.filename, buffer: Buffer.concat(bufs) }); resolve(); })));
+    });
+    bb.on("close", () => { void (async () => {
+      await Promise.all(pending);
+      try { const { uploadId } = await deps.uploads.stage(files); res.json({ uploadId }); }
+      catch (e) { res.status(400).json({ error: e instanceof Error ? e.message : String(e) }); }
+    })(); });
+    bb.on("error", (e: unknown) => { if (!res.headersSent) res.status(400).json({ error: e instanceof Error ? e.message : String(e) }); });
+    req.pipe(bb);
+  });
+
   const stream = (
     run: (op: (event: ProgressEvent) => void) => Promise<QueryResult>,
     onDone?: (events: ProgressEvent[], outcome: { result: QueryResult } | { error: string }) => Promise<void>,
@@ -97,14 +120,19 @@ export function createApiRouter(deps: ApiDeps): Router {
   };
   router.post("/query", (req, res) => {
     const instruction = String(req.body?.instruction ?? "");
+    const uploadId = typeof req.body?.uploadId === "string" ? req.body.uploadId : undefined;
+    let attachmentDirs: string[] | undefined;
+    try { attachmentDirs = uploadId ? [deps.uploads.resolve(uploadId)] : undefined; }
+    catch { res.status(400).json({ error: "bad uploadId" }); return; }
     stream(
-      (op) => deps.runQuery(instruction, op),
+      (op) => deps.runQuery(instruction, op, { attachmentDirs }),
       async (events, outcome) => {
         // Safe to append serially: the runManager queue serializes runs, so two /query records never interleave.
         const rec: TranscriptRecord = "result" in outcome
           ? { runId: outcome.result.runId, ts: Date.now(), instruction, events, result: { text: outcome.result.text, metrics: outcome.result.metrics } }
           : { runId: randomUUID(), ts: Date.now(), instruction, events, error: outcome.error };
         await deps.transcripts.append(rec);
+        if (uploadId) await deps.uploads.cleanup(uploadId).catch(() => {});
       },
     )(req, res);
   });
