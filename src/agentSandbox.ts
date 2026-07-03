@@ -1,5 +1,6 @@
 import { existsSync, realpathSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path";
+import { parseManifest } from "./tools.js";
 
 /** Resolved OS-sandbox policy for the vault agent, derived once from env + the vault root. */
 export interface SandboxPolicy {
@@ -112,6 +113,12 @@ function writeAllowed(target: string, roots: string[]): boolean {
   return roots.some((r) => abs === r || abs.startsWith(r + sep));
 }
 
+/** Extracts `<id>` from a path ending in `tools/<id>/TOOL.md` (backslashes normalized to `/` first), or null if it isn't a tool manifest path. */
+function manifestIdFromPath(path: string): string | null {
+  const m = /(?:^|\/)tools\/([a-z0-9-]+)\/TOOL\.md$/.exec(path.replace(/\\/g, "/"));
+  return m ? m[1] : null;
+}
+
 /**
  * Builds the non-interactive permission handler that partners the OS sandbox. The sandbox bounds
  * Bash at the syscall level; this handler bounds the host-process tools the sandbox doesn't cover:
@@ -136,6 +143,16 @@ export function buildPermissionHandler(writeRoots: string[]): PermissionHandler 
       const path = input.file_path ?? input.notebook_path;
       if (typeof path !== "string" || !writeAllowed(path, roots)) {
         return deny(`writes are confined to the vault; ${typeof path === "string" ? path : "(no path)"} is outside it`);
+      }
+      // Full-file writes (only Write — Edit/MultiEdit don't hand us post-edit content) that land on a
+      // tool manifest get validated against the same parser `loadTool` uses at run time, so a broken
+      // TOOL.md is rejected with the real error immediately instead of surfacing later as "unknown tool".
+      if (toolName === "Write") {
+        const id = manifestIdFromPath(path);
+        if (id && typeof input.content === "string") {
+          try { parseManifest(id, input.content); }
+          catch (e) { return deny(e instanceof Error ? e.message : String(e)); }
+        }
       }
     }
     return { behavior: "allow", updatedInput: input };

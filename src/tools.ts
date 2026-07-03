@@ -33,10 +33,12 @@ export interface ToolManifest {
 
 const ID_RE = /^[a-z0-9-]+$/;
 
-/** Reads and parses `tools/<id>/TOOL.md` (YAML frontmatter + markdown body); rejects unsafe ids. */
-export async function loadTool(root: string, id: string): Promise<ToolManifest> {
-  if (!ID_RE.test(id)) throw new Error(`invalid tool id: ${id}`);
-  const raw = await readFile(join(root, "tools", id, "TOOL.md"), "utf8");
+/**
+ * Parses `tools/<id>/TOOL.md` raw content (YAML frontmatter + markdown body) into a `ToolManifest`.
+ * Pure — no I/O — so it can be run against a write's proposed content before it hits disk, as well as
+ * against a file already read from the vault. Throws on any structural or YAML problem.
+ */
+export function parseManifest(id: string, raw: string): ToolManifest {
   const m = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/.exec(raw);
   if (!m) throw new Error(`tool ${id}: missing frontmatter`);
   let fm: Partial<ToolManifest>;
@@ -48,6 +50,13 @@ export async function loadTool(root: string, id: string): Promise<ToolManifest> 
       throw new Error(`tool ${id}: action "${name}" — command must be a non-empty array of argv tokens (string[]); the space-separated string form was removed`);
   }
   return { ...fm, id, name: fm.name ?? id, description: fm.description ?? "", type: fm.type, actions: fm.actions, body: m[2] || undefined } as ToolManifest;
+}
+
+/** Reads and parses `tools/<id>/TOOL.md` (YAML frontmatter + markdown body); rejects unsafe ids. */
+export async function loadTool(root: string, id: string): Promise<ToolManifest> {
+  if (!ID_RE.test(id)) throw new Error(`invalid tool id: ${id}`);
+  const raw = await readFile(join(root, "tools", id, "TOOL.md"), "utf8");
+  return parseManifest(id, raw);
 }
 
 /** Lists tool ids = directory names under `tools/`. */

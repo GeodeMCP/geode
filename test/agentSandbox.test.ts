@@ -87,6 +87,58 @@ describe("buildPermissionHandler", () => {
   });
 });
 
+describe("buildPermissionHandler tool-manifest write validation", () => {
+  const handler = buildPermissionHandler(["/vault"]);
+  const VALID_TOOL_MD = `---
+id: moneybird
+name: Moneybird
+type: http
+description: Accounting API.
+actions:
+  list_invoices:
+    http:
+      method: GET
+      url: https://api.moneybird.com/invoices
+---
+Body docs.
+`;
+  const INVALID_TOOL_MD = `---
+id: moneybird
+name: Moneybird
+type: http
+description: body = { "x": { "y": 1 } }
+actions:
+  list_invoices:
+    http:
+      method: GET
+      url: https://api.moneybird.com/invoices
+---
+`;
+  it("allows a Write of a valid TOOL.md in the vault", async () => {
+    const res = await handler("Write", { file_path: "/vault/tools/moneybird/TOOL.md", content: VALID_TOOL_MD });
+    expect(res.behavior).toBe("allow");
+  });
+  it("denies a Write of an invalid-YAML TOOL.md with the parser's error", async () => {
+    const res = await handler("Write", { file_path: "/vault/tools/moneybird/TOOL.md", content: INVALID_TOOL_MD });
+    expect(res.behavior).toBe("deny");
+    expect((res as { message: string }).message).toMatch(/invalid TOOL\.md YAML frontmatter/);
+  });
+  it("denies a Write of a TOOL.md missing type/actions", async () => {
+    const res = await handler("Write", { file_path: "/vault/tools/moneybird/TOOL.md", content: "---\nname: x\n---\n" });
+    expect(res.behavior).toBe("deny");
+    expect((res as { message: string }).message).toMatch(/needs type \+ actions/);
+  });
+  it("allows a Write of a non-manifest file regardless of content", async () => {
+    const res = await handler("Write", { file_path: "/vault/notes/x.md", content: "not: valid: yaml: at: all: {" });
+    expect(res.behavior).toBe("allow");
+  });
+  it("still denies a TOOL.md Write outside the vault — confinement runs before validation", async () => {
+    const res = await handler("Write", { file_path: "/etc/tools/moneybird/TOOL.md", content: VALID_TOOL_MD });
+    expect(res.behavior).toBe("deny");
+    expect((res as { message: string }).message).toMatch(/confined to the vault/);
+  });
+});
+
 describe("buildPermissionHandler symlink resolution (real filesystem)", () => {
   it("realpaths both sides: allows an in-vault write through a symlinked root, denies an escape via an in-vault symlink", async () => {
     const vault = mkdtempSync(join(tmpdir(), "geode-vault-"));
