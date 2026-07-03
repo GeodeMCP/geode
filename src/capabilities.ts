@@ -5,7 +5,7 @@ import { listToolIds, loadTool, connectionConfigured } from "./tools.js";
 
 /** Parsed YAML frontmatter fields extracted from a Markdown document. */
 export interface Frontmatter { type?: string; title?: string; description?: string; tags?: string[]; kind?: string; status?: string }
-/** Aggregated summary of a vault's tools and recipes/skills. */
+/** Aggregated summary of a vault's tools, recipes/skills, and capability gaps. */
 export interface CapabilitySummary {
   tools: { id: string; name: string; type: string; description: string; connections: { label: string; configured: boolean }[]; actions: string[] }[];
   recipes: { title: string; description: string; path: string }[];

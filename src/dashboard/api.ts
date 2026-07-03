@@ -134,7 +134,7 @@ export function createApiRouter(deps: ApiDeps): Router {
           ? { runId: outcome.result.runId, ts: Date.now(), instruction, events, result: { text: outcome.result.text, metrics: outcome.result.metrics } }
           : { runId: randomUUID(), ts: Date.now(), instruction, events, error: outcome.error };
         await deps.transcripts.append(rec);
-        if (uploadId) await deps.uploads.cleanup(uploadId).catch(() => {});
+        if (uploadId) await deps.uploads.cleanup(uploadId).catch((e) => console.error("upload cleanup failed:", e));
       },
     )(req, res);
   });
