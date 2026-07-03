@@ -83,7 +83,7 @@ export function applyResult(items: Item[], data: any, ts: number): Item[] {
 export function buildFromHistory(records: TranscriptRecord[]): Item[] {
   let items: Item[] = [];
   for (const rec of records) {
-    items.push({ kind: "user", text: rec.instruction, ts: rec.ts });
+    items.push({ kind: "user", text: rec.instruction, ts: rec.ts, ...(rec.attachments?.length ? { attachments: rec.attachments } : {}) });
     for (const ev of rec.events) items = applyProgress(items, ev, rec.ts);
     if (rec.result) items = applyResult(items, rec.result, rec.ts);
     else if (rec.error) items.push({ kind: "error", text: rec.error, ts: rec.ts });

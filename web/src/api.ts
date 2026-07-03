@@ -18,6 +18,7 @@ export interface TranscriptRecord {
   events: any[];
   result?: { text: string; metrics?: { durationMs: number; costUsd: number; tokens: number } };
   error?: string;
+  attachments?: string[];
 }
 
 /** Parse a buffer of SSE text into complete events + the unparsed remainder. */
@@ -72,13 +73,17 @@ export const api = {
   writeFile: (path: string, content: string) => json<{ ok: true }>("/api/file", { method: "POST", body: JSON.stringify({ path, content }) }),
   deletePath: (path: string) => json<{ ok: true }>(`/api/file?path=${encodeURIComponent(path)}`, { method: "DELETE" }),
   /** Upload staged attachments (files carry their folder-relative path as the filename); returns the uploadId to pass to /api/query. */
-  upload: async (items: { file: File; relPath: string }[]): Promise<{ uploadId: string }> => {
+  upload: async (items: { file: File; relPath: string }[]): Promise<{ added: string[] }> => {
     const fd = new FormData();
     for (const it of items) fd.append("files", it.file, it.relPath);
     const res = await fetch("/api/uploads", { method: "POST", body: fd });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   },
+  /** Lists the files currently in the conversation's persistent attachment folder. */
+  attachments: () => json<{ files: string[] }>("/api/attachments"),
+  /** Empties the conversation's attachment folder. */
+  clearAttachments: () => json<{ ok: true }>("/api/attachments", { method: "DELETE" }),
   /** Stream an agent run; calls onEvent for each SSE event until the stream closes. */
   async run(path: "/api/query" | "/api/remember", body: object, onEvent: (e: SseEvent) => void): Promise<void> {
     const res = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });

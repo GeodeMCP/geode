@@ -200,7 +200,7 @@ function stagedChips(staged: Picked[]): { key: string; label: string }[] {
 
 /** Renders the full chat column: message history, SSE-driven live updates, and the send input. */
 export function Chat({ onSend, running, dirty, onCommit, onDiscard, autoRun }: {
-  onSend: (instruction: string, onEvent: (e: SseEvent) => void, uploadId?: string) => Promise<void>;
+  onSend: (instruction: string, onEvent: (e: SseEvent) => void, attachments?: string[]) => Promise<void>;
   running: boolean; dirty: boolean; onCommit: () => void; onDiscard: () => void;
   autoRun?: { id: number; text: string } | null;
 }) {
@@ -214,6 +214,10 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard, autoRun }: {
   const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const addFiles = (items: Picked[]) => { if (items.length) setStaged((s) => [...s, ...items]); };
+  const [folderFiles, setFolderFiles] = useState<string[]>([]);
+  const refreshFolder = () => { api.attachments().then((r) => setFolderFiles(r.files)).catch(() => {}); };
+  useEffect(() => { refreshFolder(); }, []);
+  const clearFolder = async () => { await api.clearAttachments().catch(() => {}); refreshFolder(); };
 
   const submit = async (forced?: string) => {
     const raw = (forced ?? text).trim();
@@ -222,10 +226,9 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard, autoRun }: {
     const instruction = resolveCommand(raw) ?? raw; // slash commands expand; the bubble still shows the raw command
     const attachments = stagedChips(staged).map((c) => c.label);
     setMsgs((m) => [...m, { kind: "user", text: raw, ts: Date.now(), ...(attachments.length ? { attachments } : {}) }]);
-    let uploadId: string | undefined;
     if (staged.length) {
       try {
-        uploadId = (await api.upload(staged)).uploadId;
+        await api.upload(staged);
         setStaged([]);
       } catch (e) {
         setMsgs((m) => [...m, { kind: "error", text: `Upload failed: ${e instanceof Error ? e.message : String(e)}`, ts: Date.now() }]);
@@ -236,7 +239,8 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard, autoRun }: {
       if (e.event === "progress") setMsgs((m) => applyProgress(m, e.data, Date.now()));
       else if (e.event === "result") setMsgs((m) => applyResult(m, e.data, Date.now()));
       else if (e.event === "error") setMsgs((m) => [...m, { kind: "error", text: e.data.message, ts: Date.now() }]);
-    }, uploadId);
+    }, attachments.length ? attachments : undefined);
+    refreshFolder();
   };
   // Fire a programmatic run (e.g. the tree's /delete) once the chat is idle; runs during a
   // live run wait for it to finish. Last-wins if several are queued while a run is in flight.
@@ -298,6 +302,12 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard, autoRun }: {
         {running && <div className="thinking"><span className="tdots"><i /><i /><i /></span></div>}
         <div ref={endRef} />
       </div>
+      {folderFiles.length > 0 && (
+        <div className="attach-folder">
+          <span>{folderFiles.length} attachment file{folderFiles.length > 1 ? "s" : ""} available to the agent</span>
+          <button className="ghost sm" onClick={clearFolder}>Clear</button>
+        </div>
+      )}
       <div className="ctrl">
         {staged.length > 0 && (() => {
           const chips = stagedChips(staged);

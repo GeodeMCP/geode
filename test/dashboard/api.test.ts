@@ -17,7 +17,7 @@ const stubDocker: Docker = {
   run: async () => ({ exitCode: 0, stdout: "", stderr: "" }),
   removeImage: async () => {},
 };
-const stubUploads = { stage: async () => ({ uploadId: "stub", dir: "" }), resolve: (id: string) => id, cleanup: async () => {} };
+const stubAttachments = { dir: "/att", add: async () => [], list: async () => [], clear: async () => {} };
 
 let server: Server; let url: string; let root: string;
 const KEY = Buffer.from("k".repeat(32));
@@ -49,7 +49,7 @@ async function boot() {
     invoke: async () => ({ status: 200, body: {} }),
     docker: stubDocker,
     toolsDir: root,
-    uploads: stubUploads,
+    attachments: stubAttachments,
   }));
   await new Promise<void>((r) => { server = app.listen(0, () => { url = `http://localhost:${(server.address() as any).port}`; r(); }); });
 }
@@ -82,10 +82,10 @@ test("POST /api/query streams SSE progress then a result event", async () => {
   expect(body).toContain("ok: do X");
 });
 
-test("POST /api/query resolves uploadId to an attachment dir and passes it to runQuery", async () => {
-  // Self-contained app: needs a runQuery that captures opts and a fake uploads store.
+test("POST /api/query passes the attachment folder to runQuery when it is non-empty", async () => {
+  // Self-contained app: a runQuery that captures opts and an attachment store reporting one staged file.
   const calls: any[] = [];
-  const root4 = mkdtempSync(join(tmpdir(), "geode-api-upload-"));
+  const root4 = mkdtempSync(join(tmpdir(), "geode-api-att-"));
   const ws4 = createWorkspace(root4); await ws4.init();
   const app4 = express(); app4.use(express.json());
   const accounts4 = createAccountStore(join(root4, ".accounts"));
@@ -101,14 +101,14 @@ test("POST /api/query resolves uploadId to an attachment dir and passes it to ru
     artifactsDir: root4, baseUrl: "http://h", accounts: accounts4, invoke: async () => ({ status: 200, body: {} }),
     docker: stubDocker,
     toolsDir: root4,
-    uploads: { stage: async () => ({ uploadId: "u", dir: "/stage/u" }), resolve: (id: string) => `/stage/${id}`, cleanup: async () => {} },
+    attachments: { dir: "/att", add: async () => [], list: async () => ["administratie/x.md"], clear: async () => {} },
   }));
   const srv4 = await new Promise<Server>((r) => { const s = app4.listen(0, () => r(s)); });
   try {
     const u4 = `http://localhost:${(srv4.address() as any).port}`;
     const cookie = (await fetch(`${u4}/api/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "owner@test.dev", password: "owner-password-1" }) })).headers.get("set-cookie")!.split(";")[0];
-    await fetch(`${u4}/api/query`, { method: "POST", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ instruction: "process these", uploadId: "abc" }) }).then((r) => r.text());
-    expect(calls[0].opts.attachmentDirs).toEqual(["/stage/abc"]);
+    await fetch(`${u4}/api/query`, { method: "POST", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ instruction: "process these" }) }).then((r) => r.text());
+    expect(calls[0].opts.attachmentDirs).toEqual(["/att"]);
   } finally {
     srv4.close(); rmSync(root4, { recursive: true, force: true });
   }
@@ -133,7 +133,7 @@ test("POST /api/query passes recent history to runQuery so follow-ups have conte
     artifactsDir: root5, baseUrl: "http://h", accounts: accounts5, invoke: async () => ({ status: 200, body: {} }),
     docker: stubDocker,
     toolsDir: root5,
-    uploads: stubUploads,
+    attachments: stubAttachments,
   }));
   const srv5 = await new Promise<Server>((r) => { const s = app5.listen(0, () => r(s)); });
   try {
@@ -219,7 +219,7 @@ test("an errored query run is still recorded with error + a generated runId", as
     artifactsDir: root2, baseUrl: "http://h", accounts: accounts2, invoke: async () => ({ status: 200, body: {} }),
     docker: stubDocker,
     toolsDir: root2,
-    uploads: stubUploads,
+    attachments: stubAttachments,
   }));
   const srv2 = await new Promise<Server>((r) => { const s = app2.listen(0, () => r(s)); });
   try {
@@ -266,7 +266,7 @@ test("no-owner kernel: setup needs no cookie, then login switches to the account
     artifactsDir: root3, baseUrl: "http://h", accounts: createAccountStore(join(root3, ".accounts")), invoke: async () => ({ status: 200, body: {} }),
     docker: stubDocker,
     toolsDir: root3,
-    uploads: stubUploads,
+    attachments: stubAttachments,
   }));
   const srv3 = await new Promise<Server>((r) => { const s = app3.listen(0, () => r(s)); });
   try {

@@ -3,7 +3,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { Chat } from "./Chat";
 import { api } from "../api";
 
-vi.mock("../api", () => ({ api: { history: () => Promise.resolve([]), clearHistory: () => Promise.resolve(), upload: vi.fn() } }));
+vi.mock("../api", () => ({ api: { history: () => Promise.resolve([]), clearHistory: () => Promise.resolve(), upload: vi.fn(), attachments: () => Promise.resolve({ files: [] }), clearAttachments: () => Promise.resolve({ ok: true }) } }));
 
 // jsdom doesn't implement scrollIntoView; Chat's auto-scroll effect calls it on every render.
 Element.prototype.scrollIntoView = vi.fn();

@@ -1,6 +1,5 @@
-import { mkdir, writeFile, rm } from "node:fs/promises";
-import { dirname, resolve, sep, join } from "node:path";
-import { randomUUID } from "node:crypto";
+import { mkdir, writeFile, rm, readdir } from "node:fs/promises";
+import { dirname, resolve, sep, join, relative } from "node:path";
 import AdmZip from "adm-zip";
 
 /** One uploaded file: its path relative to the upload root, and its raw bytes. */
@@ -33,30 +32,38 @@ export async function stageFiles(baseDir: string, files: UploadFile[]): Promise<
   return written;
 }
 
-/** A staged-upload store: writes each upload into its own UUID temp dir and resolves/cleans them. */
-export interface UploadStore {
-  stage(files: UploadFile[]): Promise<{ uploadId: string; dir: string }>;
-  resolve(uploadId: string): string;
-  cleanup(uploadId: string): Promise<void>;
+/** A persistent per-conversation attachment folder: uploaded files accumulate here across turns until cleared. */
+export interface AttachmentStore {
+  /** The folder holding the current conversation's attachments (granted read-only to agent runs). */
+  dir: string;
+  /** Stages more files into the folder; returns the relative paths written. */
+  add(files: UploadFile[]): Promise<string[]>;
+  /** Lists the relative paths currently in the folder. */
+  list(): Promise<string[]>;
+  /** Empties the folder. */
+  clear(): Promise<void>;
 }
 
-const UPLOAD_ID_RE = /^[0-9a-f-]{36}$/;
+/** Recursively lists file paths under `dir`, relative to `base`, using forward slashes; returns [] if the dir is absent. */
+async function listFilesRec(dir: string, base: string): Promise<string[]> {
+  let entries;
+  try { entries = await readdir(dir, { withFileTypes: true }); } catch { return []; }
+  const out: string[] = [];
+  for (const e of entries) {
+    const full = join(dir, e.name);
+    if (e.isDirectory()) out.push(...await listFilesRec(full, base));
+    else out.push(relative(base, full).split(sep).join("/"));
+  }
+  return out;
+}
 
-/** Creates an UploadStore rooted at `opts.dir`; each upload gets a fresh UUID subdirectory. */
-export function createUploadStore(opts: { dir: string }): UploadStore {
-  const dirFor = (id: string): string => {
-    if (!UPLOAD_ID_RE.test(id)) throw new Error("invalid uploadId");
-    return join(opts.dir, id);
-  };
+/** Creates an AttachmentStore rooted at `opts.dir` — a single persistent folder shared across a conversation's turns. */
+export function createAttachmentStore(opts: { dir: string }): AttachmentStore {
   return {
-    async stage(files) {
-      const uploadId = randomUUID();
-      const dir = join(opts.dir, uploadId);
-      await stageFiles(dir, files);
-      return { uploadId, dir };
-    },
-    resolve(uploadId) { return dirFor(uploadId); },
-    async cleanup(uploadId) { await rm(dirFor(uploadId), { recursive: true, force: true }); },
+    dir: opts.dir,
+    add: (files) => stageFiles(opts.dir, files),
+    list: () => listFilesRec(opts.dir, opts.dir),
+    clear: async () => { await rm(opts.dir, { recursive: true, force: true }); },
   };
 }
 

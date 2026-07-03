@@ -9,7 +9,7 @@ import type { SecretStore } from "../secrets.js";
 import type { ArtifactStore } from "../artifacts.js";
 import type { TranscriptStore, TranscriptRecord } from "../transcripts.js";
 import type { AccountStore } from "../account.js";
-import type { UploadStore, UploadFile } from "./uploads.js";
+import type { AttachmentStore, UploadFile } from "./uploads.js";
 import { signSession, requireSession, setSessionCookie, clearSessionCookie, sessionFromCookie } from "./session.js";
 import { createRateLimiter } from "./rateLimit.js";
 import { buildKnowledgeTree, parseStatus } from "./knowledge.js";
@@ -43,8 +43,8 @@ export interface ApiDeps {
   docker: Docker;
   /** Directory where installed cli tool state is stored (e.g. ~/.geode/tools). */
   toolsDir: string;
-  /** Staged-upload store backing the chat's attachment intake. */
-  uploads: UploadStore;
+  /** Persistent per-conversation attachment folder backing the chat's attachment intake. */
+  attachments: AttachmentStore;
 }
 
 const SAFE_NAME = /^[A-Za-z0-9_-]+$/;
@@ -84,7 +84,7 @@ export function createApiRouter(deps: ApiDeps): Router {
   router.use(requireSession(deps.sessionKey));
 
   router.post("/uploads", (req, res) => {
-    const bb = busboy({ headers: req.headers, limits: { fileSize: 25 * 1024 * 1024, files: 300 } });
+    const bb = busboy({ headers: req.headers, limits: { fileSize: 25 * 1024 * 1024, files: 1000 } });
     const files: UploadFile[] = [];
     const pending: Promise<void>[] = [];
     bb.on("file", (_field, stream, info) => {
@@ -94,12 +94,14 @@ export function createApiRouter(deps: ApiDeps): Router {
     });
     bb.on("close", () => { void (async () => {
       await Promise.all(pending);
-      try { const { uploadId } = await deps.uploads.stage(files); res.json({ uploadId }); }
+      try { const added = await deps.attachments.add(files); res.json({ added }); }
       catch (e) { res.status(400).json({ error: e instanceof Error ? e.message : String(e) }); }
     })(); });
     bb.on("error", (e: unknown) => { if (!res.headersSent) res.status(400).json({ error: e instanceof Error ? e.message : String(e) }); });
     req.pipe(bb);
   });
+  router.get("/attachments", async (_req, res) => { res.json({ files: await deps.attachments.list() }); });
+  router.delete("/attachments", async (_req, res) => { await deps.attachments.clear(); res.json({ ok: true }); });
 
   const stream = (
     run: (op: (event: ProgressEvent) => void) => Promise<QueryResult>,
@@ -121,10 +123,10 @@ export function createApiRouter(deps: ApiDeps): Router {
   };
   router.post("/query", async (req, res) => {
     const instruction = String(req.body?.instruction ?? "");
-    const uploadId = typeof req.body?.uploadId === "string" ? req.body.uploadId : undefined;
-    let attachmentDirs: string[] | undefined;
-    try { attachmentDirs = uploadId ? [deps.uploads.resolve(uploadId)] : undefined; }
-    catch { res.status(400).json({ error: "bad uploadId" }); return; }
+    // Labels of attachments added WITH this message (for the transcript/display); the agent reads the whole folder.
+    const attachments = Array.isArray(req.body?.attachments) ? (req.body.attachments as unknown[]).map(String) : undefined;
+    const staged = await deps.attachments.list();
+    const attachmentDirs = staged.length ? [deps.attachments.dir] : undefined;
     const history = buildHistoryPreamble(await deps.transcripts.list(), 6);
     stream(
       (op) => deps.runQuery(instruction, op, { attachmentDirs, history }),
@@ -133,8 +135,8 @@ export function createApiRouter(deps: ApiDeps): Router {
         const rec: TranscriptRecord = "result" in outcome
           ? { runId: outcome.result.runId, ts: Date.now(), instruction, events, result: { text: outcome.result.text, metrics: outcome.result.metrics } }
           : { runId: randomUUID(), ts: Date.now(), instruction, events, error: outcome.error };
+        if (attachments && attachments.length) rec.attachments = attachments;
         await deps.transcripts.append(rec);
-        if (uploadId) await deps.uploads.cleanup(uploadId).catch((e) => console.error("upload cleanup failed:", e));
       },
     )(req, res);
   });

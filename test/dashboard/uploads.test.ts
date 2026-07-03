@@ -51,21 +51,25 @@ describe("stageFiles", () => {
   });
 });
 
-import { createUploadStore } from "../../src/dashboard/uploads.js";
+import { createAttachmentStore } from "../../src/dashboard/uploads.js";
 
-describe("createUploadStore", () => {
-  it("stages to a uuid dir, resolves it, and cleans it up", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "geode-uploads-"));
-    const store = createUploadStore({ dir });
-    const { uploadId } = await store.stage([{ relPath: "a.md", buffer: Buffer.from("hi") }]);
-    expect(store.resolve(uploadId)).toBe(join(dir, uploadId));
-    expect(readFileSync(join(dir, uploadId, "a.md"), "utf8")).toBe("hi");
-    await store.cleanup(uploadId);
-    expect(existsSync(join(dir, uploadId))).toBe(false);
+describe("createAttachmentStore", () => {
+  it("adds files across calls, lists them, and clears the folder", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "geode-att-"));
+    const store = createAttachmentStore({ dir });
+    expect(store.dir).toBe(dir);
+    const added = await store.add([{ relPath: "reference/a.md", buffer: Buffer.from("hi") }]);
+    expect(added).toEqual(["reference/a.md"]);
+    expect(readFileSync(join(dir, "reference/a.md"), "utf8")).toBe("hi");
+    await store.add([{ relPath: "b.md", buffer: Buffer.from("yo") }]);
+    expect((await store.list()).sort()).toEqual(["b.md", "reference/a.md"]);
+    await store.clear();
+    expect(await store.list()).toEqual([]);
+    expect(existsSync(dir)).toBe(false);
     rmSync(dir, { recursive: true, force: true });
   });
-  it("rejects a bogus uploadId in resolve", () => {
-    const store = createUploadStore({ dir: "/tmp/x" });
-    expect(() => store.resolve("../../etc")).toThrow(/invalid uploadId/);
+  it("lists nothing for an absent folder", async () => {
+    const store = createAttachmentStore({ dir: join(tmpdir(), "geode-att-absent-does-not-exist") });
+    expect(await store.list()).toEqual([]);
   });
 });
