@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, type TreeNode, type SseEvent } from "../api";
+import { api, type TreeNode, type SseEvent, type ToolView } from "../api";
 import { isArtifactPath, buildArtifactTree } from "../artifacts";
 import { newFileDraft } from "../fileType";
 import { pendingSetup, type SetupItem } from "../setup";
@@ -12,6 +12,8 @@ import { Viewer } from "../components/Viewer";
 export function VaultHome() {
   const [tree, setTree] = useState<TreeNode[]>([]);
   const [status, setStatus] = useState<{ modified: string[]; created: string[] }>({ modified: [], created: [] });
+  const [needsInstall, setNeedsInstall] = useState<Set<string>>(new Set());
+  const [autoRun, setAutoRun] = useState<{ id: number; text: string } | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [content, setContent] = useState("");
   const [diff, setDiff] = useState("");
@@ -20,11 +22,12 @@ export function VaultHome() {
   const [setup, setSetup] = useState<SetupItem[]>([]);
 
   const refresh = useCallback(async () => {
-    const [t, arts] = await Promise.all([api.tree(), api.artifacts().catch(() => [] as { path: string }[])]);
+    const [t, arts, tools] = await Promise.all([api.tree(), api.artifacts().catch(() => [] as { path: string }[]), api.tools().catch(() => [] as ToolView[])]);
     setTree(arts.length
       ? [...t, { name: "artifacts", path: "artifacts", type: "dir" as const, children: buildArtifactTree(arts.map((a) => a.path)) }]
       : t);
     setStatus(await api.status());
+    setNeedsInstall(new Set(tools.filter((x) => x.type === "cli" && !x.installed).map((x) => x.id)));
   }, []);
   useEffect(() => { refresh(); }, [refresh]);
   const refreshTools = useCallback(async () => { setSetup(pendingSetup(await api.tools().catch(() => []))); }, []);
@@ -58,18 +61,18 @@ export function VaultHome() {
     setSelected(nf.path);
   };
   const select = (p: string) => { setCompose(null); setSelected(p); };
-  const del = async (p: string) => {
-    await api.deletePath(p);
+  const del = (p: string) => {
+    // Route deletes through the agent so it removes the path AND keeps index.md/log.md/references consistent.
+    setAutoRun({ id: Date.now(), text: `/delete ${p}` });
     if (selected === p || (selected && selected.startsWith(p + "/"))) { setSelected(null); setCompose(null); }
-    await refresh();
   };
 
   return (
     <div className="col" style={{ flex: 1 }}>
       <SetupStrip items={setup} onDone={refreshTools} />
       <div className="main">
-        <Chat onSend={send} running={running} dirty={dirty} onCommit={commit} onDiscard={discard} />
-        <FileTree tree={tree} status={status} selected={selected} onSelect={select} onCreate={create} onDelete={del} />
+        <Chat onSend={send} running={running} dirty={dirty} onCommit={commit} onDiscard={discard} autoRun={autoRun} />
+        <FileTree tree={tree} status={status} selected={selected} onSelect={select} onCreate={create} onDelete={del} needsInstall={needsInstall} />
         <Viewer path={selected} content={content} diff={diff} dirty={selectedDirty} compose={compose} onCommit={commit} onDiscard={discard} onSave={save} onOpenFile={select} />
       </div>
     </div>
