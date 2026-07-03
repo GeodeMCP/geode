@@ -72,9 +72,9 @@ export const api = {
   writeFile: (path: string, content: string) => json<{ ok: true }>("/api/file", { method: "POST", body: JSON.stringify({ path, content }) }),
   deletePath: (path: string) => json<{ ok: true }>(`/api/file?path=${encodeURIComponent(path)}`, { method: "DELETE" }),
   /** Upload staged attachments (files carry their folder-relative path as the filename); returns the uploadId to pass to /api/query. */
-  upload: async (files: File[]): Promise<{ uploadId: string }> => {
+  upload: async (items: { file: File; relPath: string }[]): Promise<{ uploadId: string }> => {
     const fd = new FormData();
-    for (const f of files) fd.append("files", f, (f as any).webkitRelativePath || f.name);
+    for (const it of items) fd.append("files", it.file, it.relPath);
     const res = await fetch("/api/uploads", { method: "POST", body: fd });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();

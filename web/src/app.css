@@ -127,6 +127,7 @@
   .ctrl{padding:16px 20px;border-top:1px solid var(--border);}
   .staged{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
   .staged .chip button{background:none;border:none;color:inherit;cursor:pointer;font-size:13px;line-height:1;padding:0;margin-left:2px;}
+  .chat.drop-active{outline:2px dashed var(--green);outline-offset:-8px;border-radius:12px;background:rgba(52,211,153,.05);}
   .ctrl-row{display:flex;align-items:center;gap:10px;}
   .ctrl-row .input{flex:1;}
   .attach{display:flex;align-items:center;justify-content:center;width:34px;height:34px;flex:none;border:1px solid var(--border);border-radius:9px;background:none;color:var(--muted);cursor:pointer;padding:0;transition:border-color .15s,color .15s;}

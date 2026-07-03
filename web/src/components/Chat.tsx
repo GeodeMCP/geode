@@ -3,6 +3,7 @@ import { api, type SseEvent } from "../api";
 import { renderMarkdown } from "../markdown";
 import { ColHead } from "./ColHead";
 import { applyProgress, applyResult, buildFromHistory, type Item, type Metrics, type Step } from "../timeline";
+import { readDropped, pickedFromInput, type Picked } from "../dropFiles";
 
 const fmtTime = (ts: number) => {
   const d = new Date(ts), t = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -191,16 +192,17 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard, autoRun }: {
   const endRef = useRef<HTMLDivElement>(null);
   useEffect(() => { endRef.current?.scrollIntoView({ block: "end" }); }, [msgs, running]);
 
-  const [staged, setStaged] = useState<File[]>([]);
+  const [staged, setStaged] = useState<Picked[]>([]);
+  const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const addFiles = (list: FileList | null) => { if (list) setStaged((s) => [...s, ...Array.from(list)]); };
+  const addFiles = (items: Picked[]) => { if (items.length) setStaged((s) => [...s, ...items]); };
 
   const submit = async (forced?: string) => {
     const raw = (forced ?? text).trim();
     if (!raw || running) return; // dirty no longer blocks — review-mode runs accumulate onto the draft
     if (forced === undefined) setText("");
     const instruction = resolveCommand(raw) ?? raw; // slash commands expand; the bubble still shows the raw command
-    const attachments = staged.map((f) => (f as any).webkitRelativePath || f.name);
+    const attachments = staged.map((p) => p.relPath);
     setMsgs((m) => [...m, { kind: "user", text: raw, ts: Date.now(), ...(attachments.length ? { attachments } : {}) }]);
     let uploadId: string | undefined;
     if (staged.length) {
@@ -227,7 +229,10 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard, autoRun }: {
 
   const lastIdx = msgs.length - 1;
   return (
-    <div className="col chat">
+    <div className={`col chat${dragOver ? " drop-active" : ""}`}
+      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => { e.preventDefault(); setDragOver(false); readDropped(e.dataTransfer).then(addFiles).catch(() => {}); }}>
       <ColHead title="Vault agent">
         {msgs.length > 0 && <button className="ghost sm" style={{ textTransform: "none", letterSpacing: 0 }} onClick={() => { api.clearHistory().catch(() => {}); setMsgs([]); }}>Clear</button>}
       </ColHead>
@@ -274,13 +279,13 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard, autoRun }: {
       </div>
       <div className="ctrl">
         {staged.length > 0 && (
-          <div className="staged">{staged.map((f, i) => (
-            <span key={i} className="chip">{(f as any).webkitRelativePath || f.name}
+          <div className="staged">{staged.map((p, i) => (
+            <span key={i} className="chip">{p.relPath}
               <button onClick={() => setStaged((s) => s.filter((_, j) => j !== i))}>×</button></span>
           ))}</div>
         )}
         <div className="ctrl-row">
-          <input ref={fileRef} type="file" multiple hidden onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
+          <input ref={fileRef} type="file" multiple hidden onChange={(e) => { addFiles(pickedFromInput(e.target.files)); e.target.value = ""; }} />
           <button className="attach" title="Attach files (zip a folder to add one)" aria-label="Attach files" disabled={running} onClick={() => fileRef.current?.click()}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
           </button>
