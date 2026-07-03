@@ -137,3 +137,13 @@ test("engine receives no sandbox when the policy is disabled (GEODE_SANDBOX_DISA
   await query(d, "hi");
   expect(seen).toBeUndefined();
 });
+
+test("attachment dirs are granted read access and surfaced to the agent", async () => {
+  let seen: any;
+  const engine = async function* (opts: any) { seen = opts; yield { type: "result", text: "ok" }; };
+  const d = deps({ engine: engine as any, sandboxPolicy: resolveSandboxPolicy({}, "/vault") } as any);
+  await query(d, "process these", undefined, { commit: false, attachmentDirs: ["/tmp/up/abc"] });
+  expect(seen.sandbox.filesystem.allowRead).toEqual(["/tmp/up/abc"]);
+  expect(seen.instruction).toContain("/tmp/up/abc");
+  expect(seen.instruction).toContain("process these");
+});

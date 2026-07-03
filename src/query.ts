@@ -55,7 +55,7 @@ export async function query(
   deps: QueryDeps,
   instruction: string,
   onProgress?: (event: ProgressEvent) => void,
-  opts?: { commit?: boolean },
+  opts?: { commit?: boolean; attachmentDirs?: string[]; history?: string },
 ): Promise<QueryResult> {
   return deps.runManager.run(async (abortController, runId) => {
     const review = opts?.commit === false;
@@ -71,13 +71,18 @@ export async function query(
     let finalText = "";
     let metrics: Metrics | undefined;
     try {
+      const attachmentNote = opts?.attachmentDirs?.length
+        ? `Attachments for this request are staged (read-only) at: ${opts.attachmentDirs.join(", ")}. Inspect them there; never assume other paths.\n\n`
+        : "";
+      const historyNote = opts?.history ? `${opts.history}\n\n` : "";
+      const engineInstruction = `${historyNote}${attachmentNote}${instruction}`;
       for await (const ev of deps.engine({
-        instruction,
+        instruction: engineInstruction,
         cwd: deps.workspace.root,
         systemPrompt: deps.systemPrompt + buildOverlay(deps.workspace.root) + buildSkillsFooter(deps.workspace.root),
         model: deps.model,
         abortController,
-        sandbox: buildSandboxSettings(deps.sandboxPolicy),
+        sandbox: buildSandboxSettings(deps.sandboxPolicy, opts?.attachmentDirs),
       })) {
         if (ev.type === "result") { finalText = ev.text; metrics = ev.metrics; }
         else onProgress?.(ev);
