@@ -42,85 +42,103 @@ export function ToolPanel({ id }: { id: string }) {
   };
 
   if (loadError) return (
-    <div className="toolpanel" style={{ overflow: "auto", padding: "20px 22px" }}>
-      <div className="eyebrow" style={{ marginBottom: 8 }}>Couldn&apos;t load this tool</div>
-      <pre className="tp-error">{loadError}</pre>
-      <p style={{ color: "var(--faint)", fontSize: 13, marginTop: 8 }}>Fix the manifest via Source / Edit and save — the panel reloads.</p>
+    <div className="tp">
+      <header className="tp-head">
+        <div className="na-eyebrow">Couldn&apos;t load this tool</div>
+      </header>
+      <div className="tp-body">
+        <pre className="tp-code err">{loadError}</pre>
+        <p className="tp-hint">Fix the manifest via Source / Edit and save — the panel reloads.</p>
+      </div>
     </div>
   );
-  if (!tool) return <div className="toolpanel" style={{ padding: "20px 22px", color: "var(--faint)" }}>Loading…</div>;
+  if (!tool) return <div className="tp tp-loading">Loading…</div>;
+
   const isCli = tool.type === "cli";
   const perms = tool.permissions;
   return (
-    <div className="toolpanel" style={{ overflow: "auto", padding: "20px 22px" }}>
-      <h2 style={{ fontFamily: "Instrument Sans", fontWeight: 600, letterSpacing: "-.02em", marginTop: 0 }}>
-        {tool.name} <span className="chip">{tool.type}</span>
-        {isCli && (
-          <span className="chip" style={tool.installed ? { color: "var(--green)", borderColor: "rgba(52,211,153,.4)", marginLeft: 6 } : { color: "var(--amber)", marginLeft: 6 }}>
-            {tool.installed ? "installed" : "not installed"}
-          </span>
+    <div className="tp">
+      <header className="tp-head">
+        <div className="tp-title">
+          <h2>{tool.name}</h2>
+          <span className="tp-type">{tool.type}</span>
+          {isCli && <span className={`tp-status ${tool.installed ? "ok" : "warn"}`}>{tool.installed ? "installed" : "not installed"}</span>}
+        </div>
+        {tool.description && <p className="tp-desc">{tool.description}</p>}
+        {isCli && !tool.installed && !confirmInstall && (
+          <button className="btn sm" onClick={() => setConfirmInstall(true)}>Install &amp; trust</button>
         )}
-      </h2>
-      <p style={{ color: "var(--muted)" }}>{tool.description}</p>
-
-      {isCli && !tool.installed && !confirmInstall && (
-        <button className="btn sm" style={{ marginTop: 8 }} onClick={() => setConfirmInstall(true)}>Install &amp; trust</button>
-      )}
-      {isCli && !tool.installed && confirmInstall && (
-        <div className="card" style={{ display: "block", marginTop: 8, padding: "14px 16px" }}>
-          <div className="eyebrow" style={{ marginBottom: 8 }}>Permissions requested</div>
-          {perms ? (
-            <pre className="pre" style={{ border: "1px solid var(--border)", borderRadius: 8, marginBottom: 10 }}>{JSON.stringify(perms, null, 2)}</pre>
-          ) : (
-            <p style={{ color: "var(--faint)", marginBottom: 10 }}>No special permissions declared.</p>
-          )}
-          <p style={{ color: "var(--muted)", fontSize: 13, marginBottom: 12 }}>Confirming will build the Docker image and trust this tool with the permissions above.</p>
-          {installError && <pre className="tp-error">{installError}</pre>}
-          <div style={{ display: "flex", gap: 8 }}>
-            <button className="btn sm" onClick={install} disabled={busy}>{busy ? "Installing…" : "Confirm install"}</button>
-            <button className="ghost sm" onClick={() => { setConfirmInstall(false); setInstallError(""); }}>Cancel</button>
+        {isCli && tool.installed && (
+          <div className="tp-trailing">
+            {installError && <pre className="tp-code err">{installError}</pre>}
+            <button className="ghost sm" onClick={uninstall} disabled={busy}>{busy ? "Uninstalling…" : "Uninstall"}</button>
           </div>
-        </div>
-      )}
-      {isCli && tool.installed && (
-        <div style={{ marginTop: 8 }}>
-          {installError && <pre className="tp-error">{installError}</pre>}
-          <button className="ghost sm" onClick={uninstall} disabled={busy}>{busy ? "Uninstalling…" : "Uninstall"}</button>
-        </div>
-      )}
+        )}
+      </header>
 
-      <div className="eyebrow" style={{ marginTop: 16 }}>Actions</div>
-      {tool.actions.map((a) => {
-        const ps = a.params ?? [];
-        return (
-          <div key={a.name} className="card" style={{ display: "block", marginBottom: 8 }}>
-            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-              <span className="fname" style={{ flex: 1 }}>{a.name}</span>
-              <button className="btn sm" onClick={() => test(a.name, ps)}>Test</button>
+      <div className="tp-body">
+        {isCli && !tool.installed && confirmInstall && (
+          <section className="tp-trust">
+            <div className="na-glabel">Permissions requested</div>
+            {perms
+              ? <pre className="tp-code">{JSON.stringify(perms, null, 2)}</pre>
+              : <p className="tp-hint">No special permissions declared.</p>}
+            <p className="tp-hint">Confirming builds the Docker image and trusts this tool with the permissions above.</p>
+            {installError && <pre className="tp-code err">{installError}</pre>}
+            <div className="tp-row">
+              <button className="btn sm" onClick={install} disabled={busy}>{busy ? "Installing…" : "Confirm install"}</button>
+              <button className="ghost sm" onClick={() => { setConfirmInstall(false); setInstallError(""); }}>Cancel</button>
             </div>
-            {ps.length > 0 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
-                {ps.map((p) => (
-                  <label key={p} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span className="fname" style={{ flex: "0 0 120px", color: "var(--faint)" }}>{p}</span>
-                    <input className="input" value={inputs[`${a.name}::${p}`] ?? ""} placeholder={`params.${p}`}
-                      onChange={(e) => setInputs((s) => ({ ...s, [`${a.name}::${p}`]: e.target.value }))} />
-                  </label>
-                ))}
+          </section>
+        )}
+
+        <section className="tp-section">
+          <div className="na-glabel">Actions <span className="na-count">{tool.actions.length}</span></div>
+          {tool.actions.map((a) => {
+            const ps = a.params ?? [];
+            return (
+              <div key={a.name} className="tp-action">
+                <div className="tp-action-head">
+                  <code className="tp-name">{a.name}</code>
+                  <button className="btn sm" onClick={() => test(a.name, ps)}>Test</button>
+                </div>
+                {a.description && <p className="tp-action-desc">{a.description}</p>}
+                {ps.length > 0 && (
+                  <div className="tp-params">
+                    {ps.map((p) => (
+                      <label key={p} className="tp-param">
+                        <span className="tp-param-name">{p}</span>
+                        <input className="input" value={inputs[`${a.name}::${p}`] ?? ""} placeholder={`params.${p}`}
+                          onChange={(e) => setInputs((s) => ({ ...s, [`${a.name}::${p}`]: e.target.value }))} />
+                      </label>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        );
-      })}
-      {result && <pre className="pre" style={{ border: "1px solid var(--border)", borderRadius: 10, marginTop: 10, maxHeight: 280 }}>{result}</pre>}
-      <div className="eyebrow" style={{ marginTop: 16 }}>Connections</div>
-      {tool.connections.length === 0 && <p style={{ color: "var(--faint)" }}>No connections.</p>}
-      {tool.connections.map((c) => (
-        <div key={c.label} className="card" style={{ display: "flex", gap: 12, marginBottom: 8 }}>
-          <span className="fname" style={{ flex: 1 }}>{c.label}{c.description ? ` — ${c.description}` : ""}</span>
-          <span className="chip" style={c.configured ? { color: "var(--green)", borderColor: "rgba(52,211,153,.4)" } : { color: "var(--amber)" }}>{c.configured ? "configured" : "needs setup"}</span>
-        </div>
-      ))}
+            );
+          })}
+          {result && (
+            <div className="tp-response">
+              <span className="tp-response-label">Response</span>
+              <pre className="tp-code">{result}</pre>
+            </div>
+          )}
+        </section>
+
+        <section className="tp-section">
+          <div className="na-glabel">Connections <span className="na-count">{tool.connections.length}</span></div>
+          {tool.connections.length === 0 && <p className="tp-hint">No connections.</p>}
+          {tool.connections.map((c) => (
+            <div key={c.label} className="tp-conn">
+              <div className="tp-conn-main">
+                <b>{c.label}</b>
+                {c.description && <span className="tp-conn-desc">{c.description}</span>}
+              </div>
+              <span className={`tp-status ${c.configured ? "ok" : "warn"}`}>{c.configured ? "configured" : "needs setup"}</span>
+            </div>
+          ))}
+        </section>
+      </div>
     </div>
   );
 }

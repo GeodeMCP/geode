@@ -2,7 +2,7 @@
     --bg:#0b0f0e; --surface:#141917; --surface-2:#191e1c; --input:#080b0a;
     --text:#f2f2f2; --neutral-200:#e5e5e5; --muted:#a3a3a3; --faint:#777;
     --border:rgba(255,255,255,.07); --border-strong:rgba(255,255,255,.12);
-    --green:#34d399; --emerald-300:#6ee7b7; --emerald-500:#10b981;
+    --green:#34d399; --emerald-300:#6ee7b7; --emerald-500:#10b981; --amber:#e0a340;
     --blue:#2563eb; --blue-500:#3b82f6; --blue-100:#dbeafe;
     --ease:cubic-bezier(.4,0,.2,1);
   }
@@ -325,3 +325,38 @@
 .na-manage{font-family:"Instrument Sans",sans-serif;font-size:13px;font-weight:500;color:var(--green);background:none;border:none;padding:0;cursor:pointer;transition:color .15s var(--ease);}
 .na-manage:hover{color:var(--emerald-300);}
 @media (prefers-reduced-motion: reduce){.na-overlay,.na-drawer{animation:none;}}
+/* TOOL PANEL (formatted tool view) */
+.tp{flex:1;min-height:0;overflow-y:auto;}
+.tp-loading{padding:22px 24px;color:var(--faint);font-size:13px;}
+.tp-head{padding:22px 24px 18px;border-bottom:1px solid var(--border);}
+.tp-title{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.tp-title h2{margin:0;font-family:"Instrument Sans",sans-serif;font-weight:600;font-size:22px;letter-spacing:-.02em;color:var(--text);}
+.tp-type{font-family:"Geist Mono",monospace;font-size:11px;color:var(--muted);border:1px solid var(--border-strong);border-radius:6px;padding:2px 7px;}
+.tp-status{display:inline-flex;align-items:center;gap:6px;font-family:"Instrument Sans",sans-serif;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;border-radius:999px;padding:3px 9px;border:1px solid var(--border-strong);color:var(--muted);}
+.tp-status::before{content:"";width:6px;height:6px;border-radius:999px;background:currentColor;}
+.tp-status.ok{color:var(--green);border-color:rgba(52,211,153,.35);background:rgba(52,211,153,.08);}
+.tp-status.warn{color:var(--amber);border-color:rgba(224,163,64,.35);background:rgba(224,163,64,.08);}
+.tp-desc{margin:12px 0 0;color:var(--muted);font-size:14px;line-height:1.55;max-width:64ch;}
+.tp-head .btn.sm,.tp-head>.btn.sm{margin-top:14px;}
+.tp-trailing{display:flex;flex-direction:column;gap:8px;margin-top:14px;}
+.tp-body{padding:20px 24px;display:flex;flex-direction:column;gap:26px;}
+.tp-section{display:flex;flex-direction:column;gap:10px;}
+.tp-trust{display:flex;flex-direction:column;gap:10px;background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:16px 17px;}
+.tp-row{display:flex;gap:8px;margin-top:2px;}
+.tp-hint{margin:0;color:var(--faint);font-size:12.5px;line-height:1.5;}
+.tp-action{background:var(--surface-2);border:1px solid var(--border);border-radius:11px;padding:13px 14px;display:flex;flex-direction:column;gap:10px;}
+.tp-action-head{display:flex;align-items:center;gap:12px;}
+.tp-name{flex:1;min-width:0;font-family:"Geist Mono",monospace;font-size:13.5px;color:var(--emerald-300);word-break:break-all;}
+.tp-action-desc{margin:0;color:var(--muted);font-size:12.5px;line-height:1.5;}
+.tp-params{display:flex;flex-direction:column;gap:7px;padding-top:2px;}
+.tp-param{display:flex;align-items:center;gap:10px;}
+.tp-param-name{flex:0 0 128px;font-family:"Geist Mono",monospace;font-size:12px;color:var(--faint);text-align:right;}
+.tp-param .input{flex:1;}
+.tp-response{margin-top:4px;border:1px solid var(--border-strong);border-radius:10px;overflow:hidden;}
+.tp-response-label{display:block;font-family:"Instrument Sans",sans-serif;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.13em;color:var(--faint);padding:9px 13px;background:var(--surface-2);border-bottom:1px solid var(--border);}
+.tp-code{margin:0;font-family:"Geist Mono",monospace;font-size:12px;line-height:1.55;color:var(--neutral-200);background:var(--input);padding:12px 13px;overflow:auto;max-height:320px;white-space:pre-wrap;word-break:break-word;}
+.tp-code.err{color:#f1707a;background:rgba(241,112,122,.06);border:1px solid rgba(241,112,122,.25);border-radius:9px;}
+.tp-conn{display:flex;align-items:center;gap:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:11px;padding:12px 14px;}
+.tp-conn-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;}
+.tp-conn-main b{font-family:"Geist",sans-serif;font-weight:600;font-size:13.5px;color:var(--text);}
+.tp-conn-desc{font-size:12px;color:var(--muted);}
