@@ -39,7 +39,9 @@ export async function loadTool(root: string, id: string): Promise<ToolManifest> 
   const raw = await readFile(join(root, "tools", id, "TOOL.md"), "utf8");
   const m = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/.exec(raw);
   if (!m) throw new Error(`tool ${id}: missing frontmatter`);
-  const fm = (parseYaml(m[1]) ?? {}) as Partial<ToolManifest>;
+  let fm: Partial<ToolManifest>;
+  try { fm = (parseYaml(m[1]) ?? {}) as Partial<ToolManifest>; }
+  catch (e) { throw new Error(`tool ${id}: invalid TOOL.md YAML frontmatter — ${e instanceof Error ? e.message.split("\n")[0] : String(e)}. Single-quote any string value containing { } : [ ] or # (e.g. a description with a JSON example).`); }
   if (!fm.type || !fm.actions) throw new Error(`tool ${id}: frontmatter needs type + actions`);
   for (const [name, action] of Object.entries(fm.actions)) {
     if (action.command !== undefined && (!Array.isArray(action.command) || action.command.length === 0 || !action.command.every((t) => typeof t === "string")))

@@ -11,7 +11,10 @@ export async function invoke(
   deps: { root: string; secrets: Pick<SecretStore, "get">; fetchFn?: typeof fetch; toolsDir?: string; docker?: import("./docker.js").Docker; connector?: import("./mcpProxy.js").McpConnector },
   args: InvokeArgs,
 ): Promise<InvokeResult> {
-  const manifest = await loadTool(deps.root, args.tool).catch(() => { throw new Error(`unknown tool: ${args.tool}`); });
+  const manifest = await loadTool(deps.root, args.tool).catch((e: unknown) => {
+    if ((e as NodeJS.ErrnoException)?.code === "ENOENT") throw new Error(`unknown tool: ${args.tool}`);
+    throw e; // surface invalid-id / invalid-YAML / missing-fields instead of a misleading "unknown tool"
+  });
   const action = manifest.actions[args.action];
   if (!action) throw new Error(`unknown action "${args.action}" on tool "${args.tool}"`);
   const label = resolveConnection(manifest.connections ?? [], args.connection);

@@ -24,6 +24,7 @@ Clone the repo into a temp dir (`mktemp -d`, never into the vault) and read its 
 - `permissions`: the MINIMAL access it needs — `network: none` if it works offline, else the specific hosts (e.g. `["api.x.com"]`); `any` only if unavoidable, and say so. The owner reviews these.
 
 ## Hard rules
+- **Valid YAML frontmatter.** Single-quote any string value that contains `{`, `}`, `:`, `[`, `]`, or `#` — an unquoted `description` like `body = { "x": { … } }` makes the WHOLE frontmatter fail to parse and the tool silently won't load. Keep long JSON examples OUT of `description:` (put them in the markdown body below the frontmatter); keep descriptions short.
 - Never write a secret value into the manifest — only labels + `requires` key names.
 - Never run the install or the tool yourself; you only write `tools/<id>/TOOL.md`.
 - Pin `source.ref`. Reference by canonical id; the manifest is the single source of truth.
