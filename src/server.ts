@@ -11,6 +11,7 @@ import { invoke, type InvokeArgs, type InvokeResult } from "./invoke.js";
 import type { SecretStore } from "./secrets.js";
 import type { ArtifactStore } from "./artifacts.js";
 import { toolDescription } from "./toolCatalog.js";
+import { formatOutcome } from "./outcome.js";
 
 /** Verifies that an Authorization header exactly matches the expected Bearer token using a timing-safe comparison. */
 export function checkAuth(header: string | undefined, token: string): boolean {
@@ -48,9 +49,13 @@ async function runAgenticTool(
   };
   try {
     const result = await run(onProgress);
-    const text = result.artifacts && result.artifacts.length
-      ? `${result.text}\n\nArtifacts:\n${result.artifacts.map((a) => `- ${a.url}`).join("\n")}`
-      : result.text;
+    const segments = [result.text];
+    if (result.artifacts && result.artifacts.length) {
+      segments.push(`Artifacts:\n${result.artifacts.map((a) => `- ${a.url}`).join("\n")}`);
+    }
+    const outcome = formatOutcome(result);
+    if (outcome) segments.push(outcome);
+    const text = segments.join("\n\n");
     return {
       content: [{ type: "text" as const, text }],
       structuredContent: { runId: result.runId, commit: result.commit, filesTouched: result.filesTouched, artifacts: result.artifacts },

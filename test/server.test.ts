@@ -39,7 +39,7 @@ test("query handler returns result text and forwards progress when a token is pr
   } as any);
   const extra = { _meta: { progressToken: 7 }, sendNotification: async (n: any) => { sent.push(n); } };
   const res = await handler({ instruction: "do X" }, extra);
-  expect(res.content[0].text).toBe("done");
+  expect(res.content[0].text).toContain("done");
   expect(sent[0].method).toBe("notifications/progress");
   expect(sent[0].params.progressToken).toBe(7);
   expect(sent[0].params.message).toBe("step 1");
@@ -55,7 +55,7 @@ test("remember handler returns result text + structured content and forwards pro
   } as any);
   const extra = { _meta: { progressToken: 3 }, sendNotification: async (n: any) => { sent.push(n); } };
   const res = await handler({ content: "x" }, extra);
-  expect(res.content[0].text).toBe("filed under brand/voice.md");
+  expect(res.content[0].text).toContain("filed under brand/voice.md");
   expect(res.structuredContent.filesTouched).toEqual(["brand/voice.md"]);
   expect(sent[0].params.progressToken).toBe(3);
 });
@@ -83,4 +83,14 @@ test("invoke handler returns a structured error when invoke throws", async () =>
   const res = await handler({ integration: "x", action: "y" } as any, {});
   expect(res.isError).toBe(true);
   expect(res.content[0].text).toContain("boom");
+});
+
+test("remember handler appends the deterministic outcome line to the visible text", async () => {
+  const handler = makeRememberHandler({
+    runRemember: async () => ({ runId: "run-1", text: "Filed it under notes.", commit: "abcdef1234567", filesTouched: ["notes/x.md"] }),
+  });
+  const out = await handler({ content: "hi" } as any, {});
+  expect(out.content[0].text).toContain("Filed it under notes.");
+  expect(out.content[0].text).toContain("✓ saved to notes/x.md");
+  expect(out.content[0].text).toContain("commit abcdef1");
 });
