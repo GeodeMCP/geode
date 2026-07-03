@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { mkdtempSync, readFileSync, existsSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, existsSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import AdmZip from "adm-zip";
@@ -23,6 +23,30 @@ describe("stageFiles", () => {
     const base = mkdtempSync(join(tmpdir(), "geode-stage-"));
     await expect(stageFiles(base, [{ relPath: "../evil.md", buffer: Buffer.from("x") }])).rejects.toThrow(/unsafe/);
     expect(existsSync(join(base, "..", "evil.md"))).toBe(false);
+    rmSync(base, { recursive: true, force: true });
+  });
+  it("rejects a zip entry that escapes the staging dir", async () => {
+    const outer = mkdtempSync(join(tmpdir(), "geode-stage-"));
+    const stage = join(outer, "stage");
+    // Create a malicious zip by adding a file and then manually modifying its entry name
+    // to bypass adm-zip's path normalization
+    const zip = new AdmZip();
+    zip.addFile("normal.md", Buffer.from("x"));
+    const entries = zip.getEntries();
+    // Directly modify the entry name to contain a traversal
+    entries[0].entryName = "../escaped.md";
+    const maliciousZip = zip.toBuffer();
+    await expect(stageFiles(stage, [{ relPath: "bundle.zip", buffer: maliciousZip }])).rejects.toThrow(/unsafe/);
+    expect(existsSync(join(outer, "escaped.md"))).toBe(false);
+    rmSync(outer, { recursive: true, force: true });
+  });
+  it("skips directory entries in a zip", async () => {
+    const base = mkdtempSync(join(tmpdir(), "geode-stage-"));
+    const zip = new AdmZip();
+    zip.addFile("dir/", Buffer.alloc(0));
+    zip.addFile("dir/file.md", Buffer.from("y"));
+    const written = await stageFiles(base, [{ relPath: "bundle.zip", buffer: zip.toBuffer() }]);
+    expect(written).toEqual(["dir/file.md"]);
     rmSync(base, { recursive: true, force: true });
   });
 });
