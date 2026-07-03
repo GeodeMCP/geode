@@ -4,11 +4,12 @@ import type { SecretStore } from "./secrets.js";
 import { listToolIds, loadTool, connectionConfigured } from "./tools.js";
 
 /** Parsed YAML frontmatter fields extracted from a Markdown document. */
-export interface Frontmatter { type?: string; title?: string; description?: string; tags?: string[] }
+export interface Frontmatter { type?: string; title?: string; description?: string; tags?: string[]; kind?: string; status?: string }
 /** Aggregated summary of a vault's tools and recipes/skills. */
 export interface CapabilitySummary {
   tools: { id: string; name: string; type: string; description: string; connections: { label: string; configured: boolean }[]; actions: string[] }[];
   recipes: { title: string; description: string; path: string }[];
+  gaps: { title: string; kind?: string; description: string; path: string }[];
   text: string;
 }
 
@@ -28,6 +29,8 @@ export function parseFrontmatter(md: string): Frontmatter {
     else if (k === "title") fm.title = v;
     else if (k === "description") fm.description = v;
     else if (k === "tags") fm.tags = v.replace(/[[\]]/g, "").split(",").map((s) => s.trim()).filter(Boolean);
+    else if (k === "kind") fm.kind = v;
+    else if (k === "status") fm.status = v;
   }
   return fm;
 }
@@ -56,15 +59,21 @@ export async function deriveCapabilities(root: string, secrets: Pick<SecretStore
     } catch { /* skip malformed */ }
   }
   const recipes: CapabilitySummary["recipes"] = [];
+  const gaps: CapabilitySummary["gaps"] = [];
   const files: string[] = [];
   await walkMd(root, files);
   for (const f of files) {
     const fm = parseFrontmatter(await readFile(f, "utf8").catch(() => ""));
     if (fm.type && RECIPE_TYPES.has(fm.type)) recipes.push({ title: fm.title ?? f, description: fm.description ?? "", path: f.slice(root.length + 1) });
+    else if (fm.type === "gap") gaps.push({ title: fm.title ?? f, kind: fm.kind, description: fm.description ?? "", path: f.slice(root.length + 1) });
   }
   const lines: string[] = ["# Capabilities", "\n## Recipes & skills"];
   lines.push(recipes.length ? recipes.map((r) => `- ${r.title} — ${r.description} (${r.path})`).join("\n") : "(nothing yet)");
   lines.push("\n## Tools");
   lines.push(tools.length ? tools.map((t) => `- ${t.id} [${t.type}] — ${t.description} · connections: ${t.connections.map((c) => `${c.label}(${c.configured ? "ok" : "needs setup"})`).join(", ") || "—"} · actions: ${t.actions.join(", ")}`).join("\n") : "(nothing yet)");
-  return { tools, recipes, text: lines.join("\n") };
+  if (gaps.length) {
+    lines.push("\n## Planned / needed");
+    lines.push(gaps.map((g) => `- ${g.kind ? `[${g.kind}] ` : ""}${g.title} — ${g.description} (${g.path})`).join("\n"));
+  }
+  return { tools, recipes, gaps, text: lines.join("\n") };
 }
