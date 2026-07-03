@@ -194,7 +194,15 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard }: {
     setText("");
     setMsgs((m) => [...m, { kind: "user", text: instruction, ts: Date.now() }]);
     let uploadId: string | undefined;
-    if (staged.length) { uploadId = (await api.upload(staged)).uploadId; setStaged([]); }
+    if (staged.length) {
+      try {
+        uploadId = (await api.upload(staged)).uploadId;
+        setStaged([]);
+      } catch (e) {
+        setMsgs((m) => [...m, { kind: "error", text: `Upload failed: ${e instanceof Error ? e.message : String(e)}`, ts: Date.now() }]);
+        return;
+      }
+    }
     await onSend(instruction, (e) => {
       if (e.event === "progress") setMsgs((m) => applyProgress(m, e.data, Date.now()));
       else if (e.event === "result") setMsgs((m) => applyResult(m, e.data, Date.now()));
