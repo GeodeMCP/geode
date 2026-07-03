@@ -6,7 +6,14 @@ import type { SetupItem } from "../setup";
 export function SetupStrip({ items, onDone }: { items: SetupItem[]; onDone: () => void }) {
   const [msg, setMsg] = useState("");
   if (!items.length) return null;
-  const openLink = async (ref: string) => { const { url } = await api.secretLink(ref); window.open(url, "_blank", "noopener"); };
+  const openLink = async (ref: string) => {
+    try {
+      const { url } = await api.secretLink(ref);
+      window.open(url, "_blank", "noopener");
+    } catch (e) {
+      setMsg(`✗ ${ref.split("__").pop()}: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
   const test = async (tool: string, connection: string) => {
     try {
       const t = await api.tool(tool);
