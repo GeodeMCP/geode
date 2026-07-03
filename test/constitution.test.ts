@@ -9,3 +9,8 @@ test("constitution adopts OKF + the locked role", () => {
   expect(CONSTITUTION.toLowerCase()).toContain("never");            // never execute / never call integrations
   expect(CONSTITUTION).toContain("invoke");                          // returns invoke-plans
 });
+
+test("the constitution tells the agent to log missing capabilities as gaps", () => {
+  expect(CONSTITUTION).toContain("backlog/");
+  expect(CONSTITUTION).toContain("type: gap");
+});
