@@ -66,6 +66,36 @@ paths or sentences — not typed/traversable), and the **machine path ignores it
 the machine list can silently drift apart. The graph is the *derived, typed, traversable,
 single-source* version of what the vault does manually today.
 
+### Concrete v1 design (locked 2026-07-06, option A)
+
+**Node** = one capability, derived from a markdown file + frontmatter: `id` (path), `type`
+(`tool` | `reference` | `sop` | `gap`), `title`, `description`, `domain` (from folder + tags). Tool
+nodes also carry `actions` (name → params → connection) and `connections`; gap nodes carry `kind`
+and `count` (occurrence frequency — the backlog count).
+
+**Edge** = typed, derived **only** from `[[links]]` + relative-path markdown links + frontmatter
+(never from prose): `uses` (sop → tool), `references` (reference → tool/sop), `requires`
+(tool → connection), `blocks` (gap → node). `domain` is a node **attribute** (grouping), not an edge.
+
+**Physical form:** one deterministic file `.geode/graph.json` — stable ordering, no timestamps — so
+it commits like a lockfile (per the version-control decision) and only diffs when content actually
+changes. Markdown stays the source of truth; `index.md` becomes a **generated** render of the graph
+(hand-maintenance of it stops).
+
+**Generation:** `deriveCapabilities` evolved into a `buildGraph(vaultRoot)` compiler — walk md, parse
+frontmatter + links, load tool manifests, count gaps — run by the librarian on write, at startup,
+and via a `rebuild` command.
+
+**Retrieval (v1):** keyword/tag match to entry node(s) + graph traversal to the connected subgraph.
+Embeddings deferred until vaults get large.
+
+**Option A (chosen):** build the compiler + generation/commit path now with the edges that are
+parseable today; the librarian enriches linking over time (edges grow with link discipline). v1 is
+not blocked on a link-enrichment pass.
+
+**Consumers (later phases, not this build):** `list_capabilities` renders a view of the graph;
+`query` feeds the desk only the scoped subgraph; `index.md` is generated from the graph.
+
 ## The tool contract (one clear reason each — no "sometimes")
 
 | Tool | Single reason to exist |
