@@ -4,9 +4,11 @@ import type { Engine, ProgressEvent, Metrics } from "./engine.js";
 import type { EventLog } from "./eventLog.js";
 import type { RunManager } from "./runManager.js";
 import type { Workspace } from "./workspace.js";
+import type { SecretStore } from "./secrets.js";
 import { buildSkillsFooter } from "./skills.js";
 import { buildOverlay } from "./overlay.js";
 import { buildSandboxSettings, type SandboxPolicy } from "./agentSandbox.js";
+import { buildGraph, writeGraph } from "./graph.js";
 
 /** Dependencies injected into a query call, including the workspace, engine, and supporting services. */
 export interface QueryDeps {
@@ -21,6 +23,9 @@ export interface QueryDeps {
   model?: string;
   artifactsDir?: string;
   baseUrl?: string;
+  // Optional so existing QueryDeps built without a secret store (e.g. tests) keep working; the
+  // post-commit graph rebuild only runs when this is present (see the auto-commit branch below).
+  secrets?: Pick<SecretStore, "get">;
 }
 
 /** Result returned by a completed query run, including the agent's text output and commit metadata. */
@@ -98,6 +103,11 @@ export async function query(
       // Persist the event-log entry itself: it is written after the agent commit, so it would
       // otherwise stay uncommitted and be wiped by the next run's clean/reset.
       await deps.workspace.commitAll(`query ${runId}: log`);
+      if (deps.secrets) {
+        // Deterministic build: only produces a diff (and a commit) when vault content changed.
+        await writeGraph(deps.workspace.root, await buildGraph(deps.workspace.root, deps.secrets));
+        await deps.workspace.commitAll(`graph: rebuild ${runId}`);
+      }
       let artifacts: { path: string; url: string }[] | undefined;
       if (deps.artifactsDir && deps.baseUrl) {
         const base = deps.baseUrl;

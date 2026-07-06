@@ -17,6 +17,7 @@
     "prepare": "husky",
     "eval": "tsx evals/run.ts",
     "tool": "tsx src/toolCli.ts",
+    "graph": "tsx src/graphCli.ts",
     "test:docker": "vitest run --config vitest.integration.config.ts"
   },
   "keywords": [],

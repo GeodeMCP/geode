@@ -11,6 +11,7 @@ import { query } from "./query.js";
 import { remember } from "./ingest.js";
 import { seedVault, ensureArtifactsIgnored } from "./seed.js";
 import { createSecretStore, loadOrCreateKey } from "./secrets.js";
+import { buildGraph, writeGraph } from "./graph.js";
 import { createArtifactStore } from "./artifacts.js";
 import { createTranscriptStore } from "./transcripts.js";
 import { createAttachmentStore } from "./dashboard/uploads.js";
@@ -43,6 +44,12 @@ async function main() {
     dir: config.secretsDir,
     key: loadOrCreateKey(config.secretsDir, process.env.GEODE_SECRETS_KEY),
   });
+
+  // Startup build: so a freshly cloned/seeded vault has a current graph. Deterministic — this
+  // only produces a diff (and a commit) when vault content changed since the last build.
+  await writeGraph(config.workspaceRoot, await buildGraph(config.workspaceRoot, secrets));
+  await workspace.commitAll("graph: rebuild at startup");
+
   // Distinct key material for HMAC artifact-URL signing (separate from the AES secret key).
   const artifacts = createArtifactStore({
     dir: config.artifactsDir,
@@ -62,6 +69,7 @@ async function main() {
     model: config.model,
     artifactsDir: config.artifactsDir,
     baseUrl: config.baseUrl,
+    secrets,
   };
 
   const oauth = createOAuth({ signKey: loadOrCreateKey(join(config.secretsDir, "oauth"), process.env.GEODE_OAUTH_KEY), baseUrl: config.baseUrl });
