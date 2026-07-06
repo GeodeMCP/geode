@@ -17,6 +17,9 @@ function fixture(): string {
   mkdirSync(join(root, "backlog"), { recursive: true });
   writeFileSync(join(root, "backlog/mb-attach.md"),
     `---\ntype: gap\nkind: tool\ntitle: MB attachment\ndescription: gap\ntags: [administratie]\n---\nBlokkeert [moneybird](../tools/moneybird/TOOL.md).\n`);
+  mkdirSync(join(root, "notes"), { recursive: true });
+  writeFileSync(join(root, "notes/decoy.md"),
+    `---\ntype: reference\ntitle: Decoy\ndescription: "see [[moneybird]]"\n---\nNo links in body.\n`);
   return root;
 }
 
@@ -34,4 +37,11 @@ test("buildEdges types links from sop/gap to the moneybird tool", async () => {
   const edges = await buildEdges(await buildNodes(root, noSecrets), root);
   expect(edges).toContainEqual({ from: "notes/administratie/sop-booking", to: "tools/moneybird", type: "uses" });
   expect(edges).toContainEqual({ from: "backlog/mb-attach", to: "tools/moneybird", type: "blocks" });
+});
+
+test("buildEdges ignores link-shaped text in frontmatter", async () => {
+  const root = fixture();
+  const edges = await buildEdges(await buildNodes(root, noSecrets), root);
+  expect(edges).not.toContainEqual({ from: "notes/decoy", to: "tools/moneybird", type: "references" });
+  expect(edges.filter((e) => e.from === "notes/decoy")).toHaveLength(0);
 });
