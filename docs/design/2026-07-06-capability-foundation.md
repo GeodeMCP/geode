@@ -77,6 +77,29 @@ single-source* version of what the vault does manually today.
 
 If a tool has no distinct reason left, it goes. Under this model each keeps its place.
 
+### Desk and librarian are separate agents (no cross-pollution)
+
+`query` (desk) and `remember`/ingest (librarian) are two roles with **opposite output needs**, and
+they must be **separate agents**. Today they share the *entire* system prompt (both run through
+`query()` with the same constitution + overlay), so any instruction meant for one bleeds into the
+other. That is the wrong foundation:
+
+- The **desk** wants terse, minimal answers/plans — the `invoke` calls plus at most one caveat line,
+  no headers or strategy prose.
+- The **librarian** wants careful filing behaviour — OKF authoring, index/log upkeep, dedup,
+  onboarding proposals — which is deliberately more elaborate and would be harmed by desk-terseness
+  (and vice-versa).
+
+**Decision:** split them into two agents. Each is assembled from a **shared core** (identity, the
+iron rule, security guardrails, the vault conventions/overlay) **plus a role-specific fragment**
+(desk = answer/plan behaviour; librarian = filing/onboarding behaviour). They may share prompt
+pieces where genuinely common, but **neither role fragment is ever loaded into the other**.
+Concretely this also means `remember`/ingest stops running through the desk's `query()` path.
+
+This is also why the "terser desk" win (below) cannot ship as a shared-constitution edit: that would
+pollute the librarian. Terseness belongs in the **desk fragment**, invisible to the librarian — so
+it lands as part of this split, not as a standalone hack.
+
 Consequence for the earlier quick wins: **"let Claude skip query when it already knows the call"
 is rejected** — that is exactly the sometimes-this-sometimes-that we are removing. It is replaced
 by **"make query fast via the index"** so query can always be the front door. The separate
