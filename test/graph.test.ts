@@ -76,6 +76,28 @@ test("serializeGraph produces byte-identical output for equal input", async () =
   expect(a.endsWith("\n")).toBe(true);
 });
 
+test("two independent builds of the same vault serialize byte-identically", async () => {
+  const root = fixture();
+  const a = serializeGraph(await buildGraph(root, noSecrets));
+  const b = serializeGraph(await buildGraph(root, noSecrets));
+  expect(a).toBe(b);
+});
+
+test("ambiguous [[wikilink]] resolves to the alphabetically-first matching id", async () => {
+  const root = mkdtempSync(join(tmpdir(), "geode-graph-"));
+  // Created b before a: if resolution ever depended on directory-listing order
+  // rather than a sort, this ordering would be the one to expose it.
+  mkdirSync(join(root, "notes/b"), { recursive: true });
+  writeFileSync(join(root, "notes/b/foo.md"), `---\ntype: reference\ntitle: Foo B\ndescription: b\n---\n`);
+  mkdirSync(join(root, "notes/a"), { recursive: true });
+  writeFileSync(join(root, "notes/a/foo.md"), `---\ntype: reference\ntitle: Foo A\ndescription: a\n---\n`);
+  mkdirSync(join(root, "notes/c"), { recursive: true });
+  writeFileSync(join(root, "notes/c/linker.md"), `---\ntype: reference\ntitle: Linker\ndescription: l\n---\nSee [[foo]].\n`);
+  const nodes = await buildNodes(root, noSecrets);
+  const edges = await buildEdges(nodes, root);
+  expect(edges).toContainEqual({ from: "notes/c/linker", to: "notes/a/foo", type: "references" });
+});
+
 test("writeGraph persists the graph to .geode/graph.json, round-tripping via JSON", async () => {
   const root = fixture();
   const graph = await buildGraph(root, noSecrets);

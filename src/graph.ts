@@ -75,7 +75,7 @@ export async function buildNodes(root: string, secrets: Pick<SecretStore, "get">
     const fm = parseFrontmatter(await readFile(join(root, rel), "utf8").catch(() => ""));
     const type = nodeType(fm.type);
     if (!type) continue;
-    const domain = fm.tags?.[0] ?? (rel.startsWith("notes/") ? rel.split("/")[1] : "") ?? "";
+    const domain = fm.tags?.[0] ?? (rel.startsWith("notes/") && rel.split("/").length > 2 ? rel.split("/")[1] : "");
     const node: GraphNode = { id: rel.replace(/\.md$/, ""), type, title: fm.title ?? rel, description: fm.description ?? "", domain, path: rel };
     if (type === "gap") {
       node.kind = fm.kind;
@@ -83,15 +83,16 @@ export async function buildNodes(root: string, secrets: Pick<SecretStore, "get">
     }
     nodes.push(node);
   }
+  nodes.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   return nodes;
 }
 
 const WIKILINK_RE = /\[\[([^\]]+)\]\]/g;
 const MDLINK_RE = /\[[^\]]*\]\(([^)]+)\)/g;
 
-/** Resolves a `[[name]]` wikilink to a node id: a suffix match on `/name`, or `tools/name`. */
+/** Resolves a `[[name]]` wikilink to a node id: a suffix match on `/name`. */
 function resolveWikilink(nodes: GraphNode[], name: string): string | undefined {
-  return nodes.find((n) => n.id === `tools/${name}` || n.id.endsWith(`/${name}`))?.id;
+  return nodes.find((n) => n.id.endsWith(`/${name}`))?.id;
 }
 
 /** Resolves a relative markdown link `href` against the linking node's file dir to a node id. */
@@ -178,6 +179,6 @@ export function serializeGraph(g: VaultGraph): string {
 
 /** Writes the serialized capability graph to `GRAPH_PATH` under `root`, creating `.geode` if needed. */
 export async function writeGraph(root: string, g: VaultGraph): Promise<void> {
-  await mkdir(join(root, ".geode"), { recursive: true });
+  await mkdir(dirname(join(root, GRAPH_PATH)), { recursive: true });
   await writeFile(join(root, GRAPH_PATH), serializeGraph(g));
 }
