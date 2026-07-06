@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { query, type QueryDeps } from "../src/query.js";
@@ -146,4 +146,26 @@ test("attachment dirs are granted read access and surfaced to the agent", async 
   expect(seen.sandbox.filesystem.allowRead).toEqual(["/tmp/up/abc"]);
   expect(seen.instruction).toContain("/tmp/up/abc");
   expect(seen.instruction).toContain("process these");
+});
+
+const noSecrets = { get: async () => null };
+
+test("auto-commit mode with secrets rebuilds the graph after the query commits", async () => {
+  const root = mkdtempSync(join(tmpdir(), "geode-qg-"));
+  const ws = fakeWorkspace(); ws.root = root;
+  const d = deps({ workspace: ws as any, secrets: noSecrets });
+  await query(d, "do X");
+  expect(existsSync(join(root, ".geode/graph.json"))).toBe(true);
+  expect(ws.calls.some((c) => c.startsWith("commit:graph: rebuild "))).toBe(true);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("review mode never rebuilds the graph, even when secrets are present", async () => {
+  const root = mkdtempSync(join(tmpdir(), "geode-qg-"));
+  const ws = fakeWorkspace(); ws.root = root;
+  const d = deps({ workspace: ws as any, secrets: noSecrets });
+  await query(d, "do X", undefined, { commit: false });
+  expect(existsSync(join(root, ".geode/graph.json"))).toBe(false);
+  expect(ws.calls.some((c) => c.startsWith("commit:graph: rebuild "))).toBe(false);
+  rmSync(root, { recursive: true, force: true });
 });

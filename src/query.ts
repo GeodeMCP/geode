@@ -104,9 +104,16 @@ export async function query(
       // otherwise stay uncommitted and be wiped by the next run's clean/reset.
       await deps.workspace.commitAll(`query ${runId}: log`);
       if (deps.secrets) {
-        // Deterministic build: only produces a diff (and a commit) when vault content changed.
-        await writeGraph(deps.workspace.root, await buildGraph(deps.workspace.root, deps.secrets));
-        await deps.workspace.commitAll(`graph: rebuild ${runId}`);
+        // Best-effort: the query itself already committed successfully above, so a rebuild
+        // failure here (fs error, git race, etc.) must never surface as a query failure —
+        // it must not trip the outer catch and contradict the "ok" entry already logged.
+        try {
+          // Deterministic build: only produces a diff (and a commit) when vault content changed.
+          await writeGraph(deps.workspace.root, await buildGraph(deps.workspace.root, deps.secrets));
+          await deps.workspace.commitAll(`graph: rebuild ${runId}`);
+        } catch (e) {
+          console.error("graph rebuild failed (non-fatal):", e instanceof Error ? e.message : String(e));
+        }
       }
       let artifacts: { path: string; url: string }[] | undefined;
       if (deps.artifactsDir && deps.baseUrl) {
