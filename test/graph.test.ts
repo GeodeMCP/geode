@@ -2,7 +2,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test, expect } from "vitest";
-import { buildNodes, buildEdges } from "../src/graph.js";
+import { buildNodes, buildEdges, buildGraph } from "../src/graph.js";
 
 const noSecrets = { get: async () => null };
 
@@ -44,4 +44,25 @@ test("buildEdges ignores link-shaped text in frontmatter", async () => {
   const edges = await buildEdges(await buildNodes(root, noSecrets), root);
   expect(edges).not.toContainEqual({ from: "notes/decoy", to: "tools/moneybird", type: "references" });
   expect(edges.filter((e) => e.from === "notes/decoy")).toHaveLength(0);
+});
+
+test("buildGraph sorts nodes by id and edges by (from, type, to)", async () => {
+  const graph = await buildGraph(fixture(), noSecrets);
+  expect(graph.nodes.map((n) => n.id)).toEqual([
+    "backlog/mb-attach",
+    "notes/administratie/sop-booking",
+    "notes/decoy",
+    "tools/moneybird",
+  ]);
+  expect(graph.edges).toEqual([
+    { from: "backlog/mb-attach", to: "tools/moneybird", type: "blocks" },
+    { from: "notes/administratie/sop-booking", to: "tools/moneybird", type: "uses" },
+  ]);
+});
+
+test("buildGraph is deterministic across runs on the same vault", async () => {
+  const root = fixture();
+  const first = await buildGraph(root, noSecrets);
+  const second = await buildGraph(root, noSecrets);
+  expect(second).toEqual(first);
 });

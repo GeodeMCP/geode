@@ -130,3 +130,20 @@ export async function buildEdges(nodes: GraphNode[], root: string): Promise<Grap
   }
   return edges;
 }
+
+/**
+ * Builds the complete capability graph for a vault: nodes and edges, deterministically
+ * ordered so repeated runs over the same vault produce deep-equal output.
+ */
+export async function buildGraph(root: string, secrets: Pick<SecretStore, "get">): Promise<VaultGraph> {
+  const nodes = await buildNodes(root, secrets);
+  const edges = await buildEdges(nodes, root);
+  nodes.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  edges.sort((a, b) => {
+    if (a.from !== b.from) return a.from < b.from ? -1 : 1;
+    if (a.type !== b.type) return a.type < b.type ? -1 : 1;
+    if (a.to !== b.to) return a.to < b.to ? -1 : 1;
+    return 0;
+  });
+  return { nodes, edges };
+}
