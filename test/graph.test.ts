@@ -1,8 +1,9 @@
 import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test, expect } from "vitest";
-import { buildNodes, buildEdges, buildGraph } from "../src/graph.js";
+import { buildNodes, buildEdges, buildGraph, serializeGraph, writeGraph, GRAPH_PATH } from "../src/graph.js";
 
 const noSecrets = { get: async () => null };
 
@@ -65,4 +66,20 @@ test("buildGraph is deterministic across runs on the same vault", async () => {
   const first = await buildGraph(root, noSecrets);
   const second = await buildGraph(root, noSecrets);
   expect(second).toEqual(first);
+});
+
+test("serializeGraph produces byte-identical output for equal input", async () => {
+  const graph = await buildGraph(fixture(), noSecrets);
+  const a = serializeGraph(graph);
+  const b = serializeGraph(graph);
+  expect(a).toBe(b);
+  expect(a.endsWith("\n")).toBe(true);
+});
+
+test("writeGraph persists the graph to .geode/graph.json, round-tripping via JSON", async () => {
+  const root = fixture();
+  const graph = await buildGraph(root, noSecrets);
+  await writeGraph(root, graph);
+  const raw = await readFile(join(root, GRAPH_PATH), "utf8");
+  expect(JSON.parse(raw)).toEqual(graph);
 });

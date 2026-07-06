@@ -1,4 +1,4 @@
-import { readFile, readdir } from "node:fs/promises";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { dirname, join, relative, sep } from "node:path";
 import { parseFrontmatter } from "./capabilities.js";
 import { listToolIds, loadTool, connectionConfigured } from "./tools.js";
@@ -146,4 +146,38 @@ export async function buildGraph(root: string, secrets: Pick<SecretStore, "get">
     return 0;
   });
   return { nodes, edges };
+}
+
+/** Vault-relative path where the compiled capability graph is persisted. */
+export const GRAPH_PATH = ".geode/graph.json";
+
+/**
+ * Serializes a `VaultGraph` to deterministic JSON: fresh object literals with a fixed
+ * field order (independent of insertion order in the source objects), pretty-printed,
+ * with a trailing newline.
+ */
+export function serializeGraph(g: VaultGraph): string {
+  const nodes = g.nodes.map((n) => {
+    const out: GraphNode = {
+      id: n.id,
+      type: n.type,
+      title: n.title,
+      description: n.description,
+      domain: n.domain,
+      path: n.path,
+    };
+    if (n.actions !== undefined) out.actions = n.actions;
+    if (n.connections !== undefined) out.connections = n.connections;
+    if (n.kind !== undefined) out.kind = n.kind;
+    if (n.count !== undefined) out.count = n.count;
+    return out;
+  });
+  const edges = g.edges.map((e) => ({ from: e.from, type: e.type, to: e.to }));
+  return JSON.stringify({ nodes, edges }, null, 2) + "\n";
+}
+
+/** Writes the serialized capability graph to `GRAPH_PATH` under `root`, creating `.geode` if needed. */
+export async function writeGraph(root: string, g: VaultGraph): Promise<void> {
+  await mkdir(join(root, ".geode"), { recursive: true });
+  await writeFile(join(root, GRAPH_PATH), serializeGraph(g));
 }
