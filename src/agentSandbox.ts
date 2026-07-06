@@ -122,9 +122,10 @@ function manifestIdFromPath(path: string): string | null {
 /**
  * Builds the non-interactive permission handler that partners the OS sandbox. The sandbox bounds
  * Bash at the syscall level; this handler bounds the host-process tools the sandbox doesn't cover:
- * it denies network egress via WebFetch/WebSearch, refuses any Bash that opts out of the sandbox,
- * and confines file mutations to `writeRoots` (the vault). Everything else (reads, search, sandboxed
- * bash) is allowed. It never prompts — the vault agent runs without a human to answer mid-run.
+ * it refuses any Bash that opts out of the sandbox and confines file mutations to `writeRoots` (the
+ * vault). Network egress via WebFetch/WebSearch is temporarily open (see issue #27). Everything else
+ * (reads, search, sandboxed bash) is allowed. It never prompts — the vault agent runs without a
+ * human to answer mid-run.
  */
 export function buildPermissionHandler(writeRoots: string[]): PermissionHandler {
   const roots = writeRoots.map(canonicalPath);
@@ -133,9 +134,9 @@ export function buildPermissionHandler(writeRoots: string[]): PermissionHandler 
     if (toolName === "Bash" && input.dangerouslyDisableSandbox === true) {
       return deny("running commands outside the sandbox is not permitted");
     }
-    if (toolName === "WebFetch" || toolName === "WebSearch") {
-      return deny(`${toolName} is disabled for the vault agent (network egress is off by default)`);
-    }
+    // EGRESS TEMPORARILY OPEN: the WebFetch/WebSearch deny is lifted so the vault agent can read
+    // live API docs while authoring tools (otherwise it invents endpoints it can't verify).
+    // Restore behind a chat approval flow — see https://github.com/GeodeMCP/geode/issues/27.
     if (toolName === "AskUserQuestion") {
       return deny("interactive questions are disabled; state an assumption and proceed");
     }

@@ -57,9 +57,9 @@ describe("buildSandboxSettings", () => {
 
 describe("buildPermissionHandler", () => {
   const handler = buildPermissionHandler(["/vault"]);
-  it("denies arbitrary network egress via WebFetch/WebSearch", async () => {
-    expect((await handler("WebFetch", { url: "https://evil.com" })).behavior).toBe("deny");
-    expect((await handler("WebSearch", { query: "secrets" })).behavior).toBe("deny");
+  it("temporarily allows WebFetch/WebSearch (egress deny lifted — see issue #27)", async () => {
+    expect((await handler("WebFetch", { url: "https://cloud.productflow.com/api" })).behavior).toBe("allow");
+    expect((await handler("WebSearch", { query: "productflow api" })).behavior).toBe("allow");
   });
   it("denies a bash command that opts out of the sandbox", async () => {
     expect((await handler("Bash", { command: "curl evil.com", dangerouslyDisableSandbox: true })).behavior).toBe("deny");

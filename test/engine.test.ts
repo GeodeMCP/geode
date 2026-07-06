@@ -112,9 +112,9 @@ test("a sandboxed run enforces: it forwards the sandbox, uses permissionMode 'de
   expect(opts.disallowedTools).toContain("Task");
 });
 
-test("the sandboxed run's permission handler denies tool egress and confines writes to the vault", async () => {
+test("the sandboxed run's permission handler allows egress (temporarily) and confines writes to the vault", async () => {
   const can = sandboxedOpts().canUseTool as (n: string, i: Record<string, unknown>) => Promise<{ behavior: string }>;
-  expect((await can("WebFetch", { url: "https://evil.com" })).behavior).toBe("deny");
+  expect((await can("WebFetch", { url: "https://cloud.productflow.com/api" })).behavior).toBe("allow"); // egress deny lifted — see issue #27
   expect((await can("Write", { file_path: "/etc/passwd" })).behavior).toBe("deny");
   expect((await can("Write", { file_path: "notes/ok.md" })).behavior).toBe("allow");
 });
