@@ -1,5 +1,5 @@
 import { readFile, readdir } from "node:fs/promises";
-import { join, relative, sep } from "node:path";
+import { dirname, join, relative, sep } from "node:path";
 import { parseFrontmatter } from "./capabilities.js";
 import { listToolIds, loadTool, connectionConfigured } from "./tools.js";
 import type { SecretStore } from "./secrets.js";
@@ -84,4 +84,48 @@ export async function buildNodes(root: string, secrets: Pick<SecretStore, "get">
     nodes.push(node);
   }
   return nodes;
+}
+
+const WIKILINK_RE = /\[\[([^\]]+)\]\]/g;
+const MDLINK_RE = /\[[^\]]*\]\(([^)]+)\)/g;
+
+/** Resolves a `[[name]]` wikilink to a node id: a suffix match on `/name`, or `tools/name`. */
+function resolveWikilink(nodes: GraphNode[], name: string): string | undefined {
+  return nodes.find((n) => n.id === `tools/${name}` || n.id.endsWith(`/${name}`))?.id;
+}
+
+/** Resolves a relative markdown link `href` against the linking node's file dir to a node id. */
+function resolveRelativeLink(nodePath: string, href: string): string {
+  const joined = join(dirname(nodePath), href).split(sep).join("/");
+  return joined.replace(/\.md$/, "").replace(/\/TOOL$/, "");
+}
+
+/**
+ * Derives typed edges from `[[wikilinks]]` and relative markdown links found in each node's file.
+ */
+export async function buildEdges(nodes: GraphNode[], root: string): Promise<GraphEdge[]> {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const edges: GraphEdge[] = [];
+  const seen = new Set<string>();
+  for (const node of nodes) {
+    const body = await readFile(join(root, node.path), "utf8").catch(() => "");
+    const targets = new Set<string>();
+    for (const m of body.matchAll(WIKILINK_RE)) {
+      const to = resolveWikilink(nodes, m[1].trim());
+      if (to) targets.add(to);
+    }
+    for (const m of body.matchAll(MDLINK_RE)) {
+      const to = resolveRelativeLink(node.path, m[1].trim());
+      if (byId.has(to)) targets.add(to);
+    }
+    for (const to of targets) {
+      const target = byId.get(to);
+      const type: EdgeType = node.type === "gap" ? "blocks" : node.type === "sop" && target?.type === "tool" ? "uses" : "references";
+      const key = `${node.id}|${type}|${to}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      edges.push({ from: node.id, to, type });
+    }
+  }
+  return edges;
 }

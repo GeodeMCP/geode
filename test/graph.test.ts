@@ -2,7 +2,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test, expect } from "vitest";
-import { buildNodes } from "../src/graph.js";
+import { buildNodes, buildEdges } from "../src/graph.js";
 
 const noSecrets = { get: async () => null };
 
@@ -27,4 +27,11 @@ test("buildNodes classifies tool, sop, gap with domain", async () => {
   expect(byId["tools/moneybird"].actions).toContain("list_mutations");
   expect(byId["notes/administratie/sop-booking"]).toMatchObject({ type: "sop", domain: "administratie" });
   expect(byId["backlog/mb-attach"]).toMatchObject({ type: "gap", kind: "tool", count: 1 });
+});
+
+test("buildEdges types links from sop/gap to the moneybird tool", async () => {
+  const root = fixture();
+  const edges = await buildEdges(await buildNodes(root, noSecrets), root);
+  expect(edges).toContainEqual({ from: "notes/administratie/sop-booking", to: "tools/moneybird", type: "uses" });
+  expect(edges).toContainEqual({ from: "backlog/mb-attach", to: "tools/moneybird", type: "blocks" });
 });
