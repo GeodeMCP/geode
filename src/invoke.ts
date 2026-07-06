@@ -1,5 +1,5 @@
 import type { SecretStore } from "./secrets.js";
-import { loadTool, resolveTemplate, resolveConnection, loadConnBundle } from "./tools.js";
+import { loadTool, resolveTemplate, resolveTemplateOptional, resolveConnection, loadConnBundle } from "./tools.js";
 
 /** Arguments to call a single tool action by name, optionally selecting a connection. */
 export interface InvokeArgs { tool: string; action: string; params?: Record<string, unknown>; connection?: string; workspace?: string }
@@ -34,10 +34,18 @@ export async function invoke(
   if (!http) throw new Error(`action "${args.action}" has no http definition`);
   const ctx = { params, conn };
   const url = resolveTemplate(http.url, ctx);
+  // Query params and non-auth headers are optional-friendly: if a value references a param the caller
+  // omitted, drop that entry instead of throwing (url and body stay strict — they must resolve).
   const headers: Record<string, string> = {};
-  for (const [k, v] of Object.entries(http.headers ?? {})) headers[k] = resolveTemplate(v, ctx);
+  for (const [k, v] of Object.entries(http.headers ?? {})) {
+    const resolved = resolveTemplateOptional(v, ctx);
+    if (resolved !== null) headers[k] = resolved;
+  }
   const q = new URLSearchParams();
-  for (const [k, v] of Object.entries(http.query ?? {})) q.set(k, resolveTemplate(v, ctx));
+  for (const [k, v] of Object.entries(http.query ?? {})) {
+    const resolved = resolveTemplateOptional(v, ctx);
+    if (resolved !== null) q.set(k, resolved);
+  }
   const qs = q.toString();
   const body = http.body === undefined ? undefined : typeof http.body === "string" ? resolveTemplate(http.body, ctx) : JSON.stringify(http.body);
   const resp = await (deps.fetchFn ?? fetch)(qs ? `${url}?${qs}` : url, { method: http.method, headers, body });

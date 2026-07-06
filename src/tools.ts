@@ -70,13 +70,31 @@ export function binTokens(bin: string | undefined): string[] {
   return bin ? bin.trim().split(/\s+/) : [];
 }
 
-/** Replaces `${params.key}` and `${conn.key}` placeholders, throwing if any reference is unresolved. */
-export function resolveTemplate(input: string, ctx: { params: Record<string, unknown>; conn: Record<string, string> }): string {
-  return input.replace(/\$\{(params|conn)\.([\w-]+)\}/g, (_m, ns: string, k: string) => {
+/** Substitutes `${params.key}`/`${conn.key}` placeholders. On an unresolved reference it throws when
+ * `lenient` is false, or returns null when true (so the caller can drop the whole value). */
+function substitute(input: string, ctx: { params: Record<string, unknown>; conn: Record<string, string> }, lenient: boolean): string | null {
+  let dropped = false;
+  const out = input.replace(/\$\{(params|conn)\.([\w-]+)\}/g, (_m, ns: string, k: string) => {
     const v = ns === "params" ? ctx.params[k] : ctx.conn[k];
-    if (v === undefined || v === null) throw new Error(`unresolved template reference: \${${ns}.${k}}`);
+    if (v === undefined || v === null) {
+      if (!lenient) throw new Error(`unresolved template reference: \${${ns}.${k}}`);
+      dropped = true;
+      return "";
+    }
     return String(v);
   });
+  return dropped ? null : out;
+}
+
+/** Replaces `${params.key}` and `${conn.key}` placeholders, throwing if any reference is unresolved. */
+export function resolveTemplate(input: string, ctx: { params: Record<string, unknown>; conn: Record<string, string> }): string {
+  return substitute(input, ctx, false) as string;
+}
+
+/** Like `resolveTemplate`, but returns null (instead of throwing) when any reference is unresolved — so
+ * an optional query param or header whose value is absent is dropped rather than crashing the call. */
+export function resolveTemplateOptional(input: string, ctx: { params: Record<string, unknown>; conn: Record<string, string> }): string | null {
+  return substitute(input, ctx, true);
 }
 
 /** The flat secret-store ref for one connection's one secret key. */

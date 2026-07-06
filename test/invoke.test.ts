@@ -84,3 +84,44 @@ test("unknown tool + action errors", async () => {
   await expect(invoke({ root, secrets: fakeSecrets({}) }, { tool: "ghost", action: "x" })).rejects.toThrow(/unknown tool/);
   await expect(invoke({ root, secrets: fakeSecrets({}) }, { tool: "demo", action: "nope" })).rejects.toThrow(/unknown action/);
 });
+
+const LISTY = `---
+id: listy
+name: Listy
+type: http
+description: d
+requires: [API_KEY]
+connections: [{ label: default }]
+actions:
+  list:
+    params: [{ name: page, required: false }, { name: locale, required: false }]
+    http:
+      method: GET
+      url: "https://example.test/items"
+      query: { page: "\${params.page}" }
+      headers: { Authorization: "Bearer \${conn.API_KEY}", Accept-Language: "\${params.locale}" }
+---
+`;
+
+test("omitted optional query params and headers are dropped, not thrown", async () => {
+  const root = vaultWith("listy", LISTY);
+  let seenUrl = "";
+  let seenHeaders: Record<string, string> = {};
+  const fetchFn = (async (url: string, init: any) => { seenUrl = url; seenHeaders = init.headers; return new Response(JSON.stringify({ ok: true }), { status: 200 }); }) as unknown as typeof fetch;
+  const r = await invoke({ root, secrets: fakeSecrets({ "listy__default__API_KEY": "sek" }), fetchFn }, { tool: "listy", action: "list" });
+  expect(r.status).toBe(200);
+  expect(seenUrl).toBe("https://example.test/items"); // no ?page= appended
+  expect(seenHeaders["Accept-Language"]).toBeUndefined(); // optional header dropped
+  expect(seenHeaders["Authorization"]).toBe("Bearer sek"); // conn-backed header stays
+});
+
+test("supplied optional query params and headers are included", async () => {
+  const root = vaultWith("listy", LISTY);
+  let seenUrl = "";
+  let seenHeaders: Record<string, string> = {};
+  const fetchFn = (async (url: string, init: any) => { seenUrl = url; seenHeaders = init.headers; return new Response(JSON.stringify({ ok: true }), { status: 200 }); }) as unknown as typeof fetch;
+  const r = await invoke({ root, secrets: fakeSecrets({ "listy__default__API_KEY": "sek" }), fetchFn }, { tool: "listy", action: "list", params: { page: "2", locale: "nl" } });
+  expect(r.status).toBe(200);
+  expect(seenUrl).toBe("https://example.test/items?page=2");
+  expect(seenHeaders["Accept-Language"]).toBe("nl");
+});
