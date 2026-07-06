@@ -108,7 +108,8 @@ export async function buildEdges(nodes: GraphNode[], root: string): Promise<Grap
   const edges: GraphEdge[] = [];
   const seen = new Set<string>();
   for (const node of nodes) {
-    const body = await readFile(join(root, node.path), "utf8").catch(() => "");
+    const raw = await readFile(join(root, node.path), "utf8").catch(() => "");
+    const body = raw.replace(/^---\n[\s\S]*?\n---/, "");
     const targets = new Set<string>();
     for (const m of body.matchAll(WIKILINK_RE)) {
       const to = resolveWikilink(nodes, m[1].trim());
