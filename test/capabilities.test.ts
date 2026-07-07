@@ -53,3 +53,28 @@ test("gaps (type: gap) surface under Planned / needed", async () => {
   expect(caps.text).toContain("## Planned / needed");
   expect(caps.text).toContain("[tool] Moneybird REST tool — needed to book mutations");
 });
+
+test("parseFrontmatter strips surrounding YAML quotes from scalar values", () => {
+  const fm1 = parseFrontmatter('---\ntitle: "SOP: X"\ndescription: \'quoted desc\'\ntype: note\n---\nbody');
+  expect(fm1.title).toBe("SOP: X");
+  expect(fm1.description).toBe("quoted desc");
+  expect(fm1.type).toBe("note");
+});
+
+test("parseFrontmatter leaves unquoted values unchanged", () => {
+  const fm = parseFrontmatter('---\ntitle: Plain title\ndescription: unquoted description\n---\nbody');
+  expect(fm.title).toBe("Plain title");
+  expect(fm.description).toBe("unquoted description");
+});
+
+test("parseFrontmatter handles mixed quoted and unquoted fields", () => {
+  const fm = parseFrontmatter('---\ntitle: "Quoted: title"\nstatus: active\nkind: \'single-quoted\'\n---\nbody');
+  expect(fm.title).toBe("Quoted: title");
+  expect(fm.status).toBe("active");
+  expect(fm.kind).toBe("single-quoted");
+});
+
+test("parseFrontmatter does not strip quotes from array-like tags values", () => {
+  const fm = parseFrontmatter('---\ntags: [a, b, c]\n---\nbody');
+  expect(fm.tags).toEqual(["a", "b", "c"]);
+});

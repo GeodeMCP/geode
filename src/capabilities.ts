@@ -15,6 +15,14 @@ export interface CapabilitySummary {
 
 const RECIPE_TYPES = new Set(["recipe", "skill", "sop"]);
 
+/** Strips surrounding matched YAML quotes (single or double) from a scalar value. */
+const unquote = (s: string): string => {
+  if (s.length >= 2 && ((s[0] === '"' && s.endsWith('"')) || (s[0] === "'" && s.endsWith("'")))) {
+    return s.slice(1, -1);
+  }
+  return s;
+};
+
 /** Parses YAML frontmatter from a Markdown string, returning the recognized fields. */
 export function parseFrontmatter(md: string): Frontmatter {
   const m = /^---\n([\s\S]*?)\n---/.exec(md);
@@ -24,7 +32,7 @@ export function parseFrontmatter(md: string): Frontmatter {
     const kv = /^(\w+):\s*(.*)$/.exec(line.trim());
     if (!kv) continue;
     const [, k, raw] = kv;
-    const v = raw.trim();
+    const v = unquote(raw.trim());
     if (k === "type") fm.type = v;
     else if (k === "title") fm.title = v;
     else if (k === "description") fm.description = v;
