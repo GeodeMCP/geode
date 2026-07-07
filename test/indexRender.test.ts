@@ -80,3 +80,50 @@ test("writeIndex writes index.md equal to renderIndex", async () => {
   const written = await readFile(join(root, "index.md"), "utf8");
   expect(written).toBe(renderIndex(graph));
 });
+
+test("renderIndex preserves intra-domain node order from graph.nodes array (not sorted by id)", () => {
+  const graph: VaultGraph = {
+    nodes: [
+      {
+        id: "notes/x/zzz",
+        type: "reference",
+        title: "Zzz",
+        description: "z",
+        domain: "x",
+        path: "notes/x/zzz.md",
+      },
+      {
+        id: "notes/x/aaa",
+        type: "reference",
+        title: "Aaa",
+        description: "a",
+        domain: "x",
+        path: "notes/x/aaa.md",
+      },
+    ],
+    edges: [],
+  };
+  const out = renderIndex(graph);
+  const zzzIndex = out.indexOf("[Zzz]");
+  const aaaIndex = out.indexOf("[Aaa]");
+  expect(zzzIndex).toBeLessThan(aaaIndex);
+});
+
+test("renderIndex omits em-dash tail when description is empty", () => {
+  const graph: VaultGraph = {
+    nodes: [
+      {
+        id: "notes/y/n",
+        type: "reference",
+        title: "NoDesc",
+        description: "",
+        domain: "y",
+        path: "notes/y/n.md",
+      },
+    ],
+    edges: [],
+  };
+  const out = renderIndex(graph);
+  expect(out).toContain("- [NoDesc](notes/y/n.md)");
+  expect(out).not.toContain("- [NoDesc](notes/y/n.md) —");
+});
