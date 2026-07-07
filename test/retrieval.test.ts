@@ -57,3 +57,51 @@ test("selectSubgraph is deterministic across repeated calls", () => {
   const instruction = "how do I book bankmutaties in moneybird";
   expect(JSON.stringify(selectSubgraph(g, instruction))).toBe(JSON.stringify(selectSubgraph(g, instruction)));
 });
+
+test("selectSubgraph expands 1-hop to include zero-score neighbours via edges", () => {
+  const g: VaultGraph = {
+    nodes: [
+      {
+        id: "notes/administratie/sop-widget",
+        type: "sop",
+        title: "Widget procedure",
+        description: "step by step widget",
+        domain: "administratie",
+        path: "notes/administratie/sop-widget.md",
+      },
+      {
+        id: "notes/zzz-alpha",
+        type: "reference",
+        title: "Alpha",
+        description: "beta gamma",
+        domain: "",
+        path: "notes/zzz-alpha.md",
+      },
+      {
+        id: "notes/qqq-omega",
+        type: "reference",
+        title: "Omega",
+        description: "theta iota",
+        domain: "",
+        path: "notes/qqq-omega.md",
+      },
+    ],
+    edges: [
+      // Order matters: 2-hop edge processed before 1-hop edge prevents transitive closure in a single pass
+      { from: "notes/zzz-alpha", to: "notes/qqq-omega", type: "uses" },
+      { from: "notes/administratie/sop-widget", to: "notes/zzz-alpha", type: "uses" },
+    ],
+  };
+
+  const result = selectSubgraph(g, "how do I execute the widget procedure");
+  const ids = result.nodes.map((n) => n.id);
+
+  // Entry node matches terms
+  expect(ids).toContain("notes/administratie/sop-widget");
+
+  // 1-hop neighbour (zero-score) is included via edge expansion
+  expect(ids).toContain("notes/zzz-alpha");
+
+  // 2-hop neighbour (zero-score) is excluded (beyond hops: 1)
+  expect(ids).not.toContain("notes/qqq-omega");
+});
