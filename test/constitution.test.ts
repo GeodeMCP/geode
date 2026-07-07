@@ -26,3 +26,12 @@ test("desk fragment adds terseness; librarian fragment does not", () => {
 test("the core (constitution) carries neither role's terseness rule", () => {
   expect(CONSTITUTION.toLowerCase()).not.toContain("no section headers");
 });
+
+test("librarian fragment teaches capability-graph linking at write time", () => {
+  const librarian = fragmentFor("librarian");
+  const lc = librarian.toLowerCase();
+  expect(lc).toContain("link");         // instructs linking of dependencies
+  expect(lc).toContain("graph");        // frames links as the capability graph
+  expect(lc).toContain("uses");         // the sop→tool `uses` edge
+  expect(librarian).toContain("tools/"); // teaches a resolvable relative link to a tool
+});

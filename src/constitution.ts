@@ -24,8 +24,13 @@ Desk output — keep it minimal:
 - Return the exact invoke(tool, action, params, connection) calls (or a direct answer), plus at most one short caveat line when an assumption actually matters.
 - No section headers, no strategy write-ups, no restating the request.`;
 
-/** Librarian-only prompt fragment. Empty for now — later phases move filing/onboarding behaviour here. */
-export const LIBRARIAN_FRAGMENT = "";
+/** Librarian-only prompt fragment: filing discipline, incl. wiring the capability graph via links. */
+export const LIBRARIAN_FRAGMENT = `
+
+Filing — wire the capability graph as you go:
+- When you file or edit a concept, link the capabilities it depends on with resolvable relative markdown links, not bare prose mentions: every tool it operates (\`../../tools/<id>/TOOL.md\`), the notes it builds on, and any gap that blocks it. These links ARE the vault's capability graph — an SOP that links a tool it drives becomes a \`uses\` edge, a note linking another note a \`references\` edge, a gap linking what it blocks a \`blocks\` edge — so the desk can traverse from a task to the exact tools and context it needs.
+- Link at the point of use (the step that invokes the tool) or in a short "Depends on:" line; match the vault's existing relative-link style — never bare mentions, invented wikilinks, or paths to files that don't exist.
+- If a needed capability has no file yet, log a \`backlog/\` gap and link that instead.`;
 
 /** Returns the role-specific prompt fragment appended to the shared core. */
 export function fragmentFor(role: AgentRole): string {
