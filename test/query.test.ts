@@ -1,11 +1,14 @@
 import { expect, test } from "vitest";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { query, type QueryDeps } from "../src/query.js";
 import { createRunManager } from "../src/runManager.js";
 import type { EngineEvent } from "../src/engine.js";
 import { resolveSandboxPolicy } from "../src/agentSandbox.js";
+import { buildGraph } from "../src/graph.js";
+import { renderIndex } from "../src/indexRender.js";
 
 function fakeWorkspace() {
   const calls: string[] = [];
@@ -179,6 +182,10 @@ test("auto-commit mode with secrets rebuilds the graph after the query commits",
   await query(d, "do X");
   expect(existsSync(join(root, ".geode/graph.json"))).toBe(true);
   expect(ws.calls.some((c) => c.startsWith("commit:graph: rebuild "))).toBe(true);
+  // index.md must regenerate alongside the graph, from the same rebuild.
+  const graph = await buildGraph(root, noSecrets);
+  expect(existsSync(join(root, "index.md"))).toBe(true);
+  expect(await readFile(join(root, "index.md"), "utf8")).toBe(renderIndex(graph));
   rmSync(root, { recursive: true, force: true });
 });
 
@@ -189,6 +196,7 @@ test("review mode never rebuilds the graph, even when secrets are present", asyn
   await query(d, "do X", undefined, { commit: false });
   expect(existsSync(join(root, ".geode/graph.json"))).toBe(false);
   expect(ws.calls.some((c) => c.startsWith("commit:graph: rebuild "))).toBe(false);
+  expect(existsSync(join(root, "index.md"))).toBe(false);
   rmSync(root, { recursive: true, force: true });
 });
 

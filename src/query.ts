@@ -9,6 +9,7 @@ import { buildSkillsFooter } from "./skills.js";
 import { buildOverlay } from "./overlay.js";
 import { buildSandboxSettings, type SandboxPolicy } from "./agentSandbox.js";
 import { buildGraph, writeGraph } from "./graph.js";
+import { writeIndex } from "./indexRender.js";
 import { fragmentFor, type AgentRole } from "./constitution.js";
 import { loadGraph } from "./capabilitiesRender.js";
 import { selectSubgraph, renderScopedContext } from "./retrieval.js";
@@ -128,7 +129,9 @@ export async function query(
         // it must not trip the outer catch and contradict the "ok" entry already logged.
         try {
           // Deterministic build: only produces a diff (and a commit) when vault content changed.
-          await writeGraph(deps.workspace.root, await buildGraph(deps.workspace.root, deps.secrets));
+          const graph = await buildGraph(deps.workspace.root, deps.secrets);
+          await writeGraph(deps.workspace.root, graph);
+          await writeIndex(deps.workspace.root, graph);
           await deps.workspace.commitAll(`graph: rebuild ${runId}`);
         } catch (e) {
           console.error("graph rebuild failed (non-fatal):", e instanceof Error ? e.message : String(e));

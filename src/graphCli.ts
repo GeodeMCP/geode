@@ -1,6 +1,7 @@
 import { loadConfig } from "./config.js";
 import { createSecretStore, loadOrCreateKey } from "./secrets.js";
 import { buildGraph, writeGraph } from "./graph.js";
+import { writeIndex } from "./indexRender.js";
 
 /** Entry point for the graph CLI: rebuilds the capability graph for the configured vault and writes it to disk. */
 async function main(): Promise<void> {
@@ -12,6 +13,7 @@ async function main(): Promise<void> {
   });
   const graph = await buildGraph(root, secrets);
   await writeGraph(root, graph);
+  await writeIndex(root, graph);
   console.log(`graph: ${graph.nodes.length} nodes, ${graph.edges.length} edges`);
 }
 
