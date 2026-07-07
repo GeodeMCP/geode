@@ -47,6 +47,21 @@ test("buildEdges ignores link-shaped text in frontmatter", async () => {
   expect(edges.filter((e) => e.from === "notes/decoy")).toHaveLength(0);
 });
 
+test("buildEdges normalizes a tool→sop link (a tool's 'Used by' section) to a sop→tool uses edge", async () => {
+  const root = mkdtempSync(join(tmpdir(), "geode-graph-tsop-"));
+  mkdirSync(join(root, "tools/mb"), { recursive: true });
+  writeFileSync(join(root, "tools/mb/TOOL.md"),
+    `---\nid: mb\nname: MB\ntype: http\ndescription: MB\nconnections: [{ label: default }]\nactions: { a: { http: { method: GET, url: "https://x/a" } } }\n---\n## Used by\n- [SOP boeken](../../notes/sop-boeken.md)\n`);
+  mkdirSync(join(root, "notes"), { recursive: true });
+  writeFileSync(join(root, "notes/sop-boeken.md"),
+    `---\ntype: sop\ntitle: SOP boeken\ndescription: boek\n---\nNo tool link in this SOP.\n`);
+  const edges = await buildEdges(await buildNodes(root, noSecrets), root);
+  // The relationship "SOP uses tool" is the same whichever file holds the link; the compiler
+  // canonicalizes it to sop→tool `uses` so the graph doesn't depend on which file the librarian edited.
+  expect(edges).toContainEqual({ from: "notes/sop-boeken", to: "tools/mb", type: "uses" });
+  expect(edges).not.toContainEqual({ from: "tools/mb", to: "notes/sop-boeken", type: "references" });
+});
+
 test("buildGraph sorts nodes by id and edges by (from, type, to)", async () => {
   const graph = await buildGraph(fixture(), noSecrets);
   expect(graph.nodes.map((n) => n.id)).toEqual([

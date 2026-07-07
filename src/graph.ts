@@ -122,11 +122,18 @@ export async function buildEdges(nodes: GraphNode[], root: string): Promise<Grap
     }
     for (const to of targets) {
       const target = byId.get(to);
-      const type: EdgeType = node.type === "gap" ? "blocks" : node.type === "sop" && target?.type === "tool" ? "uses" : "references";
-      const key = `${node.id}|${type}|${to}`;
+      // "SOP uses tool" means the same whichever file holds the link, so canonicalize a tool→sop
+      // link (e.g. a tool's "Used by" section) to a sop→tool `uses` edge — the graph must not depend
+      // on which side the librarian chose to edit.
+      let edge: GraphEdge;
+      if (node.type === "sop" && target?.type === "tool") edge = { from: node.id, to, type: "uses" };
+      else if (node.type === "tool" && target?.type === "sop") edge = { from: to, to: node.id, type: "uses" };
+      else if (node.type === "gap") edge = { from: node.id, to, type: "blocks" };
+      else edge = { from: node.id, to, type: "references" };
+      const key = `${edge.from}|${edge.type}|${edge.to}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      edges.push({ from: node.id, to, type });
+      edges.push(edge);
     }
   }
   return edges;
