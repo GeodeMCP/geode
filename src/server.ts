@@ -6,7 +6,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { query, type QueryDeps, type QueryResult } from "./query.js";
 import { remember, type RememberArgs } from "./ingest.js";
 import { eventText } from "./engine.js";
-import { deriveCapabilities } from "./capabilities.js";
+import { renderCapabilities, loadGraph } from "./capabilitiesRender.js";
 import { invoke, type InvokeArgs, type InvokeResult } from "./invoke.js";
 import type { SecretStore } from "./secrets.js";
 import type { ArtifactStore } from "./artifacts.js";
@@ -151,7 +151,7 @@ export function buildMcpServer(queryDeps: QueryDeps, opts?: { secrets?: SecretSt
     rememberHandler,
   );
 
-  const listCapabilitiesHandler = makeListCapabilitiesHandler({ root: queryDeps.workspace.root, derive: (root) => deriveCapabilities(root, opts?.secrets ?? { get: async () => null }) });
+  const listCapabilitiesHandler = makeListCapabilitiesHandler({ root: queryDeps.workspace.root, derive: async (root) => ({ text: renderCapabilities(await loadGraph(root, opts?.secrets ?? { get: async () => null })) }) });
   server.registerTool(
     "list_capabilities",
     {
