@@ -1,6 +1,11 @@
+import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test, expect } from "vitest";
-import { renderCapabilities } from "../src/capabilitiesRender.js";
+import { renderCapabilities, loadGraph } from "../src/capabilitiesRender.js";
 import type { VaultGraph } from "../src/graph.js";
+import { GRAPH_PATH, serializeGraph } from "../src/graph.js";
 
 function fixture(): VaultGraph {
   return {
@@ -69,4 +74,30 @@ test("renderCapabilities renders a gap node's kind/count attrs and blocks relati
 test("renderCapabilities is deterministic", () => {
   const graph = fixture();
   expect(renderCapabilities(graph)).toEqual(renderCapabilities(graph));
+});
+
+const noSecrets = { get: async () => null };
+
+test("loadGraph reads and returns a parsed .geode/graph.json when it exists", async () => {
+  const root = mkdtempSync(join(tmpdir(), "geode-cr-"));
+  const graph = fixture();
+  mkdirSync(join(root, ".geode"), { recursive: true });
+  writeFileSync(join(root, GRAPH_PATH), serializeGraph(graph));
+
+  const loaded = await loadGraph(root, noSecrets);
+  expect(loaded).toEqual(graph);
+});
+
+test("loadGraph falls back to buildGraph when .geode/graph.json does not exist", async () => {
+  const root = mkdtempSync(join(tmpdir(), "geode-cr-"));
+  // Create a minimal fixture vault with one tool
+  mkdirSync(join(root, "tools/test-tool"), { recursive: true });
+  writeFileSync(join(root, "tools/test-tool/TOOL.md"),
+    `---\nid: test-tool\nname: Test Tool\ntype: http\ndescription: Test\nconnections: []\nactions: { action1: { http: { method: GET, url: "https://x" } } }\n---\n`);
+
+  const graph = await loadGraph(root, noSecrets);
+  expect(graph.nodes).toHaveLength(1);
+  expect(graph.nodes[0].id).toBe("tools/test-tool");
+  expect(graph.nodes[0].type).toBe("tool");
+  expect(graph.edges).toHaveLength(0);
 });

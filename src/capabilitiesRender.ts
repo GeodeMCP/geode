@@ -1,4 +1,8 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import type { SecretStore } from "./secrets.js";
 import type { EdgeType, GraphEdge, GraphNode, VaultGraph } from "./graph.js";
+import { buildGraph, GRAPH_PATH } from "./graph.js";
 
 const OUTGOING_ORDER: EdgeType[] = ["uses", "references", "blocks"];
 
@@ -60,4 +64,16 @@ export function renderCapabilities(graph: VaultGraph): string {
     for (const node of byDomain.get(domain)!) lines.push(...renderNode(node, graph.edges));
   }
   return lines.join("\n");
+}
+
+/**
+ * Loads a capability graph from disk, returning the parsed `.geode/graph.json` if it exists,
+ * otherwise builds and returns the graph for the vault.
+ */
+export async function loadGraph(root: string, secrets: Pick<SecretStore, "get">): Promise<VaultGraph> {
+  try {
+    return JSON.parse(await readFile(join(root, GRAPH_PATH), "utf8")) as VaultGraph;
+  } catch {
+    return buildGraph(root, secrets);
+  }
 }
