@@ -121,3 +121,43 @@ test("renderScopedContext renders a path-first hint with relations and tool acti
 test("renderScopedContext returns an empty string for an empty subgraph", () => {
   expect(renderScopedContext({ nodes: [], edges: [] })).toBe("");
 });
+
+test("renderScopedContext excludes incoming edges from a node's relations", () => {
+  const g: VaultGraph = {
+    nodes: [
+      {
+        id: "notes/onboarding/sop-setup",
+        type: "sop",
+        title: "Setup Guide",
+        description: "initial setup instructions",
+        domain: "onboarding",
+        path: "notes/onboarding/sop-setup.md",
+      },
+      {
+        id: "tools/github",
+        type: "tool",
+        title: "GitHub",
+        description: "source control",
+        domain: "",
+        path: "tools/github/TOOL.md",
+      },
+    ],
+    edges: [
+      { from: "notes/onboarding/sop-setup", to: "tools/github", type: "uses" },
+    ],
+  };
+
+  const text = renderScopedContext(g);
+  const lines = text.split("\n");
+  const sopLine = lines.find((l) => l.includes("notes/onboarding/sop-setup.md"));
+  const toolLine = lines.find((l) => l.includes("tools/github/TOOL.md"));
+
+  expect(sopLine).toBeDefined();
+  expect(toolLine).toBeDefined();
+
+  // Outgoing edge from sop to tool should appear in sop's line
+  expect(sopLine).toContain("· uses tools/github");
+
+  // Incoming edge to tool should NOT appear in tool's line (no outgoing edges from tool)
+  expect(toolLine).not.toContain("· uses");
+});
