@@ -1,5 +1,5 @@
 import { test, expect } from "vitest";
-import { selectSubgraph } from "../src/retrieval.js";
+import { selectSubgraph, renderScopedContext } from "../src/retrieval.js";
 import type { VaultGraph } from "../src/graph.js";
 
 function fixture(): VaultGraph {
@@ -104,4 +104,20 @@ test("selectSubgraph expands 1-hop to include zero-score neighbours via edges", 
 
   // 2-hop neighbour (zero-score) is excluded (beyond hops: 1)
   expect(ids).not.toContain("notes/qqq-omega");
+});
+
+test("renderScopedContext renders a path-first hint with relations and tool actions", () => {
+  const g = fixture();
+  const text = renderScopedContext(selectSubgraph(g, "how do I book in moneybird"));
+  const sopLine = text.split("\n").find((l) => l.includes("notes/administratie/sop-booking.md"));
+  const toolLine = text.split("\n").find((l) => l.includes("tools/moneybird/TOOL.md"));
+
+  expect(sopLine).toBeDefined();
+  expect(toolLine).toBeDefined();
+  expect(sopLine).toContain("· uses tools/moneybird");
+  expect(toolLine).toContain("· actions: list_mutations, link_booking");
+});
+
+test("renderScopedContext returns an empty string for an empty subgraph", () => {
+  expect(renderScopedContext({ nodes: [], edges: [] })).toBe("");
 });

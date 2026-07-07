@@ -62,3 +62,44 @@ export function selectSubgraph(graph: VaultGraph, instruction: string, opts?: { 
     edges: graph.edges.filter((e) => selected.has(e.from) && selected.has(e.to)),
   };
 }
+
+/** Truncates a string to at most `n` characters, appending an ellipsis when trimmed. */
+function truncate(s: string, n: number): string {
+  return s.length > n ? s.slice(0, n) + "…" : s;
+}
+
+const REL_TYPE_ORDER = ["uses", "references", "blocks"] as const;
+
+/** Renders a node's outgoing edges, grouped by type in a fixed order, e.g. " · uses a, b · blocks c". */
+function renderRelations(nodeId: string, edges: VaultGraph["edges"]): string {
+  let out = "";
+  for (const type of REL_TYPE_ORDER) {
+    const targets = edges.filter((e) => e.from === nodeId && e.type === type).map((e) => e.to).sort();
+    if (targets.length > 0) out += ` · ${type} ${targets.join(", ")}`;
+  }
+  return out;
+}
+
+/**
+ * Renders a scoped subgraph as a compact, path-first navigation hint for the desk: a header
+ * followed by one line per node (in the subgraph's order) with its path, type, title, a
+ * truncated description, its outgoing relations grouped by edge type, and tool actions.
+ * Returns "" when the subgraph has no nodes.
+ */
+export function renderScopedContext(sub: VaultGraph): string {
+  if (sub.nodes.length === 0) return "";
+
+  const header =
+    "Relevant vault capabilities for this request (pre-selected from the capability graph — start here and read these files as needed instead of scanning the whole vault; if none fit, consult index.md):";
+
+  const lines = sub.nodes.map((node) => {
+    const rels = renderRelations(node.id, sub.edges);
+    const actions =
+      node.type === "tool" && node.actions && node.actions.length > 0
+        ? ` · actions: ${node.actions.join(", ")}`
+        : "";
+    return `- ${node.path} — ${node.type}: ${node.title}. ${truncate(node.description, 160)}${rels}${actions}`;
+  });
+
+  return [header, ...lines].join("\n");
+}
