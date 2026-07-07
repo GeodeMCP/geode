@@ -51,3 +51,11 @@ Needs a reachable model (`ANTHROPIC_API_KEY` or local Ollama). Build the SPA fir
 26. `curl -i $BASE/mcp` with no auth → `401` + a `WWW-Authenticate: Bearer resource_metadata="…"` header. With `Authorization: Bearer $GEODE_AUTH_TOKEN` → not 401 (static bearer still works).
 27. End-to-end against claude.ai (needs a public URL — use a throwaway `cloudflared`/`ngrok` and set `GEODE_BASE_URL` to it; create the owner first): Claude → Connectors → Add custom connector → paste the URL → it discovers metadata + self-registers (DCR) → opens the consent page → sign in with the owner account → Approve → connected. Confirm the 4 tools appear and a `query` runs over the OAuth token.
 28. A forged/expired access token on `/mcp` → 401. Deny on the consent page → Claude shows the connection was declined.
+
+## Upload intake (manual)
+
+29. `curl -F file=@some.md $BASE/api/uploads` (with session cookie) returns `{uploadId}`; POST `/api/query` with `{instruction, uploadId}` and confirm the agent's transcript shows it Read the staged path.
+
+## Setup strip in chat (manual)
+
+30. Author a tool with an unconfigured connection (e.g. the `httpbin` sample from step 9, before adding its secret) → open **Vault** → the setup strip appears above the chat/tree/viewer columns listing the tool/connection and a **Set …** button per required secret. Click **Set …** → it opens the capture link in a new tab (same single-use auth screen as step 10). Enter the secret value there, then back in the vault click **Test** on the strip → it reports "✓ … works (HTTP …)" and the strip drops that connection (re-run a query or reload to confirm it no longer lists a fully-configured tool).

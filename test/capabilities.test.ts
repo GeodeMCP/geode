@@ -42,3 +42,14 @@ test("deriveCapabilities on an empty vault returns empty lists", async () => {
   const caps = await deriveCapabilities(root, store(root));
   expect(caps.tools).toEqual([]); expect(caps.recipes).toEqual([]);
 });
+
+test("gaps (type: gap) surface under Planned / needed", async () => {
+  const root = vault();
+  mkdirSync(join(root, "backlog"), { recursive: true });
+  writeFileSync(join(root, "backlog", "moneybird-tool.md"),
+    "---\ntype: gap\nkind: tool\ntitle: Moneybird REST tool\ndescription: needed to book mutations\n---\nbody");
+  const caps = await deriveCapabilities(root, store(root));
+  expect(caps.gaps).toEqual([{ title: "Moneybird REST tool", kind: "tool", description: "needed to book mutations", path: "backlog/moneybird-tool.md" }]);
+  expect(caps.text).toContain("## Planned / needed");
+  expect(caps.text).toContain("[tool] Moneybird REST tool — needed to book mutations");
+});

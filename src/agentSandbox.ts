@@ -1,5 +1,6 @@
 import { existsSync, realpathSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path";
+import { parseManifest } from "./tools.js";
 
 /** Resolved OS-sandbox policy for the vault agent, derived once from env + the vault root. */
 export interface SandboxPolicy {
@@ -112,12 +113,19 @@ function writeAllowed(target: string, roots: string[]): boolean {
   return roots.some((r) => abs === r || abs.startsWith(r + sep));
 }
 
+/** Extracts `<id>` from a path ending in `tools/<id>/TOOL.md` (backslashes normalized to `/` first), or null if it isn't a tool manifest path. */
+function manifestIdFromPath(path: string): string | null {
+  const m = /(?:^|\/)tools\/([a-z0-9-]+)\/TOOL\.md$/.exec(path.replace(/\\/g, "/"));
+  return m ? m[1] : null;
+}
+
 /**
  * Builds the non-interactive permission handler that partners the OS sandbox. The sandbox bounds
  * Bash at the syscall level; this handler bounds the host-process tools the sandbox doesn't cover:
- * it denies network egress via WebFetch/WebSearch, refuses any Bash that opts out of the sandbox,
- * and confines file mutations to `writeRoots` (the vault). Everything else (reads, search, sandboxed
- * bash) is allowed. It never prompts — the vault agent runs without a human to answer mid-run.
+ * it refuses any Bash that opts out of the sandbox and confines file mutations to `writeRoots` (the
+ * vault). Network egress via WebFetch/WebSearch is temporarily open (see issue #27). Everything else
+ * (reads, search, sandboxed bash) is allowed. It never prompts — the vault agent runs without a
+ * human to answer mid-run.
  */
 export function buildPermissionHandler(writeRoots: string[]): PermissionHandler {
   const roots = writeRoots.map(canonicalPath);
@@ -126,9 +134,9 @@ export function buildPermissionHandler(writeRoots: string[]): PermissionHandler 
     if (toolName === "Bash" && input.dangerouslyDisableSandbox === true) {
       return deny("running commands outside the sandbox is not permitted");
     }
-    if (toolName === "WebFetch" || toolName === "WebSearch") {
-      return deny(`${toolName} is disabled for the vault agent (network egress is off by default)`);
-    }
+    // EGRESS TEMPORARILY OPEN: the WebFetch/WebSearch deny is lifted so the vault agent can read
+    // live API docs while authoring tools (otherwise it invents endpoints it can't verify).
+    // Restore behind a chat approval flow — see https://github.com/GeodeMCP/geode/issues/27.
     if (toolName === "AskUserQuestion") {
       return deny("interactive questions are disabled; state an assumption and proceed");
     }
@@ -136,6 +144,16 @@ export function buildPermissionHandler(writeRoots: string[]): PermissionHandler 
       const path = input.file_path ?? input.notebook_path;
       if (typeof path !== "string" || !writeAllowed(path, roots)) {
         return deny(`writes are confined to the vault; ${typeof path === "string" ? path : "(no path)"} is outside it`);
+      }
+      // Full-file writes (only Write — Edit/MultiEdit don't hand us post-edit content) that land on a
+      // tool manifest get validated against the same parser `loadTool` uses at run time, so a broken
+      // TOOL.md is rejected with the real error immediately instead of surfacing later as "unknown tool".
+      if (toolName === "Write") {
+        const id = manifestIdFromPath(path);
+        if (id && typeof input.content === "string") {
+          try { parseManifest(id, input.content); }
+          catch (e) { return deny(e instanceof Error ? e.message : String(e)); }
+        }
       }
     }
     return { behavior: "allow", updatedInput: input };

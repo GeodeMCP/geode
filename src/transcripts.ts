@@ -10,6 +10,7 @@ export interface TranscriptRecord {
   events: ProgressEvent[];
   result?: { text: string; metrics?: Metrics };
   error?: string;
+  attachments?: string[];
 }
 
 /** Interface for appending, listing, and clearing transcript records in a persistent JSONL store. */

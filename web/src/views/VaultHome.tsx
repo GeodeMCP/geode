@@ -38,10 +38,17 @@ export function VaultHome() {
   const dirty = status.modified.length + status.created.length > 0;
   const selectedDirty = !!selected && (status.modified.includes(selected) || status.created.includes(selected));
 
-  const send = async (instruction: string, onEvent: (e: SseEvent) => void) => {
+  const send = async (instruction: string, onEvent: (e: SseEvent) => void, attachments?: string[]) => {
     setRunning(true);
     try {
-      await api.run("/api/query", { instruction }, (e) => { onEvent(e); if (e.event === "result") { const f = e.data.filesTouched?.[0]; if (f) setSelected(f); } });
+      await api.run("/api/query", { instruction, attachments }, (e) => {
+        onEvent(e);
+        if (e.event === "result") { const f = e.data.filesTouched?.[0]; if (f) setSelected(f); }
+        else if (e.event === "progress" && e.data?.type === "tool" && ["Write", "Edit", "MultiEdit"].includes(e.data.name) && e.data.summary) {
+          setSelected(e.data.summary); // live: focus the file the agent is writing
+          void refresh();               // and refresh the tree/status so it appears immediately
+        }
+      });
       await refresh();
     } finally { setRunning(false); }
   };
@@ -62,10 +69,12 @@ export function VaultHome() {
   };
 
   return (
-    <div className="main">
-      <Chat onSend={send} running={running} dirty={dirty} onCommit={commit} onDiscard={discard} autoRun={autoRun} />
-      <FileTree tree={tree} status={status} selected={selected} onSelect={select} onCreate={create} onDelete={del} needsInstall={needsInstall} />
-      <Viewer path={selected} content={content} diff={diff} dirty={selectedDirty} compose={compose} onCommit={commit} onDiscard={discard} onSave={save} onOpenFile={select} />
+    <div className="col" style={{ flex: 1 }}>
+      <div className="main">
+        <Chat onSend={send} running={running} dirty={dirty} onCommit={commit} onDiscard={discard} autoRun={autoRun} />
+        <FileTree tree={tree} status={status} selected={selected} onSelect={select} onCreate={create} onDelete={del} needsInstall={needsInstall} />
+        <Viewer path={selected} content={content} diff={diff} dirty={selectedDirty} compose={compose} onCommit={commit} onDiscard={discard} onSave={save} onOpenFile={select} />
+      </div>
     </div>
   );
 }

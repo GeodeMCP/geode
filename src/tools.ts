@@ -33,19 +33,30 @@ export interface ToolManifest {
 
 const ID_RE = /^[a-z0-9-]+$/;
 
-/** Reads and parses `tools/<id>/TOOL.md` (YAML frontmatter + markdown body); rejects unsafe ids. */
-export async function loadTool(root: string, id: string): Promise<ToolManifest> {
-  if (!ID_RE.test(id)) throw new Error(`invalid tool id: ${id}`);
-  const raw = await readFile(join(root, "tools", id, "TOOL.md"), "utf8");
+/**
+ * Parses `tools/<id>/TOOL.md` raw content (YAML frontmatter + markdown body) into a `ToolManifest`.
+ * Pure — no I/O — so it can be run against a write's proposed content before it hits disk, as well as
+ * against a file already read from the vault. Throws on any structural or YAML problem.
+ */
+export function parseManifest(id: string, raw: string): ToolManifest {
   const m = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/.exec(raw);
   if (!m) throw new Error(`tool ${id}: missing frontmatter`);
-  const fm = (parseYaml(m[1]) ?? {}) as Partial<ToolManifest>;
+  let fm: Partial<ToolManifest>;
+  try { fm = (parseYaml(m[1]) ?? {}) as Partial<ToolManifest>; }
+  catch (e) { throw new Error(`tool ${id}: invalid TOOL.md YAML frontmatter — ${e instanceof Error ? e.message.split("\n")[0] : String(e)}. Single-quote any string value containing { } : [ ] or # (e.g. a description with a JSON example).`); }
   if (!fm.type || !fm.actions) throw new Error(`tool ${id}: frontmatter needs type + actions`);
   for (const [name, action] of Object.entries(fm.actions)) {
     if (action.command !== undefined && (!Array.isArray(action.command) || action.command.length === 0 || !action.command.every((t) => typeof t === "string")))
       throw new Error(`tool ${id}: action "${name}" — command must be a non-empty array of argv tokens (string[]); the space-separated string form was removed`);
   }
   return { ...fm, id, name: fm.name ?? id, description: fm.description ?? "", type: fm.type, actions: fm.actions, body: m[2] || undefined } as ToolManifest;
+}
+
+/** Reads and parses `tools/<id>/TOOL.md` (YAML frontmatter + markdown body); rejects unsafe ids. */
+export async function loadTool(root: string, id: string): Promise<ToolManifest> {
+  if (!ID_RE.test(id)) throw new Error(`invalid tool id: ${id}`);
+  const raw = await readFile(join(root, "tools", id, "TOOL.md"), "utf8");
+  return parseManifest(id, raw);
 }
 
 /** Lists tool ids = directory names under `tools/`. */
@@ -59,13 +70,31 @@ export function binTokens(bin: string | undefined): string[] {
   return bin ? bin.trim().split(/\s+/) : [];
 }
 
-/** Replaces `${params.key}` and `${conn.key}` placeholders, throwing if any reference is unresolved. */
-export function resolveTemplate(input: string, ctx: { params: Record<string, unknown>; conn: Record<string, string> }): string {
-  return input.replace(/\$\{(params|conn)\.([\w-]+)\}/g, (_m, ns: string, k: string) => {
+/** Substitutes `${params.key}`/`${conn.key}` placeholders. On an unresolved reference it throws when
+ * `lenient` is false, or returns null when true (so the caller can drop the whole value). */
+function substitute(input: string, ctx: { params: Record<string, unknown>; conn: Record<string, string> }, lenient: boolean): string | null {
+  let dropped = false;
+  const out = input.replace(/\$\{(params|conn)\.([\w-]+)\}/g, (_m, ns: string, k: string) => {
     const v = ns === "params" ? ctx.params[k] : ctx.conn[k];
-    if (v === undefined || v === null) throw new Error(`unresolved template reference: \${${ns}.${k}}`);
+    if (v === undefined || v === null) {
+      if (!lenient) throw new Error(`unresolved template reference: \${${ns}.${k}}`);
+      dropped = true;
+      return "";
+    }
     return String(v);
   });
+  return dropped ? null : out;
+}
+
+/** Replaces `${params.key}` and `${conn.key}` placeholders, throwing if any reference is unresolved. */
+export function resolveTemplate(input: string, ctx: { params: Record<string, unknown>; conn: Record<string, string> }): string {
+  return substitute(input, ctx, false) as string;
+}
+
+/** Like `resolveTemplate`, but returns null (instead of throwing) when any reference is unresolved — so
+ * an optional query param or header whose value is absent is dropped rather than crashing the call. */
+export function resolveTemplateOptional(input: string, ctx: { params: Record<string, unknown>; conn: Record<string, string> }): string | null {
+  return substitute(input, ctx, true);
 }
 
 /** The flat secret-store ref for one connection's one secret key. */

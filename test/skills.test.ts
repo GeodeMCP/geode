@@ -35,3 +35,7 @@ test("the shipped onboard-tool SOP exists and is substantive", () => {
   expect(body).toContain("TOOL.md");
   expect(body.toLowerCase()).toContain("never install");
 });
+
+test("the skills footer points the agent at the onboard-workspace skill", () => {
+  expect(buildSkillsFooter("/vault")).toContain("onboard-workspace.md");
+});

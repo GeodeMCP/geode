@@ -17,6 +17,7 @@ const stubDocker: Docker = {
   run: async () => ({ exitCode: 0, stdout: "", stderr: "" }),
   removeImage: async () => {},
 };
+const stubAttachments = { dir: "/att", add: async () => [], list: async () => [], clear: async () => {} };
 
 let server: Server; let url: string; let root: string;
 const KEY = Buffer.from("k".repeat(32));
@@ -47,7 +48,9 @@ async function boot() {
     accounts,
     invoke: async () => ({ status: 200, body: {} }),
     docker: stubDocker,
+    cancelQuery: () => {},
     toolsDir: root,
+    attachments: stubAttachments,
   }));
   await new Promise<void>((r) => { server = app.listen(0, () => { url = `http://localhost:${(server.address() as any).port}`; r(); }); });
 }
@@ -78,6 +81,72 @@ test("POST /api/query streams SSE progress then a result event", async () => {
   expect(body).toContain("note.md");
   expect(body).toContain("event: result");
   expect(body).toContain("ok: do X");
+});
+
+test("POST /api/query passes the attachment folder to runQuery when it is non-empty", async () => {
+  // Self-contained app: a runQuery that captures opts and an attachment store reporting one staged file.
+  const calls: any[] = [];
+  const root4 = mkdtempSync(join(tmpdir(), "geode-api-att-"));
+  const ws4 = createWorkspace(root4); await ws4.init();
+  const app4 = express(); app4.use(express.json());
+  const accounts4 = createAccountStore(join(root4, ".accounts"));
+  accounts4.createOwner({ email: "owner@test.dev", password: "owner-password-1" });
+  app4.use("/api", createApiRouter({
+    sessionKey: KEY, secure: false, workspace: ws4,
+    runQuery: async (instruction, _onProgress, opts) => { calls.push({ instruction, opts }); return { runId: "run-1", text: "ok", commit: null, filesTouched: [] }; },
+    runRemember: async () => ({ runId: "r", text: "", commit: null, filesTouched: [] }),
+    linkKey: KEY,
+    secrets: { list: async () => [], delete: async () => {}, set: async () => {} } as any,
+    artifacts: {} as any,
+    transcripts: createTranscriptStore(join(root4, ".transcripts")),
+    artifactsDir: root4, baseUrl: "http://h", accounts: accounts4, invoke: async () => ({ status: 200, body: {} }),
+    docker: stubDocker,
+    cancelQuery: () => {},
+    toolsDir: root4,
+    attachments: { dir: "/att", add: async () => [], list: async () => ["administratie/x.md"], clear: async () => {} },
+  }));
+  const srv4 = await new Promise<Server>((r) => { const s = app4.listen(0, () => r(s)); });
+  try {
+    const u4 = `http://localhost:${(srv4.address() as any).port}`;
+    const cookie = (await fetch(`${u4}/api/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "owner@test.dev", password: "owner-password-1" }) })).headers.get("set-cookie")!.split(";")[0];
+    await fetch(`${u4}/api/query`, { method: "POST", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ instruction: "process these" }) }).then((r) => r.text());
+    expect(calls[0].opts.attachmentDirs).toEqual(["/att"]);
+  } finally {
+    srv4.close(); rmSync(root4, { recursive: true, force: true });
+  }
+});
+
+test("POST /api/query passes recent history to runQuery so follow-ups have context", async () => {
+  // Self-contained app: needs a fake transcripts store with a prior turn and a runQuery that captures opts.
+  const calls: any[] = [];
+  const root5 = mkdtempSync(join(tmpdir(), "geode-api-history-"));
+  const ws5 = createWorkspace(root5); await ws5.init();
+  const app5 = express(); app5.use(express.json());
+  const accounts5 = createAccountStore(join(root5, ".accounts"));
+  accounts5.createOwner({ email: "owner@test.dev", password: "owner-password-1" });
+  app5.use("/api", createApiRouter({
+    sessionKey: KEY, secure: false, workspace: ws5,
+    runQuery: async (instruction, _onProgress, opts) => { calls.push({ instruction, opts }); return { runId: "run-2", text: "ok", commit: null, filesTouched: [] }; },
+    runRemember: async () => ({ runId: "r", text: "", commit: null, filesTouched: [] }),
+    linkKey: KEY,
+    secrets: { list: async () => [], delete: async () => {}, set: async () => {} } as any,
+    artifacts: {} as any,
+    transcripts: { list: async () => [{ runId: "r", ts: 0, instruction: "boek q1", events: [], result: { text: "done 3 rows" } }], append: async () => {}, clear: async () => {} },
+    artifactsDir: root5, baseUrl: "http://h", accounts: accounts5, invoke: async () => ({ status: 200, body: {} }),
+    docker: stubDocker,
+    cancelQuery: () => {},
+    toolsDir: root5,
+    attachments: stubAttachments,
+  }));
+  const srv5 = await new Promise<Server>((r) => { const s = app5.listen(0, () => r(s)); });
+  try {
+    const u5 = `http://localhost:${(srv5.address() as any).port}`;
+    const cookie = (await fetch(`${u5}/api/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "owner@test.dev", password: "owner-password-1" }) })).headers.get("set-cookie")!.split(";")[0];
+    await fetch(`${u5}/api/query`, { method: "POST", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ instruction: "go 1,3" }) }).then((r) => r.text());
+    expect(calls[0].opts.history).toContain("boek q1");
+  } finally {
+    srv5.close(); rmSync(root5, { recursive: true, force: true });
+  }
 });
 
 test("commit then discard operate on the working tree", async () => {
@@ -152,7 +221,9 @@ test("an errored query run is still recorded with error + a generated runId", as
     transcripts: createTranscriptStore(join(root2, ".transcripts")),
     artifactsDir: root2, baseUrl: "http://h", accounts: accounts2, invoke: async () => ({ status: 200, body: {} }),
     docker: stubDocker,
+    cancelQuery: () => {},
     toolsDir: root2,
+    attachments: stubAttachments,
   }));
   const srv2 = await new Promise<Server>((r) => { const s = app2.listen(0, () => r(s)); });
   try {
@@ -198,7 +269,9 @@ test("no-owner kernel: setup needs no cookie, then login switches to the account
     transcripts: createTranscriptStore(join(root3, ".transcripts")),
     artifactsDir: root3, baseUrl: "http://h", accounts: createAccountStore(join(root3, ".accounts")), invoke: async () => ({ status: 200, body: {} }),
     docker: stubDocker,
+    cancelQuery: () => {},
     toolsDir: root3,
+    attachments: stubAttachments,
   }));
   const srv3 = await new Promise<Server>((r) => { const s = app3.listen(0, () => r(s)); });
   try {
@@ -212,6 +285,16 @@ test("no-owner kernel: setup needs no cookie, then login switches to the account
   } finally {
     srv3.close(); rmSync(root3, { recursive: true, force: true });
   }
+});
+
+test("GET /api/gaps requires a session and returns backlog gap pages derived from the vault", async () => {
+  expect((await fetch(`${url}/api/gaps`)).status).toBe(401);
+  const cookie = await login();
+  writeFileSync(join(root, "backlog.md"), "---\ntype: gap\ntitle: Add CRM tool\nkind: tool\ndescription: need X\n---\n");
+  const res = await fetch(`${url}/api/gaps`, { headers: { cookie } });
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.gaps).toEqual([{ title: "Add CRM tool", kind: "tool", description: "need X", path: "backlog.md" }]);
 });
 
 test("login is rate-limited after repeated failures", async () => {

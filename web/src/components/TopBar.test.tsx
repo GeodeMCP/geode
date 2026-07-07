@@ -1,6 +1,16 @@
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import { afterEach, vi, it, expect } from "vitest";
 import { TopBar } from "./TopBar";
+
+// TopBar mounts NeedsAttention, which fetches its badge data on mount.
+vi.mock("../api", () => ({
+  api: {
+    status: vi.fn().mockResolvedValue({ modified: [], created: [] }),
+    tools: vi.fn().mockResolvedValue([]),
+    gaps: vi.fn().mockResolvedValue({ gaps: [] }),
+  },
+}));
+
 afterEach(cleanup);
 
 it("renders Connect as a top-right pill, not a left-nav tab", () => {

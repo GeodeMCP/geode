@@ -10,6 +10,8 @@ export interface ToolDoc { name: string; description: string; params: { name: st
 export interface ConnectInfo { mcpUrl: string; authToken: string; tools: ToolDoc[]; publicBaseUrl: string | null }
 /** Authentication state indicating whether the server needs setup or login, and whether the user is currently authenticated. */
 export interface AuthInfo { mode: "setup" | "login"; authed: boolean }
+/** A vault "gap" page (frontmatter `type: gap`) describing a planned but unbuilt capability. */
+export interface GapItem { title: string; kind?: string; description: string; path: string }
 /** A persisted agent run record including the instruction, SSE events, result, and optional error. */
 export interface TranscriptRecord {
   runId: string;
@@ -18,6 +20,7 @@ export interface TranscriptRecord {
   events: any[];
   result?: { text: string; metrics?: { durationMs: number; costUsd: number; tokens: number } };
   error?: string;
+  attachments?: string[];
 }
 
 /** Parse a buffer of SSE text into complete events + the unparsed remainder. */
@@ -66,11 +69,26 @@ export const api = {
   secrets: () => json<{ ref: string; requiredBy: string[] }[]>("/api/secrets"),
   secretLink: (ref: string) => json<{ url: string }>(`/api/secrets/${encodeURIComponent(ref)}/link`, { method: "POST" }),
   deleteSecret: (ref: string) => json<{ ok: true }>(`/api/secrets/${encodeURIComponent(ref)}`, { method: "DELETE" }),
+  gaps: () => json<{ gaps: GapItem[] }>("/api/gaps"),
   artifacts: () => json<{ path: string }[]>("/api/artifacts"),
   artifactDownload: (path: string) => `/api/artifacts/download?path=${encodeURIComponent(path)}`,
   artifactPublicLink: (path: string) => json<{ url: string }>("/api/artifacts/public-link", { method: "POST", body: JSON.stringify({ path }) }),
   writeFile: (path: string, content: string) => json<{ ok: true }>("/api/file", { method: "POST", body: JSON.stringify({ path, content }) }),
   deletePath: (path: string) => json<{ ok: true }>(`/api/file?path=${encodeURIComponent(path)}`, { method: "DELETE" }),
+  /** Upload staged attachments (files carry their folder-relative path as the filename); returns the uploadId to pass to /api/query. */
+  upload: async (items: { file: File; relPath: string }[]): Promise<{ added: string[] }> => {
+    const fd = new FormData();
+    for (const it of items) fd.append("files", it.file, it.relPath);
+    const res = await fetch("/api/uploads", { method: "POST", body: fd });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  },
+  /** Lists the files currently in the conversation's persistent attachment folder. */
+  attachments: () => json<{ files: string[] }>("/api/attachments"),
+  /** Empties the conversation's attachment folder. */
+  clearAttachments: () => json<{ ok: true }>("/api/attachments", { method: "DELETE" }),
+  /** Aborts the currently-running agent run (Stop / Esc). */
+  cancel: () => json<{ ok: true }>("/api/cancel", { method: "POST" }),
   /** Stream an agent run; calls onEvent for each SSE event until the stream closes. */
   async run(path: "/api/query" | "/api/remember", body: object, onEvent: (e: SseEvent) => void): Promise<void> {
     const res = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });

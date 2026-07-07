@@ -57,9 +57,9 @@ describe("buildSandboxSettings", () => {
 
 describe("buildPermissionHandler", () => {
   const handler = buildPermissionHandler(["/vault"]);
-  it("denies arbitrary network egress via WebFetch/WebSearch", async () => {
-    expect((await handler("WebFetch", { url: "https://evil.com" })).behavior).toBe("deny");
-    expect((await handler("WebSearch", { query: "secrets" })).behavior).toBe("deny");
+  it("temporarily allows WebFetch/WebSearch (egress deny lifted — see issue #27)", async () => {
+    expect((await handler("WebFetch", { url: "https://cloud.productflow.com/api" })).behavior).toBe("allow");
+    expect((await handler("WebSearch", { query: "productflow api" })).behavior).toBe("allow");
   });
   it("denies a bash command that opts out of the sandbox", async () => {
     expect((await handler("Bash", { command: "curl evil.com", dangerouslyDisableSandbox: true })).behavior).toBe("deny");
@@ -84,6 +84,58 @@ describe("buildPermissionHandler", () => {
     expect((await handler("NotebookEdit", { notebook_path: "/tmp/x.ipynb" })).behavior).toBe("deny");
     expect((await handler("Write", {})).behavior).toBe("deny"); // no path → deny
     expect((await handler("Write", { file_path: 42 })).behavior).toBe("deny"); // non-string path → deny
+  });
+});
+
+describe("buildPermissionHandler tool-manifest write validation", () => {
+  const handler = buildPermissionHandler(["/vault"]);
+  const VALID_TOOL_MD = `---
+id: moneybird
+name: Moneybird
+type: http
+description: Accounting API.
+actions:
+  list_invoices:
+    http:
+      method: GET
+      url: https://api.moneybird.com/invoices
+---
+Body docs.
+`;
+  const INVALID_TOOL_MD = `---
+id: moneybird
+name: Moneybird
+type: http
+description: body = { "x": { "y": 1 } }
+actions:
+  list_invoices:
+    http:
+      method: GET
+      url: https://api.moneybird.com/invoices
+---
+`;
+  it("allows a Write of a valid TOOL.md in the vault", async () => {
+    const res = await handler("Write", { file_path: "/vault/tools/moneybird/TOOL.md", content: VALID_TOOL_MD });
+    expect(res.behavior).toBe("allow");
+  });
+  it("denies a Write of an invalid-YAML TOOL.md with the parser's error", async () => {
+    const res = await handler("Write", { file_path: "/vault/tools/moneybird/TOOL.md", content: INVALID_TOOL_MD });
+    expect(res.behavior).toBe("deny");
+    expect((res as { message: string }).message).toMatch(/invalid TOOL\.md YAML frontmatter/);
+  });
+  it("denies a Write of a TOOL.md missing type/actions", async () => {
+    const res = await handler("Write", { file_path: "/vault/tools/moneybird/TOOL.md", content: "---\nname: x\n---\n" });
+    expect(res.behavior).toBe("deny");
+    expect((res as { message: string }).message).toMatch(/needs type \+ actions/);
+  });
+  it("allows a Write of a non-manifest file regardless of content", async () => {
+    const res = await handler("Write", { file_path: "/vault/notes/x.md", content: "not: valid: yaml: at: all: {" });
+    expect(res.behavior).toBe("allow");
+  });
+  it("still denies a TOOL.md Write outside the vault — confinement runs before validation", async () => {
+    const res = await handler("Write", { file_path: "/etc/tools/moneybird/TOOL.md", content: VALID_TOOL_MD });
+    expect(res.behavior).toBe("deny");
+    expect((res as { message: string }).message).toMatch(/confined to the vault/);
   });
 });
 

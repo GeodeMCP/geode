@@ -6,7 +6,7 @@ export type Step = { toolId: string; name: string; summary?: string; detail?: st
 export type Metrics = { durationMs: number; costUsd: number; tokens: number };
 /** A discriminated union of all timeline item variants rendered in the chat view. */
 export type Item =
-  | { kind: "user"; text: string; ts: number }
+  | { kind: "user"; text: string; ts: number; attachments?: string[] }
   | { kind: "thinking"; text: string; ts: number }
   | { kind: "activity"; steps: Step[]; ts: number }
   | { kind: "todos"; items: { content: string; status: string }[]; ts: number }
@@ -83,7 +83,7 @@ export function applyResult(items: Item[], data: any, ts: number): Item[] {
 export function buildFromHistory(records: TranscriptRecord[]): Item[] {
   let items: Item[] = [];
   for (const rec of records) {
-    items.push({ kind: "user", text: rec.instruction, ts: rec.ts });
+    items.push({ kind: "user", text: rec.instruction, ts: rec.ts, ...(rec.attachments?.length ? { attachments: rec.attachments } : {}) });
     for (const ev of rec.events) items = applyProgress(items, ev, rec.ts);
     if (rec.result) items = applyResult(items, rec.result, rec.ts);
     else if (rec.error) items.push({ kind: "error", text: rec.error, ts: rec.ts });

@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { query, type QueryDeps } from "../src/query.js";
@@ -120,6 +120,28 @@ test("engine receives systemPrompt that includes the resolved onboarding-skill p
   expect(seenPrompt).toContain("Your vault's conventions (overlay)"); // core ⊕ overlay ⊕ footer
 });
 
+test("a request with attachmentDirs (onboarding) defaults to librarian — no desk terseness", async () => {
+  let seenPrompt = "";
+  const engine = async function* (opts: any) {
+    seenPrompt = opts.systemPrompt;
+    yield { type: "result", text: "ok" };
+  };
+  const d = deps({ engine: engine as any });
+  await query(d, "onboard this", undefined, { commit: false, attachmentDirs: ["/tmp/staged/abc"] });
+  expect(seenPrompt).not.toContain("No section headers");
+});
+
+test("a plain request without attachments defaults to desk — terse fragment present", async () => {
+  let seenPrompt = "";
+  const engine = async function* (opts: any) {
+    seenPrompt = opts.systemPrompt;
+    yield { type: "result", text: "ok" };
+  };
+  const d = deps({ engine: engine as any });
+  await query(d, "hi");
+  expect(seenPrompt).toContain("No section headers");
+});
+
 test("engine receives sandbox settings built from the sandbox policy", async () => {
   let seen: any;
   const engine = async function* (opts: any) { seen = opts.sandbox; yield { type: "result", text: "ok" }; };
@@ -136,4 +158,86 @@ test("engine receives no sandbox when the policy is disabled (GEODE_SANDBOX_DISA
   const d = deps({ engine: engine as any, sandboxPolicy: resolveSandboxPolicy({ GEODE_SANDBOX_DISABLE: "1" }, "/vault") });
   await query(d, "hi");
   expect(seen).toBeUndefined();
+});
+
+test("attachment dirs are granted read access and surfaced to the agent", async () => {
+  let seen: any;
+  const engine = async function* (opts: any) { seen = opts; yield { type: "result", text: "ok" }; };
+  const d = deps({ engine: engine as any, sandboxPolicy: resolveSandboxPolicy({}, "/vault") } as any);
+  await query(d, "process these", undefined, { commit: false, attachmentDirs: ["/tmp/up/abc"] });
+  expect(seen.sandbox.filesystem.allowRead).toEqual(["/tmp/up/abc"]);
+  expect(seen.instruction).toContain("/tmp/up/abc");
+  expect(seen.instruction).toContain("process these");
+});
+
+const noSecrets = { get: async () => null };
+
+test("auto-commit mode with secrets rebuilds the graph after the query commits", async () => {
+  const root = mkdtempSync(join(tmpdir(), "geode-qg-"));
+  const ws = fakeWorkspace(); ws.root = root;
+  const d = deps({ workspace: ws as any, secrets: noSecrets });
+  await query(d, "do X");
+  expect(existsSync(join(root, ".geode/graph.json"))).toBe(true);
+  expect(ws.calls.some((c) => c.startsWith("commit:graph: rebuild "))).toBe(true);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("review mode never rebuilds the graph, even when secrets are present", async () => {
+  const root = mkdtempSync(join(tmpdir(), "geode-qg-"));
+  const ws = fakeWorkspace(); ws.root = root;
+  const d = deps({ workspace: ws as any, secrets: noSecrets });
+  await query(d, "do X", undefined, { commit: false });
+  expect(existsSync(join(root, ".geode/graph.json"))).toBe(false);
+  expect(ws.calls.some((c) => c.startsWith("commit:graph: rebuild "))).toBe(false);
+  rmSync(root, { recursive: true, force: true });
+});
+
+function capturingEngine() {
+  const seen: { instruction?: string } = {};
+  const gen = async function* (arg: any) { seen.instruction = arg.instruction; yield { type: "result", text: "done" } as EngineEvent; };
+  return Object.assign(gen, { seen });
+}
+
+function retrievalFixture(): string {
+  const root = mkdtempSync(join(tmpdir(), "geode-qr-"));
+  mkdirSync(join(root, "tools/moneybird"), { recursive: true });
+  writeFileSync(join(root, "tools/moneybird/TOOL.md"),
+    `---\nid: moneybird\nname: Moneybird\ntype: http\ndescription: MB\nconnections: [{ label: default }]\nactions: { list_mutations: { http: { method: GET, url: "https://x/m" } } }\n---\n`);
+  mkdirSync(join(root, "notes/administratie"), { recursive: true });
+  writeFileSync(join(root, "notes/administratie/sop-booking.md"),
+    `---\ntype: sop\ntitle: SOP boeken\ndescription: boek\ntags: [administratie]\n---\nGebruik [[moneybird]].\n`);
+  return root;
+}
+
+test("desk query prepends a scoped-retrieval note built from the compiled vault graph", async () => {
+  const root = retrievalFixture();
+  const ws = fakeWorkspace(); ws.root = root;
+  const engine = capturingEngine();
+  const d = deps({ workspace: ws as any, engine: engine as any });
+  await query(d, "how do I book in moneybird");
+  expect(engine.seen.instruction).toContain("tools/moneybird/TOOL.md");
+  expect(engine.seen.instruction).toContain("notes/administratie/sop-booking.md");
+  expect(engine.seen.instruction).toContain("how do I book in moneybird");
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("librarian role gets no retrieval note", async () => {
+  const root = retrievalFixture();
+  const ws = fakeWorkspace(); ws.root = root;
+  const engine = capturingEngine();
+  const d = deps({ workspace: ws as any, engine: engine as any });
+  await query(d, "how do I book in moneybird", undefined, { role: "librarian" });
+  expect(engine.seen.instruction).not.toContain("Relevant vault capabilities");
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("desk query with no matching nodes gets no retrieval note (empty match is best-effort no-op)", async () => {
+  const root = retrievalFixture();
+  const ws = fakeWorkspace(); ws.root = root;
+  const engine = capturingEngine();
+  const d = deps({ workspace: ws as any, engine: engine as any });
+  await query(d, "xyzzy nonsense zzz");
+  expect(engine.seen.instruction).not.toContain("Relevant vault capabilities");
+  expect(engine.seen.instruction).toContain("xyzzy nonsense zzz");
+  rmSync(root, { recursive: true, force: true });
 });

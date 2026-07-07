@@ -4,9 +4,14 @@ import type { Engine, ProgressEvent, Metrics } from "./engine.js";
 import type { EventLog } from "./eventLog.js";
 import type { RunManager } from "./runManager.js";
 import type { Workspace } from "./workspace.js";
+import type { SecretStore } from "./secrets.js";
 import { buildSkillsFooter } from "./skills.js";
 import { buildOverlay } from "./overlay.js";
 import { buildSandboxSettings, type SandboxPolicy } from "./agentSandbox.js";
+import { buildGraph, writeGraph } from "./graph.js";
+import { fragmentFor, type AgentRole } from "./constitution.js";
+import { loadGraph } from "./capabilitiesRender.js";
+import { selectSubgraph, renderScopedContext } from "./retrieval.js";
 
 /** Dependencies injected into a query call, including the workspace, engine, and supporting services. */
 export interface QueryDeps {
@@ -21,6 +26,9 @@ export interface QueryDeps {
   model?: string;
   artifactsDir?: string;
   baseUrl?: string;
+  // Optional so existing QueryDeps built without a secret store (e.g. tests) keep working; the
+  // post-commit graph rebuild only runs when this is present (see the auto-commit branch below).
+  secrets?: Pick<SecretStore, "get">;
 }
 
 /** Result returned by a completed query run, including the agent's text output and commit metadata. */
@@ -50,12 +58,17 @@ function listArtifacts(dir: string): string[] {
 
 const truncate = (s: string, n = 200): string => (s.length > n ? `${s.slice(0, n)}…` : s);
 
+/** Assembles the full system prompt for a run: shared core + role fragment + vault overlay + skills footer. */
+export function composeSystemPrompt(deps: Pick<QueryDeps, "systemPrompt" | "workspace">, role: AgentRole): string {
+  return deps.systemPrompt + fragmentFor(role) + buildOverlay(deps.workspace.root) + buildSkillsFooter(deps.workspace.root);
+}
+
 /** Runs an instruction through the engine inside a managed run, commits the result, and logs the outcome. */
 export async function query(
   deps: QueryDeps,
   instruction: string,
   onProgress?: (event: ProgressEvent) => void,
-  opts?: { commit?: boolean },
+  opts?: { commit?: boolean; attachmentDirs?: string[]; history?: string; role?: AgentRole },
 ): Promise<QueryResult> {
   return deps.runManager.run(async (abortController, runId) => {
     const review = opts?.commit === false;
@@ -71,13 +84,29 @@ export async function query(
     let finalText = "";
     let metrics: Metrics | undefined;
     try {
+      const attachmentNote = opts?.attachmentDirs?.length
+        ? `Attachments for this request are staged (read-only) at: ${opts.attachmentDirs.join(", ")}. Inspect them there; never assume other paths. For an onboarding request, follow your onboard-workspace skill: if you have NOT yet proposed a plan for this, inspect and PROPOSE a filing plan (what goes where, which tools/skills to author, which secrets they must set), then STOP and end your turn with a yes/no question — write nothing yet. But if you ALREADY proposed a plan (see the recent conversation) and the owner is now approving it (e.g. "go on", "ga door", "ja", "proceed"), EXECUTE it now: create and edit the vault files per your plan, keep index.md/log.md current, and report what you filed. If they only asked a question about the attachment, just answer it.\n\n`
+        : "";
+      const historyNote = opts?.history ? `${opts.history}\n\n` : "";
+      const role = opts?.role ?? (opts?.attachmentDirs?.length ? "librarian" : "desk");
+      let retrievalNote = "";
+      if (role === "desk") {
+        try {
+          const graph = await loadGraph(deps.workspace.root, deps.secrets ?? { get: async () => null });
+          const scoped = renderScopedContext(selectSubgraph(graph, instruction));
+          if (scoped) retrievalNote = `${scoped}\n\n`;
+        } catch {
+          /* retrieval is best-effort; never fail a query over it */
+        }
+      }
+      const engineInstruction = `${historyNote}${attachmentNote}${retrievalNote}${instruction}`;
       for await (const ev of deps.engine({
-        instruction,
+        instruction: engineInstruction,
         cwd: deps.workspace.root,
-        systemPrompt: deps.systemPrompt + buildOverlay(deps.workspace.root) + buildSkillsFooter(deps.workspace.root),
+        systemPrompt: composeSystemPrompt(deps, role),
         model: deps.model,
         abortController,
-        sandbox: buildSandboxSettings(deps.sandboxPolicy),
+        sandbox: buildSandboxSettings(deps.sandboxPolicy, opts?.attachmentDirs),
       })) {
         if (ev.type === "result") { finalText = ev.text; metrics = ev.metrics; }
         else onProgress?.(ev);
@@ -93,6 +122,18 @@ export async function query(
       // Persist the event-log entry itself: it is written after the agent commit, so it would
       // otherwise stay uncommitted and be wiped by the next run's clean/reset.
       await deps.workspace.commitAll(`query ${runId}: log`);
+      if (deps.secrets) {
+        // Best-effort: the query itself already committed successfully above, so a rebuild
+        // failure here (fs error, git race, etc.) must never surface as a query failure —
+        // it must not trip the outer catch and contradict the "ok" entry already logged.
+        try {
+          // Deterministic build: only produces a diff (and a commit) when vault content changed.
+          await writeGraph(deps.workspace.root, await buildGraph(deps.workspace.root, deps.secrets));
+          await deps.workspace.commitAll(`graph: rebuild ${runId}`);
+        } catch (e) {
+          console.error("graph rebuild failed (non-fatal):", e instanceof Error ? e.message : String(e));
+        }
+      }
       let artifacts: { path: string; url: string }[] | undefined;
       if (deps.artifactsDir && deps.baseUrl) {
         const base = deps.baseUrl;

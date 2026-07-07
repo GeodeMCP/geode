@@ -67,15 +67,15 @@ it("shows an install error in a contained error block", async () => {
   fireEvent.click(await screen.findByText("Install & trust"));
   fireEvent.click(screen.getByText("Confirm install"));
   expect(await screen.findByText(/docker build failed/)).toBeTruthy();
-  expect(container.querySelector(".tp-error")).toBeTruthy();
+  expect(container.querySelector(".tp-code.err")).toBeTruthy();
 });
 
 it("keeps the requested permissions legible in the confirm card", async () => {
   (api.tool as any).mockResolvedValue({ ...TOOL, permissions: { network: "any" } });
   const { container } = render(<ToolPanel id="cb" />);
   fireEvent.click(await screen.findByText("Install & trust"));
-  const card = screen.getByText("Permissions requested").closest(".card")!;
+  const card = screen.getByText("Permissions requested").closest(".tp-trust")!;
   expect(card.textContent).toContain("network");
   expect(card.textContent).toContain("any");
-  expect(container.querySelector(".card")).toBeTruthy();
+  expect(container.querySelector(".tp-trust")).toBeTruthy();
 });

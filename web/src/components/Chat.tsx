@@ -3,6 +3,7 @@ import { api, type SseEvent } from "../api";
 import { renderMarkdown } from "../markdown";
 import { ColHead } from "./ColHead";
 import { applyProgress, applyResult, buildFromHistory, type Item, type Metrics, type Step } from "../timeline";
+import { readDropped, pickedFromInput, type Picked } from "../dropFiles";
 
 const fmtTime = (ts: number) => {
   const d = new Date(ts), t = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -179,9 +180,27 @@ function resolveCommand(text: string): string | null {
   return null;
 }
 
+/** The chip-grouping key for a staged file: its top-level folder (suffixed "/"), or the file name for a loose file. */
+function topKey(relPath: string): string {
+  const slash = relPath.indexOf("/");
+  return slash >= 0 ? `${relPath.slice(0, slash)}/` : relPath;
+}
+
+/** Collapses staged files into display chips — one per top-level folder (with a file count), one per loose file. */
+function stagedChips(staged: Picked[]): { key: string; label: string }[] {
+  const counts = new Map<string, number>();
+  const order: string[] = [];
+  for (const p of staged) {
+    const key = topKey(p.relPath);
+    if (!counts.has(key)) { counts.set(key, 0); order.push(key); }
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return order.map((key) => key.endsWith("/") ? { key, label: `${key.slice(0, -1)} · ${counts.get(key) ?? 0} files` } : { key, label: key });
+}
+
 /** Renders the full chat column: message history, SSE-driven live updates, and the send input. */
 export function Chat({ onSend, running, dirty, onCommit, onDiscard, autoRun }: {
-  onSend: (instruction: string, onEvent: (e: SseEvent) => void) => Promise<void>;
+  onSend: (instruction: string, onEvent: (e: SseEvent) => void, attachments?: string[]) => Promise<void>;
   running: boolean; dirty: boolean; onCommit: () => void; onDiscard: () => void;
   autoRun?: { id: number; text: string } | null;
 }) {
@@ -191,17 +210,43 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard, autoRun }: {
   const endRef = useRef<HTMLDivElement>(null);
   useEffect(() => { endRef.current?.scrollIntoView({ block: "end" }); }, [msgs, running]);
 
+  const [staged, setStaged] = useState<Picked[]>([]);
+  const [dragOver, setDragOver] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const addFiles = (items: Picked[]) => { if (items.length) setStaged((s) => [...s, ...items]); };
+  const [folderFiles, setFolderFiles] = useState<string[]>([]);
+  const refreshFolder = () => { api.attachments().then((r) => setFolderFiles(r.files)).catch(() => {}); };
+  useEffect(() => { refreshFolder(); }, []);
+  const clearFolder = async () => { await api.clearAttachments().catch(() => {}); refreshFolder(); };
+  useEffect(() => {
+    if (!running) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") api.cancel().catch(() => {}); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [running]);
+
   const submit = async (forced?: string) => {
     const raw = (forced ?? text).trim();
     if (!raw || running) return; // dirty no longer blocks — review-mode runs accumulate onto the draft
     if (forced === undefined) setText("");
     const instruction = resolveCommand(raw) ?? raw; // slash commands expand; the bubble still shows the raw command
-    setMsgs((m) => [...m, { kind: "user", text: raw, ts: Date.now() }]);
+    const attachments = stagedChips(staged).map((c) => c.label);
+    setMsgs((m) => [...m, { kind: "user", text: raw, ts: Date.now(), ...(attachments.length ? { attachments } : {}) }]);
+    if (staged.length) {
+      try {
+        await api.upload(staged);
+        setStaged([]);
+      } catch (e) {
+        setMsgs((m) => [...m, { kind: "error", text: `Upload failed: ${e instanceof Error ? e.message : String(e)}`, ts: Date.now() }]);
+        return;
+      }
+    }
     await onSend(instruction, (e) => {
       if (e.event === "progress") setMsgs((m) => applyProgress(m, e.data, Date.now()));
       else if (e.event === "result") setMsgs((m) => applyResult(m, e.data, Date.now()));
       else if (e.event === "error") setMsgs((m) => [...m, { kind: "error", text: e.data.message, ts: Date.now() }]);
-    });
+    }, attachments.length ? attachments : undefined);
+    refreshFolder();
   };
   // Fire a programmatic run (e.g. the tree's /delete) once the chat is idle; runs during a
   // live run wait for it to finish. Last-wins if several are queued while a run is in flight.
@@ -212,7 +257,10 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard, autoRun }: {
 
   const lastIdx = msgs.length - 1;
   return (
-    <div className="col chat">
+    <div className={`col chat${dragOver ? " drop-active" : ""}`}
+      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => { e.preventDefault(); setDragOver(false); readDropped(e.dataTransfer).then(addFiles).catch(() => {}); }}>
       <ColHead title="Vault agent">
         {msgs.length > 0 && <button className="ghost sm" style={{ textTransform: "none", letterSpacing: 0 }} onClick={() => { api.clearHistory().catch(() => {}); setMsgs([]); }}>Clear</button>}
       </ColHead>
@@ -230,6 +278,12 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard, autoRun }: {
             case "user": return (
               <div key={i} className="msg-wrap me">
                 <div className="bubble me">{m.text}</div>
+                {m.attachments && m.attachments.length > 0 && (
+                  <div className="msg-atts">
+                    {m.attachments.slice(0, 5).map((a, j) => <span key={j} className="att-chip">{a}</span>)}
+                    {m.attachments.length > 5 && <span className="att-chip">+{m.attachments.length - 5} more</span>}
+                  </div>
+                )}
                 <span className="msg-time" title={fullTime(m.ts)}>{fmtTime(m.ts)}</span>
               </div>
             );
@@ -254,10 +308,35 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard, autoRun }: {
         {running && <div className="thinking"><span className="tdots"><i /><i /><i /></span></div>}
         <div ref={endRef} />
       </div>
+      {folderFiles.length > 0 && (
+        <div className="attach-folder">
+          <span>{folderFiles.length} attachment file{folderFiles.length > 1 ? "s" : ""} available to the agent</span>
+          <button className="ghost sm" onClick={clearFolder}>Clear</button>
+        </div>
+      )}
       <div className="ctrl">
-        <input className="input" value={text} disabled={running}
-          placeholder={running ? "Working…" : "Talk to your vault…"}
-          onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} />
+        {staged.length > 0 && (() => {
+          const chips = stagedChips(staged);
+          return (
+            <div className="staged">
+              {chips.slice(0, 5).map((c) => (
+                <span key={c.key} className="chip">{c.label}
+                  <button onClick={() => setStaged((s) => s.filter((p) => topKey(p.relPath) !== c.key))}>×</button></span>
+              ))}
+              {chips.length > 5 && <span className="chip more">+{chips.length - 5} more</span>}
+            </div>
+          );
+        })()}
+        <div className="ctrl-row">
+          <input ref={fileRef} type="file" multiple hidden onChange={(e) => { addFiles(pickedFromInput(e.target.files)); e.target.value = ""; }} />
+          <button className="attach" title="Attach files (zip a folder to add one)" aria-label="Attach files" disabled={running} onClick={() => fileRef.current?.click()}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
+          </button>
+          <input className="input" value={text} disabled={running}
+            placeholder={running ? "Working…" : "Talk to your vault…"}
+            onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} />
+          {running && <button className="btn sm" title="Stop (Esc)" onClick={() => api.cancel().catch(() => {})}>Stop</button>}
+        </div>
       </div>
     </div>
   );
