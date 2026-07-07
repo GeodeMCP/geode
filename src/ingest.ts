@@ -1,5 +1,6 @@
 import { query, type QueryDeps, type QueryResult } from "./query.js";
 import type { ProgressEvent } from "./engine.js";
+import type { AgentRole } from "./constitution.js";
 
 /** Arguments accepted by the remember function for ingesting content into the vault. */
 export interface RememberArgs {
@@ -25,10 +26,10 @@ export async function remember(
   deps: QueryDeps,
   args: RememberArgs,
   onProgress?: (event: ProgressEvent) => void,
-  opts?: { commit?: boolean },
+  opts?: { commit?: boolean; attachmentDirs?: string[]; history?: string; role?: AgentRole },
 ): Promise<QueryResult> {
   if (!args.content || !args.content.trim()) {
     throw new Error("remember: content is required and cannot be empty");
   }
-  return query(deps, buildIngestInstruction(args.content, args.source, args.title), onProgress, opts);
+  return query(deps, buildIngestInstruction(args.content, args.source, args.title), onProgress, { ...opts, role: "librarian" });
 }
