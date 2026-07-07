@@ -229,6 +229,12 @@ the plan is still correct (`list_products`, `per_page:5`, `page:1`, `default`). 
 lever is the graph index** (scoped retrieval), which is a separate build. So the split delivers the
 *cleanliness* win now; the *speed* win lands when `query` reads the compiled subgraph.
 
+**Delivered — the graph is consumed + linked (2026-07-07):**
+- `list_capabilities` renders the compiled graph as domain-grouped, XML-fenced structured markdown (`renderCapabilities` + `loadGraph`), replacing the flat-prose scan. Verified live over MCP.
+- The **librarian links at write time**: its prompt fragment now tells it to link a concept's dependencies — tools it operates, notes it builds on, gaps that block it — with resolvable relative links. This is the "librarian enriches linking over time" half of option A.
+- **`uses` is direction-agnostic.** "SOP uses tool" means the same whichever file holds the link, so the compiler canonicalizes any `tool↔sop` link to a `sop→tool` `uses` edge. The librarian's natural instinct — a "Used by" section on the `TOOL.md` — therefore still yields correct `uses`/`used-by` semantics; graph correctness never depends on which side the librarian edited. Proven end-to-end: a `remember` about the booking SOP → the librarian added the link → the graph gained `uses` → `list_capabilities` renders `uses:`/`used-by:`.
+- Still ahead: `query` scoped-subgraph retrieval (the latency lever), generated `index.md`, migrating the dashboard's `deriveCapabilities` consumers.
+
 ## Guardrails preserved
 
 - Iron rule: the vault plans, the caller executes. `query` never executes; `invoke` does.
