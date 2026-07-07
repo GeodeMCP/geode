@@ -10,6 +10,8 @@ import { buildOverlay } from "./overlay.js";
 import { buildSandboxSettings, type SandboxPolicy } from "./agentSandbox.js";
 import { buildGraph, writeGraph } from "./graph.js";
 import { fragmentFor, type AgentRole } from "./constitution.js";
+import { loadGraph } from "./capabilitiesRender.js";
+import { selectSubgraph, renderScopedContext } from "./retrieval.js";
 
 /** Dependencies injected into a query call, including the workspace, engine, and supporting services. */
 export interface QueryDeps {
@@ -86,11 +88,22 @@ export async function query(
         ? `Attachments for this request are staged (read-only) at: ${opts.attachmentDirs.join(", ")}. Inspect them there; never assume other paths. For an onboarding request, follow your onboard-workspace skill: if you have NOT yet proposed a plan for this, inspect and PROPOSE a filing plan (what goes where, which tools/skills to author, which secrets they must set), then STOP and end your turn with a yes/no question — write nothing yet. But if you ALREADY proposed a plan (see the recent conversation) and the owner is now approving it (e.g. "go on", "ga door", "ja", "proceed"), EXECUTE it now: create and edit the vault files per your plan, keep index.md/log.md current, and report what you filed. If they only asked a question about the attachment, just answer it.\n\n`
         : "";
       const historyNote = opts?.history ? `${opts.history}\n\n` : "";
-      const engineInstruction = `${historyNote}${attachmentNote}${instruction}`;
+      const role = opts?.role ?? (opts?.attachmentDirs?.length ? "librarian" : "desk");
+      let retrievalNote = "";
+      if (role === "desk") {
+        try {
+          const graph = await loadGraph(deps.workspace.root, deps.secrets ?? { get: async () => null });
+          const scoped = renderScopedContext(selectSubgraph(graph, instruction));
+          if (scoped) retrievalNote = `${scoped}\n\n`;
+        } catch {
+          /* retrieval is best-effort; never fail a query over it */
+        }
+      }
+      const engineInstruction = `${historyNote}${attachmentNote}${retrievalNote}${instruction}`;
       for await (const ev of deps.engine({
         instruction: engineInstruction,
         cwd: deps.workspace.root,
-        systemPrompt: composeSystemPrompt(deps, opts?.role ?? (opts?.attachmentDirs?.length ? "librarian" : "desk")),
+        systemPrompt: composeSystemPrompt(deps, role),
         model: deps.model,
         abortController,
         sandbox: buildSandboxSettings(deps.sandboxPolicy, opts?.attachmentDirs),

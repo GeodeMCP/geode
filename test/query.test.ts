@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { query, type QueryDeps } from "../src/query.js";
@@ -189,5 +189,55 @@ test("review mode never rebuilds the graph, even when secrets are present", asyn
   await query(d, "do X", undefined, { commit: false });
   expect(existsSync(join(root, ".geode/graph.json"))).toBe(false);
   expect(ws.calls.some((c) => c.startsWith("commit:graph: rebuild "))).toBe(false);
+  rmSync(root, { recursive: true, force: true });
+});
+
+function capturingEngine() {
+  const seen: { instruction?: string } = {};
+  const gen = async function* (arg: any) { seen.instruction = arg.instruction; yield { type: "result", text: "done" } as EngineEvent; };
+  return Object.assign(gen, { seen });
+}
+
+function retrievalFixture(): string {
+  const root = mkdtempSync(join(tmpdir(), "geode-qr-"));
+  mkdirSync(join(root, "tools/moneybird"), { recursive: true });
+  writeFileSync(join(root, "tools/moneybird/TOOL.md"),
+    `---\nid: moneybird\nname: Moneybird\ntype: http\ndescription: MB\nconnections: [{ label: default }]\nactions: { list_mutations: { http: { method: GET, url: "https://x/m" } } }\n---\n`);
+  mkdirSync(join(root, "notes/administratie"), { recursive: true });
+  writeFileSync(join(root, "notes/administratie/sop-booking.md"),
+    `---\ntype: sop\ntitle: SOP boeken\ndescription: boek\ntags: [administratie]\n---\nGebruik [[moneybird]].\n`);
+  return root;
+}
+
+test("desk query prepends a scoped-retrieval note built from the compiled vault graph", async () => {
+  const root = retrievalFixture();
+  const ws = fakeWorkspace(); ws.root = root;
+  const engine = capturingEngine();
+  const d = deps({ workspace: ws as any, engine: engine as any });
+  await query(d, "how do I book in moneybird");
+  expect(engine.seen.instruction).toContain("tools/moneybird/TOOL.md");
+  expect(engine.seen.instruction).toContain("notes/administratie/sop-booking.md");
+  expect(engine.seen.instruction).toContain("how do I book in moneybird");
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("librarian role gets no retrieval note", async () => {
+  const root = retrievalFixture();
+  const ws = fakeWorkspace(); ws.root = root;
+  const engine = capturingEngine();
+  const d = deps({ workspace: ws as any, engine: engine as any });
+  await query(d, "how do I book in moneybird", undefined, { role: "librarian" });
+  expect(engine.seen.instruction).not.toContain("Relevant vault capabilities");
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("desk query with no matching nodes gets no retrieval note (empty match is best-effort no-op)", async () => {
+  const root = retrievalFixture();
+  const ws = fakeWorkspace(); ws.root = root;
+  const engine = capturingEngine();
+  const d = deps({ workspace: ws as any, engine: engine as any });
+  await query(d, "xyzzy nonsense zzz");
+  expect(engine.seen.instruction).not.toContain("Relevant vault capabilities");
+  expect(engine.seen.instruction).toContain("xyzzy nonsense zzz");
   rmSync(root, { recursive: true, force: true });
 });
