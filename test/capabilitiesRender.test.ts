@@ -76,6 +76,63 @@ test("renderCapabilities is deterministic", () => {
   expect(renderCapabilities(graph)).toEqual(renderCapabilities(graph));
 });
 
+test("renderCapabilities is deterministic across shuffled node order within same domain", () => {
+  const graph1 = fixture();
+  // Create graph2 with the same nodes but reordered within the same domain
+  const graph2: VaultGraph = {
+    nodes: [
+      graph1.nodes[2], // tools/moneybird
+      graph1.nodes[0], // backlog/mb-attach
+      graph1.nodes[1], // notes/administratie/sop-booking
+    ],
+    edges: graph1.edges,
+  };
+  expect(renderCapabilities(graph1)).toEqual(renderCapabilities(graph2));
+});
+
+test("renderCapabilities guards undefined gap kind/count attributes", () => {
+  const graph: VaultGraph = {
+    nodes: [
+      {
+        id: "backlog/no-attrs",
+        type: "gap",
+        title: "Gap with no attrs",
+        description: "no kind or count",
+        domain: "test",
+        path: "backlog/no-attrs.md",
+        // kind and count intentionally omitted
+      },
+    ],
+    edges: [],
+  };
+  const out = renderCapabilities(graph);
+  // Should not contain "kind=" or "count=" or "undefined"
+  expect(out).toContain('<gap id="backlog/no-attrs">');
+  expect(out).not.toContain("kind=");
+  expect(out).not.toContain("count=");
+  expect(out).not.toContain("undefined");
+});
+
+test("renderCapabilities renders gap with kind and count when present", () => {
+  const graph: VaultGraph = {
+    nodes: [
+      {
+        id: "backlog/with-attrs",
+        type: "gap",
+        title: "Gap with attrs",
+        description: "has kind and count",
+        domain: "test",
+        path: "backlog/with-attrs.md",
+        kind: "tool",
+        count: 2,
+      },
+    ],
+    edges: [],
+  };
+  const out = renderCapabilities(graph);
+  expect(out).toContain('<gap id="backlog/with-attrs" kind="tool" count="2">');
+});
+
 const noSecrets = { get: async () => null };
 
 test("loadGraph reads and returns a parsed .geode/graph.json when it exists", async () => {

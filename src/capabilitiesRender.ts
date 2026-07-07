@@ -14,7 +14,8 @@ function renderOpenTag(node: GraphNode): string {
     attrs.push(`state="${ok ? "ok" : "needs-setup"}"`);
   }
   if (node.type === "gap") {
-    attrs.push(`kind="${node.kind}"`, `count="${node.count}"`);
+    if (node.kind !== undefined) attrs.push(`kind="${node.kind}"`);
+    if (node.count !== undefined) attrs.push(`count="${node.count}"`);
   }
   return `<${node.type} ${attrs.join(" ")}>`;
 }
@@ -46,8 +47,8 @@ function renderNode(node: GraphNode, edges: GraphEdge[]): string[] {
 /**
  * Renders a capability graph as domain-grouped, XML-fenced structured markdown: a `# Capabilities`
  * heading, then one `## <domain>` section per domain (sorted ascending, with nodes lacking a
- * domain grouped last under `## (ungrouped)`), each containing its nodes as XML blocks in the
- * graph's existing (id-sorted) order. Output is deterministic for a given graph.
+ * domain grouped last under `## (ungrouped)`), each containing its nodes as XML blocks sorted by
+ * `id` ascending. Output is deterministic for a given graph.
  */
 export function renderCapabilities(graph: VaultGraph): string {
   const byDomain = new Map<string, GraphNode[]>();
@@ -61,7 +62,8 @@ export function renderCapabilities(graph: VaultGraph): string {
   const lines: string[] = ["# Capabilities", ""];
   for (const domain of domains) {
     lines.push(`## ${domain === "" ? "(ungrouped)" : domain}`, "");
-    for (const node of byDomain.get(domain)!) lines.push(...renderNode(node, graph.edges));
+    const nodes = byDomain.get(domain)!.sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+    for (const node of nodes) lines.push(...renderNode(node, graph.edges));
   }
   return lines.join("\n");
 }
