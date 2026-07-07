@@ -8,6 +8,9 @@ test("constitution adopts OKF + the locked role", () => {
   expect(CONSTITUTION.toLowerCase()).toContain("canonical");
   expect(CONSTITUTION.toLowerCase()).toContain("never");            // never execute / never call integrations
   expect(CONSTITUTION).toContain("invoke");                          // returns invoke-plans
+  expect(CONSTITUTION).toContain("log.md");
+  expect(CONSTITUTION.toLowerCase()).toContain("generated");        // index.md is described as generated
+  expect(CONSTITUTION).not.toContain("keep index.md current");      // old hand-maintenance instruction is gone
 });
 
 test("the constitution tells the agent to log missing capabilities as gaps", () => {

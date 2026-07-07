@@ -7,7 +7,7 @@ export const SCAFFOLD: Record<string, string> = {
   "index.md": `---
 type: index
 title: Index
-description: Catalog of concepts, kept current by the agent
+description: Generated catalog of the vault — do not edit by hand.
 ---
 
 # Index

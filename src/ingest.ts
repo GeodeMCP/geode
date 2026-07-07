@@ -12,7 +12,7 @@ export interface RememberArgs {
 /** Builds the natural-language instruction string that tells the engine how to integrate content into the vault. */
 export function buildIngestInstruction(content: string, source?: string, title?: string): string {
   const lines = [
-    "Integrate the following into the vault: find or create the right page for it, dedup against existing content, add cross-references, update index.md and capabilities.md if relevant, and keep it tidy. Then summarize what you filed and where.",
+    "Integrate the following into the vault: find or create the right page for it, dedup against existing content, add cross-references, and keep it tidy. Then summarize what you filed and where.",
   ];
   if (title) lines.push(`Title hint: ${title}`);
   if (source) lines.push(`Source: ${source}`);
