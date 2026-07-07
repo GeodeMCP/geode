@@ -85,7 +85,7 @@ export async function query(
       for await (const ev of deps.engine({
         instruction: engineInstruction,
         cwd: deps.workspace.root,
-        systemPrompt: composeSystemPrompt(deps, opts?.role ?? "desk"),
+        systemPrompt: composeSystemPrompt(deps, opts?.role ?? (opts?.attachmentDirs?.length ? "librarian" : "desk")),
         model: deps.model,
         abortController,
         sandbox: buildSandboxSettings(deps.sandboxPolicy, opts?.attachmentDirs),
