@@ -221,6 +221,14 @@ compress (jump to the relevant subgraph instead of reading everything).
 the same set against a **seeded synthetic vault (e.g. 100+ capabilities)** to show the divergence,
 and use **multi-run medians** (LLM latency varies; the baseline above is single-run).
 
+**After — desk/librarian split (2026-07-06, single run):** the same "known plan" query now returns
+**714 chars with 0 markdown headers** (vs the baseline's 799 chars with `##` headers + a multi-section
+strategy essay) — a clean minimal plan (the `invoke` line + params + connection + one caveat), and
+the plan is still correct (`list_products`, `per_page:5`, `page:1`, `default`). Wall-clock is
+~unchanged (~10.8 s) — terseness trims output tokens, not the desk's vault-reading; **the latency
+lever is the graph index** (scoped retrieval), which is a separate build. So the split delivers the
+*cleanliness* win now; the *speed* win lands when `query` reads the compiled subgraph.
+
 ## Guardrails preserved
 
 - Iron rule: the vault plans, the caller executes. `query` never executes; `invoke` does.

@@ -13,3 +13,21 @@ Discipline (always):
 - You run non-interactively — you cannot ask the user a question mid-run. When a request is ambiguous, proceed with the most reasonable assumption and state it explicitly in your answer.
 
 You have read/write/bash access within the vault. Every run is committed to git, so changes are recoverable; work decisively but tidily.`;
+
+/** Which agent a run is: the desk answers/plans; the librarian files/maintains. */
+export type AgentRole = "desk" | "librarian";
+
+/** Desk-only prompt fragment: terse answers/plans. Never loaded for the librarian. */
+export const DESK_FRAGMENT = `
+
+Desk output — keep it minimal:
+- Return the exact invoke(tool, action, params, connection) calls (or a direct answer), plus at most one short caveat line when an assumption actually matters.
+- No section headers, no strategy write-ups, no restating the request.`;
+
+/** Librarian-only prompt fragment. Empty for now — later phases move filing/onboarding behaviour here. */
+export const LIBRARIAN_FRAGMENT = "";
+
+/** Returns the role-specific prompt fragment appended to the shared core. */
+export function fragmentFor(role: AgentRole): string {
+  return role === "desk" ? DESK_FRAGMENT : LIBRARIAN_FRAGMENT;
+}

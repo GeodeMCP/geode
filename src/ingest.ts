@@ -30,5 +30,5 @@ export async function remember(
   if (!args.content || !args.content.trim()) {
     throw new Error("remember: content is required and cannot be empty");
   }
-  return query(deps, buildIngestInstruction(args.content, args.source, args.title), onProgress, opts);
+  return query(deps, buildIngestInstruction(args.content, args.source, args.title), onProgress, { ...opts, role: "librarian" });
 }

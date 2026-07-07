@@ -9,6 +9,7 @@ import { buildSkillsFooter } from "./skills.js";
 import { buildOverlay } from "./overlay.js";
 import { buildSandboxSettings, type SandboxPolicy } from "./agentSandbox.js";
 import { buildGraph, writeGraph } from "./graph.js";
+import { fragmentFor, type AgentRole } from "./constitution.js";
 
 /** Dependencies injected into a query call, including the workspace, engine, and supporting services. */
 export interface QueryDeps {
@@ -55,12 +56,17 @@ function listArtifacts(dir: string): string[] {
 
 const truncate = (s: string, n = 200): string => (s.length > n ? `${s.slice(0, n)}…` : s);
 
+/** Assembles the full system prompt for a run: shared core + role fragment + vault overlay + skills footer. */
+export function composeSystemPrompt(deps: Pick<QueryDeps, "systemPrompt" | "workspace">, role: AgentRole): string {
+  return deps.systemPrompt + fragmentFor(role) + buildOverlay(deps.workspace.root) + buildSkillsFooter(deps.workspace.root);
+}
+
 /** Runs an instruction through the engine inside a managed run, commits the result, and logs the outcome. */
 export async function query(
   deps: QueryDeps,
   instruction: string,
   onProgress?: (event: ProgressEvent) => void,
-  opts?: { commit?: boolean; attachmentDirs?: string[]; history?: string },
+  opts?: { commit?: boolean; attachmentDirs?: string[]; history?: string; role?: AgentRole },
 ): Promise<QueryResult> {
   return deps.runManager.run(async (abortController, runId) => {
     const review = opts?.commit === false;
@@ -84,7 +90,7 @@ export async function query(
       for await (const ev of deps.engine({
         instruction: engineInstruction,
         cwd: deps.workspace.root,
-        systemPrompt: deps.systemPrompt + buildOverlay(deps.workspace.root) + buildSkillsFooter(deps.workspace.root),
+        systemPrompt: composeSystemPrompt(deps, opts?.role ?? (opts?.attachmentDirs?.length ? "librarian" : "desk")),
         model: deps.model,
         abortController,
         sandbox: buildSandboxSettings(deps.sandboxPolicy, opts?.attachmentDirs),

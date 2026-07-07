@@ -120,6 +120,28 @@ test("engine receives systemPrompt that includes the resolved onboarding-skill p
   expect(seenPrompt).toContain("Your vault's conventions (overlay)"); // core ⊕ overlay ⊕ footer
 });
 
+test("a request with attachmentDirs (onboarding) defaults to librarian — no desk terseness", async () => {
+  let seenPrompt = "";
+  const engine = async function* (opts: any) {
+    seenPrompt = opts.systemPrompt;
+    yield { type: "result", text: "ok" };
+  };
+  const d = deps({ engine: engine as any });
+  await query(d, "onboard this", undefined, { commit: false, attachmentDirs: ["/tmp/staged/abc"] });
+  expect(seenPrompt).not.toContain("No section headers");
+});
+
+test("a plain request without attachments defaults to desk — terse fragment present", async () => {
+  let seenPrompt = "";
+  const engine = async function* (opts: any) {
+    seenPrompt = opts.systemPrompt;
+    yield { type: "result", text: "ok" };
+  };
+  const d = deps({ engine: engine as any });
+  await query(d, "hi");
+  expect(seenPrompt).toContain("No section headers");
+});
+
 test("engine receives sandbox settings built from the sandbox policy", async () => {
   let seen: any;
   const engine = async function* (opts: any) { seen = opts.sandbox; yield { type: "result", text: "ok" }; };
