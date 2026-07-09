@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { TreeNode } from "../api";
-import { isToolPath } from "../fileType";
+import { isToolPath, isSpecialFolder } from "../fileType";
 import { isArtifactPath } from "../artifacts";
 import { ColHead } from "./ColHead";
 
@@ -25,6 +25,20 @@ const FileIcon = () => (
 const ToolIcon = () => (
   <svg className="ic tool" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
     <path d="M9.3 1.7 3.6 9h3.7l-.7 5.3L12.4 7H8.7z" />
+  </svg>
+);
+// backlog = queue of capability gaps → an inbox tray.
+const BacklogIcon = () => (
+  <svg className="ic backlog" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2.5 9.5 4 4.3c.1-.5.5-.8 1-.8h6c.5 0 .9.3 1 .8l1.5 5.2V12c0 .6-.4 1-1 1H3.5c-.6 0-1-.4-1-1V9.5Z" />
+    <path d="M2.5 9.5h3l.8 1.5h3.4l.8-1.5h3" />
+  </svg>
+);
+// notes = context documents → a lined page.
+const NotesIcon = () => (
+  <svg className="ic notes" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 2.5h8c.3 0 .5.2.5.5v10c0 .3-.2.5-.5.5H4c-.3 0-.5-.2-.5-.5V3c0-.3.2-.5.5-.5Z" />
+    <path d="M6 6h4M6 8.5h4M6 11h2.5" />
   </svg>
 );
 const Chevron = () => (
@@ -73,7 +87,10 @@ export function FileTree({ tree, status, selected, onSelect, onCreate, onDelete,
           aria-label={n.name}>
           <span className="lead" style={{ flex: 1 }}>
             {isDir ? <Chevron /> : <span style={{ width: 14, flex: "none" }} />}
-            {isToolPath(n.path) ? <ToolIcon /> : isDir ? <FolderIcon /> : <FileIcon />}
+            {isToolPath(n.path) ? <ToolIcon />
+              : isDir && n.path === "backlog" ? <BacklogIcon />
+              : isDir && n.path === "notes" ? <NotesIcon />
+              : isDir ? <FolderIcon /> : <FileIcon />}
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.name}</span>
           </span>
           {confirming === n.path ? (
@@ -87,7 +104,7 @@ export function FileTree({ tree, status, selected, onSelect, onCreate, onDelete,
               {status.created.includes(n.path) && <span className="badge new">new</span>}
               {toolNeedsInstall && <span className="badge install" title="This tool must be installed before it can run">install</span>}
               {isDir && (dirDirty(n.path) || (n.path === "tools" && hasInstallPending)) && <span className="dot-mod" title="Needs attention inside" />}
-              {!gen && <button className="del-btn" title={`Delete ${n.name}`} onClick={(e) => { stop(e); setConfirming(n.path); }}><TrashIcon /></button>}
+              {!gen && !isSpecialFolder(n.path) && <button className="del-btn" title={`Delete ${n.name}`} onClick={(e) => { stop(e); setConfirming(n.path); }}><TrashIcon /></button>}
             </>
           )}
         </div>

@@ -128,6 +128,41 @@ it("dims artifact rows and suppresses their trash button", () => {
   expect(noteRow.querySelector(".del-btn")).toBeTruthy();
 });
 
+it("suppresses the trash button on the structural folders (tools/backlog/notes) but not their contents", () => {
+  const t: TreeNode[] = [
+    { name: "tools", path: "tools", type: "dir", children: [
+      { name: "cb", path: "tools/cb", type: "dir", children: [] },
+    ] },
+    { name: "backlog", path: "backlog", type: "dir", children: [
+      { name: "gap.md", path: "backlog/gap.md", type: "file" },
+    ] },
+    { name: "notes", path: "notes", type: "dir", children: [] },
+  ];
+  render(<FileTree tree={t} status={{ modified: [], created: [] }} selected={null}
+    onSelect={noop} onCreate={noop} onDelete={noop} />);
+  for (const f of ["tools", "backlog", "notes"]) {
+    expect(screen.getByLabelText(f).querySelector(".del-btn")).toBeFalsy();
+  }
+  // their contents stay deletable
+  fireEvent.click(screen.getByText("backlog"));
+  expect(screen.getByLabelText("gap.md").querySelector(".del-btn")).toBeTruthy();
+  fireEvent.click(screen.getByText("tools"));
+  expect(screen.getByLabelText("cb").querySelector(".del-btn")).toBeTruthy();
+});
+
+it("gives backlog and notes their own icons; tools keeps the tool icon", () => {
+  const t: TreeNode[] = [
+    { name: "backlog", path: "backlog", type: "dir", children: [] },
+    { name: "notes", path: "notes", type: "dir", children: [] },
+    { name: "tools", path: "tools", type: "dir", children: [] },
+  ];
+  render(<FileTree tree={t} status={{ modified: [], created: [] }} selected={null}
+    onSelect={noop} onCreate={noop} onDelete={noop} />);
+  expect(screen.getByLabelText("backlog").querySelector(".ic.backlog")).toBeTruthy();
+  expect(screen.getByLabelText("notes").querySelector(".ic.notes")).toBeTruthy();
+  expect(screen.getByLabelText("tools").querySelector(".ic.tool")).toBeTruthy();
+});
+
 it("keeps the new-file row open when blurred with text", () => {
   const { getByText, getByPlaceholderText, queryByPlaceholderText } = render(
     <FileTree tree={[]} status={{ modified: [], created: [] }} selected={null}

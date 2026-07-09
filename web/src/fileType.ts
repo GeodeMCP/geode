@@ -39,3 +39,11 @@ export function toolManifestId(path: string): string | null {
 export function isToolPath(path: string): boolean {
   return path === "tools" || path.startsWith("tools/");
 }
+
+/** Structural top-level folders the vault convention defines — given their own icons and protected from deletion (their contents stay editable/deletable). */
+export const SPECIAL_FOLDERS: ReadonlySet<string> = new Set(["tools", "backlog", "notes"]);
+
+/** True when a path is one of the protected structural top-level folders (not deletable). */
+export function isSpecialFolder(path: string): boolean {
+  return SPECIAL_FOLDERS.has(path);
+}

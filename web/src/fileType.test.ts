@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { fileType, prettyJson, newFileDraft, toolManifestId, isToolPath } from "./fileType";
+import { fileType, prettyJson, newFileDraft, toolManifestId, isToolPath, isSpecialFolder } from "./fileType";
 
 describe("fileType", () => {
   it("classifies by extension", () => {
@@ -49,4 +49,16 @@ describe("toolManifestId", () => {
 describe("isToolPath", () => {
   it("is true under tools/", () => { expect(isToolPath("tools")).toBe(true); expect(isToolPath("tools/x/TOOL.md")).toBe(true); });
   it("is false elsewhere", () => { expect(isToolPath("notes/a.md")).toBe(false); expect(isToolPath("toolsmith/a")).toBe(false); });
+});
+describe("isSpecialFolder", () => {
+  it("is true for the structural top-level folders", () => {
+    expect(isSpecialFolder("tools")).toBe(true);
+    expect(isSpecialFolder("backlog")).toBe(true);
+    expect(isSpecialFolder("notes")).toBe(true);
+  });
+  it("is false for other folders and for special-folder contents (contents stay deletable)", () => {
+    expect(isSpecialFolder("clients")).toBe(false);
+    expect(isSpecialFolder("tools/cloakbrowser")).toBe(false);
+    expect(isSpecialFolder("backlog/gap.md")).toBe(false);
+  });
 });
