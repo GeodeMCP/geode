@@ -9,6 +9,7 @@ import { buildSkillsFooter } from "./skills.js";
 import { buildOverlay } from "./overlay.js";
 import { buildSandboxSettings, type SandboxPolicy } from "./agentSandbox.js";
 import { buildGraph, writeGraph } from "./graph.js";
+import { writeIndex } from "./indexRender.js";
 import { fragmentFor, type AgentRole } from "./constitution.js";
 import { loadGraph } from "./capabilitiesRender.js";
 import { selectSubgraph, renderScopedContext } from "./retrieval.js";
@@ -85,7 +86,7 @@ export async function query(
     let metrics: Metrics | undefined;
     try {
       const attachmentNote = opts?.attachmentDirs?.length
-        ? `Attachments for this request are staged (read-only) at: ${opts.attachmentDirs.join(", ")}. Inspect them there; never assume other paths. For an onboarding request, follow your onboard-workspace skill: if you have NOT yet proposed a plan for this, inspect and PROPOSE a filing plan (what goes where, which tools/skills to author, which secrets they must set), then STOP and end your turn with a yes/no question — write nothing yet. But if you ALREADY proposed a plan (see the recent conversation) and the owner is now approving it (e.g. "go on", "ga door", "ja", "proceed"), EXECUTE it now: create and edit the vault files per your plan, keep index.md/log.md current, and report what you filed. If they only asked a question about the attachment, just answer it.\n\n`
+        ? `Attachments for this request are staged (read-only) at: ${opts.attachmentDirs.join(", ")}. Inspect them there; never assume other paths. For an onboarding request, follow your onboard-workspace skill: if you have NOT yet proposed a plan for this, inspect and PROPOSE a filing plan (what goes where, which tools/skills to author, which secrets they must set), then STOP and end your turn with a yes/no question — write nothing yet. But if you ALREADY proposed a plan (see the recent conversation) and the owner is now approving it (e.g. "go on", "ga door", "ja", "proceed"), EXECUTE it now: create and edit the vault files per your plan, keep log.md current, and report what you filed. If they only asked a question about the attachment, just answer it.\n\n`
         : "";
       const historyNote = opts?.history ? `${opts.history}\n\n` : "";
       const role = opts?.role ?? (opts?.attachmentDirs?.length ? "librarian" : "desk");
@@ -128,7 +129,9 @@ export async function query(
         // it must not trip the outer catch and contradict the "ok" entry already logged.
         try {
           // Deterministic build: only produces a diff (and a commit) when vault content changed.
-          await writeGraph(deps.workspace.root, await buildGraph(deps.workspace.root, deps.secrets));
+          const graph = await buildGraph(deps.workspace.root, deps.secrets);
+          await writeGraph(deps.workspace.root, graph);
+          await writeIndex(deps.workspace.root, graph);
           await deps.workspace.commitAll(`graph: rebuild ${runId}`);
         } catch (e) {
           console.error("graph rebuild failed (non-fatal):", e instanceof Error ? e.message : String(e));
