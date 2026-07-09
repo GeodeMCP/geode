@@ -46,10 +46,14 @@ const LogIcon = () => (
     <circle cx="8" cy="8" r="5.6" /><path d="M8 5.2V8l2 1.4" />
   </svg>
 );
-// AGENTS.md = the vault's conventions the agent honors → a shield-check.
+// AGENTS.md = the vault's conventions the agent honors → a robot.
 const AgentsIcon = () => (
   <svg className="ic agents" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-    <path d="M8 1.9 3.3 3.6v4.1c0 3 2 5 4.7 6.2 2.7-1.2 4.7-3.2 4.7-6.2V3.6z" /><path d="m6 8 1.5 1.5L10.3 6.6" />
+    <circle cx="8" cy="2" r=".7" /><path d="M8 2.7V4.9" />
+    <rect x="3.3" y="4.9" width="9.4" height="7.8" rx="2" />
+    <circle cx="6.3" cy="8.4" r=".85" fill="currentColor" stroke="none" />
+    <circle cx="9.7" cy="8.4" r=".85" fill="currentColor" stroke="none" />
+    <path d="M6.4 11.1h3.2" /><path d="M3.3 8.2H2M12.7 8.2H14" />
   </svg>
 );
 // Kernel-managed root files that get their own glyph (matched by exact path).
