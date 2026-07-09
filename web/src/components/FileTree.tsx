@@ -34,13 +34,6 @@ const BacklogIcon = () => (
     <path d="M2.5 9.5h3l.8 1.5h3.4l.8-1.5h3" />
   </svg>
 );
-// notes = context documents → a lined page.
-const NotesIcon = () => (
-  <svg className="ic notes" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-    <path d="M4 2.5h8c.3 0 .5.2.5.5v10c0 .3-.2.5-.5.5H4c-.3 0-.5-.2-.5-.5V3c0-.3.2-.5.5-.5Z" />
-    <path d="M6 6h4M6 8.5h4M6 11h2.5" />
-  </svg>
-);
 const Chevron = () => (
   <svg className="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="m9 6 6 6-6 6" /></svg>
 );
@@ -89,7 +82,6 @@ export function FileTree({ tree, status, selected, onSelect, onCreate, onDelete,
             {isDir ? <Chevron /> : <span style={{ width: 14, flex: "none" }} />}
             {isToolPath(n.path) ? <ToolIcon />
               : isDir && n.path === "backlog" ? <BacklogIcon />
-              : isDir && n.path === "notes" ? <NotesIcon />
               : isDir ? <FolderIcon /> : <FileIcon />}
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.name}</span>
           </span>

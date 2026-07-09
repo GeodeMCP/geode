@@ -51,14 +51,14 @@ describe("isToolPath", () => {
   it("is false elsewhere", () => { expect(isToolPath("notes/a.md")).toBe(false); expect(isToolPath("toolsmith/a")).toBe(false); });
 });
 describe("isSpecialFolder", () => {
-  it("is true for the structural top-level folders", () => {
+  it("is true only for the kernel-structural folders (tools, backlog)", () => {
     expect(isSpecialFolder("tools")).toBe(true);
     expect(isSpecialFolder("backlog")).toBe(true);
-    expect(isSpecialFolder("notes")).toBe(true);
   });
-  it("is false for other folders and for special-folder contents (contents stay deletable)", () => {
-    expect(isSpecialFolder("clients")).toBe(false);
-    expect(isSpecialFolder("tools/cloakbrowser")).toBe(false);
+  it("is false for user-owned folders (incl. notes) and for special-folder contents", () => {
+    expect(isSpecialFolder("notes")).toBe(false);      // notes is a convention, not structural — freely organizable
+    expect(isSpecialFolder("business")).toBe(false);   // free-form top-level folders are first-class
+    expect(isSpecialFolder("tools/cloakbrowser")).toBe(false); // contents stay deletable
     expect(isSpecialFolder("backlog/gap.md")).toBe(false);
   });
 });

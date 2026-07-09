@@ -40,8 +40,14 @@ export function isToolPath(path: string): boolean {
   return path === "tools" || path.startsWith("tools/");
 }
 
-/** Structural top-level folders the vault convention defines — given their own icons and protected from deletion (their contents stay editable/deletable). */
-export const SPECIAL_FOLDERS: ReadonlySet<string> = new Set(["tools", "backlog", "notes"]);
+/**
+ * Kernel-structural top-level folders — given their own icons and protected from deletion (their
+ * contents stay editable/deletable). Only `tools/` (the tool system reads `tools/<id>/TOOL.md`) and
+ * `backlog/` (the gap convention) qualify; all other folders — incl. `notes/` — are user-owned and
+ * freely organizable/deletable. The graph scans markdown everywhere and types nodes by frontmatter,
+ * so nothing forces content into a particular folder.
+ */
+export const SPECIAL_FOLDERS: ReadonlySet<string> = new Set(["tools", "backlog"]);
 
 /** True when a path is one of the protected structural top-level folders (not deletable). */
 export function isSpecialFolder(path: string): boolean {
