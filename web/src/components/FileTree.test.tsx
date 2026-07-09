@@ -169,6 +169,24 @@ it("gives backlog its own icon and tools the tool icon; notes and user folders u
   expect(screen.getByLabelText("business").querySelector(".ic.backlog, .ic.tool")).toBeFalsy();
 });
 
+it("gives index.md, log.md and AGENTS.md their own green kernel-file icons; ordinary files keep the generic icon", () => {
+  const t: TreeNode[] = [
+    { name: "index.md", path: "index.md", type: "file" },
+    { name: "log.md", path: "log.md", type: "file" },
+    { name: "AGENTS.md", path: "AGENTS.md", type: "file" },
+    { name: "notes", path: "notes", type: "dir", children: [
+      { name: "plain.md", path: "notes/plain.md", type: "file" },
+    ] },
+  ];
+  render(<FileTree tree={t} status={{ modified: [], created: [] }} selected={null}
+    onSelect={noop} onCreate={noop} onDelete={noop} />);
+  expect(screen.getByLabelText("index.md").querySelector(".ic.index")).toBeTruthy();
+  expect(screen.getByLabelText("log.md").querySelector(".ic.log")).toBeTruthy();
+  expect(screen.getByLabelText("AGENTS.md").querySelector(".ic.agents")).toBeTruthy();
+  fireEvent.click(screen.getByText("notes"));
+  expect(screen.getByLabelText("plain.md").querySelector(".ic.index, .ic.log, .ic.agents")).toBeFalsy();
+});
+
 it("keeps the new-file row open when blurred with text", () => {
   const { getByText, getByPlaceholderText, queryByPlaceholderText } = render(
     <FileTree tree={[]} status={{ modified: [], created: [] }} selected={null}

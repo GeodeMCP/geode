@@ -34,6 +34,28 @@ const BacklogIcon = () => (
     <path d="M2.5 9.5h3l.8 1.5h3.4l.8-1.5h3" />
   </svg>
 );
+// index.md = the generated catalog → a list.
+const IndexIcon = () => (
+  <svg className="ic index" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 4.5h10M3 8h10M3 11.5h6" />
+  </svg>
+);
+// log.md = the append-only history → a clock.
+const LogIcon = () => (
+  <svg className="ic log" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="8" cy="8" r="5.6" /><path d="M8 5.2V8l2 1.4" />
+  </svg>
+);
+// AGENTS.md = the vault's conventions the agent honors → a shield-check.
+const AgentsIcon = () => (
+  <svg className="ic agents" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M8 1.9 3.3 3.6v4.1c0 3 2 5 4.7 6.2 2.7-1.2 4.7-3.2 4.7-6.2V3.6z" /><path d="m6 8 1.5 1.5L10.3 6.6" />
+  </svg>
+);
+// Kernel-managed root files that get their own glyph (matched by exact path).
+const SPECIAL_FILE_ICON: Record<string, () => React.ReactElement> = {
+  "index.md": IndexIcon, "log.md": LogIcon, "AGENTS.md": AgentsIcon,
+};
 const Chevron = () => (
   <svg className="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="m9 6 6 6-6 6" /></svg>
 );
@@ -71,6 +93,7 @@ export function FileTree({ tree, status, selected, onSelect, onCreate, onDelete,
     const isDir = n.type === "dir";
     const open = isDir && expanded.has(n.path);
     const gen = isArtifactPath(n.path);
+    const SpecialFileIcon = !isDir ? SPECIAL_FILE_ICON[n.path] : undefined;
     const toolNeedsInstall = isDir && /^tools\/[^/]+$/.test(n.path) && (needsInstall?.has(n.path.split("/")[1]) ?? false);
     return (
       <div key={n.path}>
@@ -82,7 +105,9 @@ export function FileTree({ tree, status, selected, onSelect, onCreate, onDelete,
             {isDir ? <Chevron /> : <span style={{ width: 14, flex: "none" }} />}
             {isToolPath(n.path) ? <ToolIcon />
               : isDir && n.path === "backlog" ? <BacklogIcon />
-              : isDir ? <FolderIcon /> : <FileIcon />}
+              : isDir ? <FolderIcon />
+              : SpecialFileIcon ? <SpecialFileIcon />
+              : <FileIcon />}
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.name}</span>
           </span>
           {confirming === n.path ? (
