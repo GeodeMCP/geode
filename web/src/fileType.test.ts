@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { fileType, prettyJson, newFileDraft, toolManifestId, isToolPath } from "./fileType";
+import { fileType, prettyJson, newFileDraft, toolManifestId, isToolPath, isSpecialFolder } from "./fileType";
 
 describe("fileType", () => {
   it("classifies by extension", () => {
@@ -49,4 +49,16 @@ describe("toolManifestId", () => {
 describe("isToolPath", () => {
   it("is true under tools/", () => { expect(isToolPath("tools")).toBe(true); expect(isToolPath("tools/x/TOOL.md")).toBe(true); });
   it("is false elsewhere", () => { expect(isToolPath("notes/a.md")).toBe(false); expect(isToolPath("toolsmith/a")).toBe(false); });
+});
+describe("isSpecialFolder", () => {
+  it("is true only for the kernel-structural folders (tools, backlog)", () => {
+    expect(isSpecialFolder("tools")).toBe(true);
+    expect(isSpecialFolder("backlog")).toBe(true);
+  });
+  it("is false for user-owned folders (incl. notes) and for special-folder contents", () => {
+    expect(isSpecialFolder("notes")).toBe(false);      // notes is a convention, not structural — freely organizable
+    expect(isSpecialFolder("business")).toBe(false);   // free-form top-level folders are first-class
+    expect(isSpecialFolder("tools/cloakbrowser")).toBe(false); // contents stay deletable
+    expect(isSpecialFolder("backlog/gap.md")).toBe(false);
+  });
 });

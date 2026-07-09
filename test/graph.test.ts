@@ -33,6 +33,22 @@ test("buildNodes classifies tool, sop, gap with domain", async () => {
   expect(byId["backlog/mb-attach"]).toMatchObject({ type: "gap", kind: "tool", count: 1 });
 });
 
+test("domain comes from frontmatter (first tag), never from the notes/ path", async () => {
+  const root = mkdtempSync(join(tmpdir(), "geode-graph-dom-"));
+  mkdirSync(join(root, "notes/administratie"), { recursive: true });
+  // under notes/<X>/ but NO tags → must be ungrouped; the path must NOT supply a domain
+  writeFileSync(join(root, "notes/administratie/bare.md"),
+    `---\ntype: reference\ntitle: Bare\ndescription: no tags\n---\n`);
+  // a free-form top-level folder WITH a tag → domain from the tag, path-independent
+  mkdirSync(join(root, "business"), { recursive: true });
+  writeFileSync(join(root, "business/plan.md"),
+    `---\ntype: sop\ntitle: Plan\ndescription: p\ntags: [strategy]\n---\n`);
+  const nodes = await buildNodes(root, noSecrets);
+  const byId = Object.fromEntries(nodes.map((n) => [n.id, n]));
+  expect(byId["notes/administratie/bare"].domain).toBe("");   // NOT "administratie" from the path
+  expect(byId["business/plan"].domain).toBe("strategy");      // from the tag, anywhere in the tree
+});
+
 test("buildEdges types links from sop/gap to the moneybird tool", async () => {
   const root = fixture();
   const edges = await buildEdges(await buildNodes(root, noSecrets), root);

@@ -75,7 +75,7 @@ export async function buildNodes(root: string, secrets: Pick<SecretStore, "get">
     const fm = parseFrontmatter(await readFile(join(root, rel), "utf8").catch(() => ""));
     const type = nodeType(fm.type);
     if (!type) continue;
-    const domain = fm.tags?.[0] ?? (rel.startsWith("notes/") && rel.split("/").length > 2 ? rel.split("/")[1] : "");
+    const domain = fm.tags?.[0] ?? "";   // grouping comes from frontmatter (first tag), never the folder path — the tree is user-owned
     const node: GraphNode = { id: rel.replace(/\.md$/, ""), type, title: fm.title ?? rel, description: fm.description ?? "", domain, path: rel };
     if (type === "gap") {
       node.kind = fm.kind;

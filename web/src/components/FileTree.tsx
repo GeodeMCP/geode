@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { TreeNode } from "../api";
-import { isToolPath } from "../fileType";
+import { isToolPath, isSpecialFolder } from "../fileType";
 import { isArtifactPath } from "../artifacts";
 import { ColHead } from "./ColHead";
 
@@ -27,6 +27,39 @@ const ToolIcon = () => (
     <path d="M9.3 1.7 3.6 9h3.7l-.7 5.3L12.4 7H8.7z" />
   </svg>
 );
+// backlog = queue of capability gaps → an inbox tray.
+const BacklogIcon = () => (
+  <svg className="ic backlog" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2.5 9.5 4 4.3c.1-.5.5-.8 1-.8h6c.5 0 .9.3 1 .8l1.5 5.2V12c0 .6-.4 1-1 1H3.5c-.6 0-1-.4-1-1V9.5Z" />
+    <path d="M2.5 9.5h3l.8 1.5h3.4l.8-1.5h3" />
+  </svg>
+);
+// index.md = the generated catalog → a list.
+const IndexIcon = () => (
+  <svg className="ic index" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 4.5h10M3 8h10M3 11.5h6" />
+  </svg>
+);
+// log.md = the append-only history → a clock.
+const LogIcon = () => (
+  <svg className="ic log" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="8" cy="8" r="5.6" /><path d="M8 5.2V8l2 1.4" />
+  </svg>
+);
+// AGENTS.md = the vault's conventions the agent honors → a robot.
+const AgentsIcon = () => (
+  <svg className="ic agents" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="8" cy="2" r=".7" /><path d="M8 2.7V4.9" />
+    <rect x="3.3" y="4.9" width="9.4" height="7.8" rx="2" />
+    <circle cx="6.3" cy="8.4" r=".85" fill="currentColor" stroke="none" />
+    <circle cx="9.7" cy="8.4" r=".85" fill="currentColor" stroke="none" />
+    <path d="M6.4 11.1h3.2" /><path d="M3.3 8.2H2M12.7 8.2H14" />
+  </svg>
+);
+// Kernel-managed root files that get their own glyph (matched by exact path).
+const SPECIAL_FILE_ICON: Record<string, () => React.ReactElement> = {
+  "index.md": IndexIcon, "log.md": LogIcon, "AGENTS.md": AgentsIcon,
+};
 const Chevron = () => (
   <svg className="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="m9 6 6 6-6 6" /></svg>
 );
@@ -64,6 +97,7 @@ export function FileTree({ tree, status, selected, onSelect, onCreate, onDelete,
     const isDir = n.type === "dir";
     const open = isDir && expanded.has(n.path);
     const gen = isArtifactPath(n.path);
+    const SpecialFileIcon = !isDir ? SPECIAL_FILE_ICON[n.path] : undefined;
     const toolNeedsInstall = isDir && /^tools\/[^/]+$/.test(n.path) && (needsInstall?.has(n.path.split("/")[1]) ?? false);
     return (
       <div key={n.path}>
@@ -73,7 +107,11 @@ export function FileTree({ tree, status, selected, onSelect, onCreate, onDelete,
           aria-label={n.name}>
           <span className="lead" style={{ flex: 1 }}>
             {isDir ? <Chevron /> : <span style={{ width: 14, flex: "none" }} />}
-            {isToolPath(n.path) ? <ToolIcon /> : isDir ? <FolderIcon /> : <FileIcon />}
+            {isToolPath(n.path) ? <ToolIcon />
+              : isDir && n.path === "backlog" ? <BacklogIcon />
+              : isDir ? <FolderIcon />
+              : SpecialFileIcon ? <SpecialFileIcon />
+              : <FileIcon />}
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.name}</span>
           </span>
           {confirming === n.path ? (
@@ -87,7 +125,7 @@ export function FileTree({ tree, status, selected, onSelect, onCreate, onDelete,
               {status.created.includes(n.path) && <span className="badge new">new</span>}
               {toolNeedsInstall && <span className="badge install" title="This tool must be installed before it can run">install</span>}
               {isDir && (dirDirty(n.path) || (n.path === "tools" && hasInstallPending)) && <span className="dot-mod" title="Needs attention inside" />}
-              {!gen && <button className="del-btn" title={`Delete ${n.name}`} onClick={(e) => { stop(e); setConfirming(n.path); }}><TrashIcon /></button>}
+              {!gen && !isSpecialFolder(n.path) && <button className="del-btn" title={`Delete ${n.name}`} onClick={(e) => { stop(e); setConfirming(n.path); }}><TrashIcon /></button>}
             </>
           )}
         </div>
