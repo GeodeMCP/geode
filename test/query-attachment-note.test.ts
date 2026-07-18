@@ -14,6 +14,16 @@ test("names the staging dir, lists the staged files, and keeps the onboarding gu
   expect(note.toLowerCase()).toContain("onboard-workspace skill");
 });
 
+test("inlines the onboarding forcing function (reframe + anti-mirror + mapping table), not just a skill pointer", () => {
+  const note = buildAttachmentNote(["/Users/x/.geode/uploads"], ["a.md"]);
+  const lc = note.toLowerCase();
+  expect(lc).toContain("translating");                                  // verb reframe, present even if the skill is never read
+  expect(lc).toContain("a source folder never becomes a vault folder"); // the hard anti-mirror rule
+  expect(lc).toContain("mapping table");                                // the required content-first artifact
+  expect(lc).toContain("what concept is this");                         // the column that makes the source path unrepresentable
+  expect(lc).toContain("onboard-workspace skill");                      // still points to the skill for full detail
+});
+
 test("warns against skipping dotfiles (the .geode-under-a-hidden-dir trap)", () => {
   const note = buildAttachmentNote(["/Users/x/.geode/uploads"], ["pricing.md"]);
   expect(note).toContain(".geode");
