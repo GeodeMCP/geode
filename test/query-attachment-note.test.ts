@@ -21,6 +21,7 @@ test("inlines the onboarding forcing function (reframe + anti-mirror + mapping t
   expect(lc).toContain("a source folder never becomes a vault folder"); // the hard anti-mirror rule
   expect(lc).toContain("mapping table");                                // the required content-first artifact
   expect(lc).toContain("what concept is this");                         // the column that makes the source path unrepresentable
+  expect(lc).toContain("under any label");                              // closes the "keep it as reference/snapshot" loophole
   expect(lc).toContain("onboard-workspace skill");                      // still points to the skill for full detail
 });
 

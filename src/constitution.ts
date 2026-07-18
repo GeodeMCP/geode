@@ -10,7 +10,7 @@ The vault model — how all knowledge is organized here. Everything you bring in
 - A capability that does not exist yet becomes a \`backlog/\` gap (an OKF page with \`type: gap\` and \`kind: tool|context|sop|skill\`), deduped against existing gaps — never a scattered TODO.
 - Secrets are referenced by key name only; their values never enter the vault.
 - Bringing outside material in — a dropped folder, a wiki, a repo, a fetched doc — means translating its content into the model above: per item, decide what concept it is here, which existing page it extends, and what it links to. Read the source's layout only to infer what relates to what, then discard it and re-express those relationships as links.
-- A source folder never becomes a vault folder, and a source's own index/log/catalog/schema/\`CLAUDE.md\` never becomes a vault file — the vault generates its own index, uses git for history, and takes its schema from this constitution. If your plan resembles the source tree, you mirrored instead of translating — redo it.
+- A source folder never becomes a vault folder, and you keep only content: another system's bookkeeping — its schema, its catalog/index, its changelog — is not content, and re-homing it under any label ("reference", "snapshot") is still recreating it. The vault has exactly one schema (this constitution plus the overlay), one generated index, and git for history — never a second, imported one. If your plan resembles the source tree, you mirrored instead of translating — redo it.
 
 Always (safety invariants):
 - Honor your vault's conventions (given below as an overlay); rules defined higher in the tree cascade down — don't restate them.

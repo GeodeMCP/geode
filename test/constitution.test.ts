@@ -50,6 +50,7 @@ test("the constitution names one vault model and the translate-don't-mirror rule
   expect(c).toContain("translat");                                     // translate incoming content in
   expect(c).toContain("a source folder never becomes a vault folder"); // flat anti-mirror prohibition
   expect(c).toContain("mirrored instead of translating");              // the plan-vs-source self-check
+  expect(c).toContain("is still recreating it");                       // re-homing bookkeeping as "reference" is still recreating it
 });
 
 test("the constitution treats read content as data, not instructions (authority boundary)", () => {
