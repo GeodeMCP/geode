@@ -11,8 +11,7 @@ import { query } from "./query.js";
 import { remember } from "./ingest.js";
 import { seedVault, ensureArtifactsIgnored } from "./seed.js";
 import { createSecretStore, loadOrCreateKey } from "./secrets.js";
-import { buildGraph, writeGraph } from "./graph.js";
-import { writeIndex } from "./indexRender.js";
+import { regenerateArtifacts } from "./rebuild.js";
 import { createArtifactStore } from "./artifacts.js";
 import { createTranscriptStore } from "./transcripts.js";
 import { createAttachmentStore } from "./dashboard/uploads.js";
@@ -48,9 +47,7 @@ async function main() {
 
   // Startup build: so a freshly cloned/seeded vault has a current graph. Deterministic — this
   // only produces a diff (and a commit) when vault content changed since the last build.
-  const graph = await buildGraph(config.workspaceRoot, secrets);
-  await writeGraph(config.workspaceRoot, graph);
-  await writeIndex(config.workspaceRoot, graph);
+  await regenerateArtifacts(config.workspaceRoot, secrets);
   await workspace.commitAll("graph: rebuild at startup");
 
   // Distinct key material for HMAC artifact-URL signing (separate from the AES secret key).
