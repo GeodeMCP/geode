@@ -21,7 +21,7 @@ export interface TranscriptStore {
 }
 
 // JSONL, one record per line. Machine-local; not in the vault git. Runs are serialized by the
-// runManager queue, so synchronous appends never interleave (mirrors eventLog.ts).
+// runManager queue, so synchronous appends never interleave.
 /** Creates a TranscriptStore backed by a JSONL file in the given directory, skipping corrupt lines on read. */
 export function createTranscriptStore(dir: string): TranscriptStore {
   const file = join(dir, "transcript.jsonl");

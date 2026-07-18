@@ -61,7 +61,8 @@ export function composeSystemPrompt(deps: Pick<QueryDeps, "systemPrompt" | "work
   return deps.systemPrompt + fragmentFor(role) + buildOverlay(deps.workspace.root) + buildSkillsFooter(deps.workspace.root);
 }
 
-/** Runs an instruction through the engine inside a managed run, commits the result, and logs the outcome. */
+/** Runs an instruction through the engine inside a managed run, commits the result, and on the
+ * auto-commit path rebuilds the generated artifacts. */
 export async function query(
   deps: QueryDeps,
   instruction: string,
@@ -119,7 +120,7 @@ export async function query(
       if (deps.secrets) {
         // Best-effort: the query itself already committed successfully above, so a rebuild
         // failure here (fs error, git race, etc.) must never surface as a query failure —
-        // it must not trip the outer catch and contradict the "ok" entry already logged.
+        // it must not trip the outer catch.
         try {
           // Deterministic build: only produces a diff (and a commit) when vault content changed.
           await regenerateArtifacts(deps.workspace.root, deps.secrets);
@@ -137,8 +138,8 @@ export async function query(
       }
       return { runId, text: finalText, commit, filesTouched, artifacts, metrics };
     } catch (err) {
-      // Review mode: leave the partial edits on the tree for the human to inspect/keep/discard, and
-      // do NOT commit an error-log entry (commitAll would sweep up the accumulated draft). Just rethrow.
+      // Review mode: leave the partial edits on the tree for the human to inspect/keep/discard.
+      // Auto-commit mode: reset to HEAD so a failed run doesn't leave a dirty tree. Then rethrow.
       if (!review) {
         await deps.workspace.resetToHead();
       }
