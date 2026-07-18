@@ -61,13 +61,31 @@ export function composeSystemPrompt(deps: Pick<QueryDeps, "systemPrompt" | "work
   return deps.systemPrompt + fragmentFor(role) + buildOverlay(deps.workspace.root) + buildSkillsFooter(deps.workspace.root);
 }
 
+const MAX_LISTED_ATTACHMENTS = 100;
+
+/**
+ * Builds the read-only attachment note injected into a run: the staging folder, the list of staged
+ * files (so the agent doesn't have to discover them with a fragile `find`), a warning against
+ * dotfile-skipping listings — the folder lives under a hidden `.geode` directory, which such filters
+ * wrongly exclude — and the onboarding guidance. Returns "" when there are no attachment dirs.
+ */
+export function buildAttachmentNote(attachmentDirs: string[] | undefined, attachmentFiles: string[] | undefined): string {
+  if (!attachmentDirs?.length) return "";
+  const files = attachmentFiles ?? [];
+  const shown = files.slice(0, MAX_LISTED_ATTACHMENTS);
+  const listing = shown.length
+    ? `The staged files (paths relative to that folder) are:\n${shown.join("\n")}${files.length > shown.length ? `\n… and ${files.length - shown.length} more` : ""}\n`
+    : "";
+  return `Attachments for this request are staged (read-only) at: ${attachmentDirs.join(", ")}. ${listing}Read them directly at that folder; do not skip dotfiles when listing, because the folder lives under a hidden \`.geode\` directory and a dotfile filter (e.g. \`find … -not -path '*/.*'\`) would wrongly exclude every file. Never assume other paths. For an onboarding request, follow your onboard-workspace skill: if you have NOT yet proposed a plan for this, inspect and PROPOSE a filing plan (what goes where, which tools/skills to author, which secrets they must set), then STOP and end your turn with a yes/no question — write nothing yet. But if you ALREADY proposed a plan (see the recent conversation) and the owner is now approving it (e.g. "go on", "ga door", "ja", "proceed"), EXECUTE it now: create and edit the vault files per your plan, and report what you filed. If they only asked a question about the attachment, just answer it.\n\n`;
+}
+
 /** Runs an instruction through the engine inside a managed run, commits the result, and on the
  * auto-commit path rebuilds the generated artifacts. */
 export async function query(
   deps: QueryDeps,
   instruction: string,
   onProgress?: (event: ProgressEvent) => void,
-  opts?: { commit?: boolean; attachmentDirs?: string[]; history?: string; role?: AgentRole },
+  opts?: { commit?: boolean; attachmentDirs?: string[]; attachmentFiles?: string[]; history?: string; role?: AgentRole },
 ): Promise<QueryResult> {
   return deps.runManager.run(async (abortController, runId) => {
     const review = opts?.commit === false;
@@ -83,9 +101,7 @@ export async function query(
     let finalText = "";
     let metrics: Metrics | undefined;
     try {
-      const attachmentNote = opts?.attachmentDirs?.length
-        ? `Attachments for this request are staged (read-only) at: ${opts.attachmentDirs.join(", ")}. Inspect them there; never assume other paths. For an onboarding request, follow your onboard-workspace skill: if you have NOT yet proposed a plan for this, inspect and PROPOSE a filing plan (what goes where, which tools/skills to author, which secrets they must set), then STOP and end your turn with a yes/no question — write nothing yet. But if you ALREADY proposed a plan (see the recent conversation) and the owner is now approving it (e.g. "go on", "ga door", "ja", "proceed"), EXECUTE it now: create and edit the vault files per your plan, and report what you filed. If they only asked a question about the attachment, just answer it.\n\n`
-        : "";
+      const attachmentNote = buildAttachmentNote(opts?.attachmentDirs, opts?.attachmentFiles);
       const historyNote = opts?.history ? `${opts.history}\n\n` : "";
       const role = opts?.role ?? (opts?.attachmentDirs?.length ? "librarian" : "desk");
       let retrievalNote = "";

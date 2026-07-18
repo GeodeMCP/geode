@@ -30,7 +30,7 @@ export interface ApiDeps {
   secure: boolean;
   workspace: Workspace;
   /** Extended: forwards attachment dirs (and, later, conversation history) into the run. */
-  runQuery: (instruction: string, onProgress: (event: ProgressEvent) => void, opts?: { attachmentDirs?: string[]; history?: string }) => Promise<QueryResult>;
+  runQuery: (instruction: string, onProgress: (event: ProgressEvent) => void, opts?: { attachmentDirs?: string[]; attachmentFiles?: string[]; history?: string }) => Promise<QueryResult>;
   runRemember: (args: RememberArgs, onProgress: (event: ProgressEvent) => void) => Promise<QueryResult>;
   /** Aborts the currently-running agent run (Stop / Esc from the dashboard). */
   cancelQuery: () => void;
@@ -134,7 +134,7 @@ export function createApiRouter(deps: ApiDeps): Router {
     const attachmentDirs = staged.length ? [deps.attachments.dir] : undefined;
     const history = buildHistoryPreamble(await deps.transcripts.list(), 6);
     stream(
-      (op) => deps.runQuery(instruction, op, { attachmentDirs, history }),
+      (op) => deps.runQuery(instruction, op, { attachmentDirs, attachmentFiles: staged, history }),
       async (events, outcome) => {
         // Safe to append serially: the runManager queue serializes runs, so two /query records never interleave.
         const rec: TranscriptRecord = "result" in outcome
