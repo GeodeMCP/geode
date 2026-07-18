@@ -15,6 +15,9 @@
   .topbar{position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;height:64px;padding:0 24px;border-bottom:1px solid var(--border);background:rgba(20,25,23,.72);backdrop-filter:blur(12px);}
   .brand{display:flex;align-items:center;gap:11px;}
   .name{font-family:"Onest",sans-serif;font-weight:500;font-size:21px;letter-spacing:-.02em;}
+  /* right-aligned cluster: nav | divider | controls, all vertically centered */
+  .tb-end{display:flex;align-items:center;align-self:stretch;gap:20px;}
+  .tb-divider{flex:none;width:1px;height:26px;background:var(--border-strong);}
   /* NAV (toegevoegd) */
   nav{display:flex;align-self:stretch;align-items:center;gap:24px;}
   nav a{font-family:"Instrument Sans",sans-serif;font-weight:500;font-size:13.5px;color:var(--muted);text-decoration:none;height:100%;display:flex;align-items:center;gap:7px;position:relative;transition:color .15s var(--ease);cursor:pointer;}
@@ -25,7 +28,7 @@
   nav a:hover svg,nav a.active svg{opacity:1;}
   .tb-right{display:flex;align-items:center;gap:18px;color:var(--faint);}
   .chip{font-family:"Instrument Sans",sans-serif;font-weight:600;font-size:12.5px;border-radius:999px;border:1px solid var(--border-strong);color:var(--muted);padding:5px 11px;display:inline-flex;align-items:center;gap:7px;}
-  .tb-right .pill{border:1px solid var(--border-strong);background:var(--surface-2);color:var(--neutral-200);cursor:pointer;padding:5px 12px;font-size:13px;line-height:1;gap:6px;}
+  .tb-right .pill{align-self:center;height:32px;border:1px solid var(--border-strong);background:var(--surface-2);color:var(--neutral-200);cursor:pointer;padding:0 13px;font-size:13px;line-height:1;gap:6px;}
   .tb-right .pill:hover{border-color:var(--emerald-500);color:var(--text);}
   .tb-right .pill.active{border-color:var(--emerald-500);color:var(--emerald-300);}
   .tb-right .pill svg{width:14px;height:14px;}
@@ -221,7 +224,7 @@
   .confirm{display:inline-flex;gap:6px;align-items:center;}
   .confirm .danger{color:#eaa;border-color:rgba(230,80,80,.4);}
   /* ACCOUNT menu */
-  .acct{position:relative;}
+  .acct{position:relative;display:inline-flex;align-items:center;}
   .acct .menu{position:absolute;right:0;top:38px;background:var(--surface);border:1px solid var(--border-strong);border-radius:10px;padding:5px;min-width:140px;box-shadow:0 12px 30px -12px rgba(0,0,0,.7);z-index:10;}
   .acct .menu button{width:100%;text-align:left;background:transparent;border:none;color:var(--neutral-200);font-family:"Instrument Sans",sans-serif;font-size:13.5px;padding:8px 10px;border-radius:7px;cursor:pointer;}
   .acct .menu button:hover{background:var(--surface-2);}
@@ -360,3 +363,93 @@
 .tp-conn-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;}
 .tp-conn-main b{font-family:"Geist",sans-serif;font-weight:600;font-size:13.5px;color:var(--text);}
 .tp-conn-desc{font-size:12px;color:var(--muted);}
+
+/* SECRETS (sealed-value list) — centered column, per-tool categories, one uniform row per secret */
+.secrets{flex:1;overflow:auto;padding:34px 24px 72px;}
+.secrets-col{max-width:720px;margin:0 auto;}
+.secrets .eyebrow{padding:0;}
+.secrets h1{font-family:"Instrument Sans",sans-serif;font-weight:700;font-size:26px;letter-spacing:-.02em;margin:9px 0 8px;}
+.secrets .lede{color:var(--muted);font-size:13.5px;line-height:1.55;max-width:60ch;margin:0;}
+.secrets .lede b{color:var(--neutral-200);font-weight:600;}
+
+/* search */
+.secrets .search{position:relative;margin:24px 0 20px;}
+.secrets .s-mag{position:absolute;left:13px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--faint);pointer-events:none;}
+.secrets .search input{width:100%;height:42px;background:var(--input);border:1px solid var(--border-strong);border-radius:10px;color:var(--text);font-family:"Geist",sans-serif;font-size:14px;padding:0 38px 0 40px;}
+.secrets .search input::placeholder{color:var(--faint);}
+.secrets .search input:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(52,211,153,.18);}
+.secrets .s-clear{position:absolute;right:9px;top:50%;transform:translateY(-50%);display:inline-flex;background:none;border:none;color:var(--faint);cursor:pointer;padding:5px;border-radius:7px;}
+.secrets .s-clear:hover{color:var(--text);background:var(--surface-2);}
+.secrets .s-clear svg{width:15px;height:15px;}
+
+/* board + per-tool category */
+.secrets .board{display:flex;flex-direction:column;gap:14px;}
+.secrets .cat{border:1px solid var(--border);border-radius:13px;background:var(--surface);overflow:hidden;}
+.secrets .cat-head{display:flex;align-items:center;gap:10px;padding:12px 15px;border-bottom:1px solid var(--border);}
+.secrets .cat-name{font-family:"Geist Mono",monospace;font-size:13.5px;color:var(--emerald-300);font-weight:500;}
+.secrets .cat-count{margin-left:auto;font-family:"Instrument Sans",sans-serif;font-size:11.5px;font-weight:600;color:var(--faint);font-variant-numeric:tabular-nums;}
+.secrets .cat-count b{color:var(--green);font-weight:600;}
+
+/* connection sub-group */
+.secrets .conn{padding:11px 15px 6px;}
+.secrets .conn+.conn{border-top:1px solid var(--border);}
+.secrets .conn-label{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-family:"Instrument Sans",sans-serif;font-size:12.5px;color:var(--faint);}
+.secrets .conn-label b{color:var(--neutral-200);font-weight:600;font-size:13px;}
+.secrets .conn-label .cc{font-family:"Geist Mono",monospace;font-size:11px;color:var(--faint);}
+.secrets .conn-desc{color:var(--muted);font-size:12px;line-height:1.5;margin:2px 0 0;}
+
+/* universal secret row */
+.secrets .srow{position:relative;display:flex;align-items:center;gap:13px;padding:9px 2px;}
+.secrets .srow+.srow{border-top:1px solid rgba(255,255,255,.045);}
+.secrets .tile{width:32px;height:32px;flex:none;border-radius:9px;display:flex;align-items:center;justify-content:center;}
+.secrets .tile svg{width:17px;height:17px;}
+.secrets .srow.sealed .tile{background:rgba(52,211,153,.10);border:1px solid rgba(52,211,153,.34);color:var(--emerald-300);}
+.secrets .srow.unset .tile{background:rgba(224,163,64,.09);border:1px solid rgba(224,163,64,.32);color:var(--amber);}
+.secrets .kname{flex:1;min-width:0;font-family:"Geist Mono",monospace;font-size:13px;color:var(--neutral-200);overflow-wrap:anywhere;}
+.secrets .status{flex:none;display:inline-flex;align-items:center;gap:6px;font-family:"Instrument Sans",sans-serif;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;}
+.secrets .srow.sealed .status{color:var(--green);}
+.secrets .srow.unset .status{color:var(--amber);}
+.secrets .status .pip{width:6px;height:6px;border-radius:999px;background:currentColor;}
+.secrets .srow.unset .status .pip{background:none;border:1.5px solid currentColor;width:7px;height:7px;}
+.secrets .set-btn{flex:none;display:inline-flex;align-items:center;gap:6px;font-family:"Instrument Sans",sans-serif;font-size:12.5px;font-weight:500;color:var(--neutral-200);background:transparent;border:1px solid var(--border-strong);border-radius:8px;padding:6px 11px;cursor:pointer;transition:border-color .15s var(--ease),color .15s var(--ease);}
+.secrets .set-btn:hover{border-color:var(--green);color:var(--green);}
+.secrets .set-btn svg{width:14px;height:14px;}
+
+/* hover actions overlay the status so every row keeps the same height */
+.secrets .acts{position:absolute;right:0;top:50%;transform:translateY(-50%);display:flex;gap:6px;padding-left:14px;background:var(--surface);opacity:0;pointer-events:none;transition:opacity .15s var(--ease);}
+.secrets .srow:hover .acts,.secrets .srow:focus-within .acts{opacity:1;pointer-events:auto;}
+/* the actions take the status's slot, so hide the status underneath while they're shown */
+.secrets .srow:hover .status,.secrets .srow:focus-within .status{visibility:hidden;}
+.secrets .acts .danger,.secrets .oacts .danger{color:#eaa;border-color:rgba(230,80,80,.4);}
+.secrets .acts .danger:hover,.secrets .oacts .danger:hover{background:rgba(230,80,80,.12);}
+
+/* inline one-time link, aligned under the key name */
+.secrets .linkbox{margin:0 2px 12px 45px;background:var(--input);border:1px solid var(--border-strong);border-radius:10px;padding:11px 12px;display:flex;flex-direction:column;gap:9px;}
+.secrets .lb-top{display:flex;align-items:center;gap:9px;}
+.secrets .lb-lbl{font-family:"Instrument Sans",sans-serif;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.13em;color:var(--green);}
+.secrets .lb-note{flex:1;color:var(--faint);font-size:11.5px;}
+.secrets .lb-x{background:none;border:none;color:var(--faint);font-size:15px;line-height:1;padding:2px 5px;border-radius:6px;cursor:pointer;}
+.secrets .lb-x:hover{color:var(--text);background:var(--surface-2);}
+.secrets .linkurl{font-family:"Geist Mono",monospace;font-size:11px;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:8px 10px;word-break:break-all;line-height:1.5;}
+.secrets .lb-row{display:flex;gap:8px;}
+
+/* orphans — a category with no owning tool */
+.secrets .cat.orphans .cat-name{color:var(--faint);}
+.secrets .orphan-note{padding:9px 15px 0;color:var(--faint);font-size:12px;line-height:1.5;}
+.secrets .orphan{display:flex;align-items:center;gap:12px;padding:10px 15px;}
+.secrets .orphan+.orphan{border-top:1px solid rgba(255,255,255,.045);}
+.secrets .oref{flex:1;min-width:0;font-family:"Geist Mono",monospace;font-size:12px;color:var(--faint);word-break:break-all;}
+.secrets .oacts{flex:none;display:flex;gap:6px;}
+
+/* empty states */
+.secrets .empty-board{margin-top:26px;border:1px dashed var(--border-strong);border-radius:14px;padding:44px 28px;text-align:center;color:var(--muted);font-size:13.5px;line-height:1.6;}
+.secrets .empty-board b{display:block;font-family:"Instrument Sans",sans-serif;font-weight:600;font-size:15px;color:var(--text);margin-bottom:6px;}
+.secrets .empty-board code{font-family:"Geist Mono",monospace;font-size:12px;color:var(--emerald-300);}
+
+@media (max-width:560px){
+  .secrets{padding:24px 16px 60px;}
+  /* no hover on touch: pull the actions back into the flow, always visible */
+  .secrets .srow{flex-wrap:wrap;}
+  .secrets .acts{position:static;transform:none;opacity:1;pointer-events:auto;background:none;padding-left:0;flex-basis:100%;margin-left:45px;}
+  .secrets .srow:focus-within .status{visibility:visible;}
+}

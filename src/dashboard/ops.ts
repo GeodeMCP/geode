@@ -8,7 +8,7 @@ import { readInstallState } from "../installer.js";
 export interface ToolView {
   id: string; name: string; type: string; description: string;
   actions: { name: string; description?: string; params: string[] }[];
-  connections: { label: string; description?: string; configured: boolean }[];
+  connections: { label: string; title?: string; description?: string; configured: boolean }[];
   requires: string[];
   /** Whether this cli tool has been installed (image built + state recorded). Always false for non-cli tools. */
   installed: boolean;
@@ -37,7 +37,7 @@ function actionParams(a: ToolAction): string[] {
 /** Maps a tool manifest to a ToolView, resolving per-connection configured status from the secret store. */
 async function toView(m: ToolManifest, toolsDir: string, secrets: Pick<SecretStore, "get">): Promise<ToolView> {
   const connections = [];
-  for (const c of m.connections ?? []) connections.push({ label: c.label, description: c.description, configured: await connectionConfigured(secrets, m.id, c.label, m.requires ?? []) });
+  for (const c of m.connections ?? []) connections.push({ label: c.label, title: c.title, description: c.description, configured: await connectionConfigured(secrets, m.id, c.label, m.requires ?? []) });
   const installState = m.type === "cli" ? await readInstallState(toolsDir, m.id) : null;
   return { id: m.id, name: m.name, type: m.type, description: m.description, actions: Object.entries(m.actions).map(([name, a]) => ({ name, description: a.description, params: actionParams(a) })), connections, requires: m.requires ?? [], installed: installState !== null, permissions: m.permissions };
 }

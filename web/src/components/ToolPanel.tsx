@@ -54,6 +54,16 @@ export function ToolPanel({ id }: { id: string }) {
   );
   if (!tool) return <div className="tp tp-loading">Loading…</div>;
 
+  const setupConnection = async (label: string) => {
+    for (const k of tool.requires) {
+      const ref = `${id}__${label}__${k}`;
+      try {
+        const { url } = await api.secretLink(ref);
+        window.open(url, "_blank", "noopener");
+      } catch { /* ignore; user can use Secrets page */ }
+    }
+  };
+
   const isCli = tool.type === "cli";
   const perms = tool.permissions;
   return (
@@ -93,6 +103,26 @@ export function ToolPanel({ id }: { id: string }) {
         )}
 
         <section className="tp-section">
+          <div className="na-glabel">Connections <span className="na-count">{tool.connections.length}</span></div>
+          {tool.connections.length === 0 && <p className="tp-hint">No connections.</p>}
+          {tool.connections.map((c) => (
+            <div key={c.label} className="tp-conn">
+              <div className="tp-conn-main">
+                <b>{c.title || c.label}</b>
+                {c.description && <span className="tp-conn-desc">{c.description}</span>}
+              </div>
+              <span className={`tp-status ${c.configured ? "ok" : "warn"}`}>{c.configured ? "configured" : "needs setup"}</span>
+              {!c.configured && tool.requires.length > 0 && (
+                <button className="ghost sm" onClick={() => setupConnection(c.label)}>Set secret</button>
+              )}
+            </div>
+          ))}
+          {tool.connections.length > 0 && tool.requires.length > 0 && (
+            <p className="tp-hint" style={{ marginTop: 4 }}>Use the Set secret button to open a one-time entry link. Full list on the Secrets page.</p>
+          )}
+        </section>
+
+        <section className="tp-section">
           <div className="na-glabel">Actions <span className="na-count">{tool.actions.length}</span></div>
           {tool.actions.map((a) => {
             const ps = a.params ?? [];
@@ -123,20 +153,6 @@ export function ToolPanel({ id }: { id: string }) {
               <pre className="tp-code">{result}</pre>
             </div>
           )}
-        </section>
-
-        <section className="tp-section">
-          <div className="na-glabel">Connections <span className="na-count">{tool.connections.length}</span></div>
-          {tool.connections.length === 0 && <p className="tp-hint">No connections.</p>}
-          {tool.connections.map((c) => (
-            <div key={c.label} className="tp-conn">
-              <div className="tp-conn-main">
-                <b>{c.label}</b>
-                {c.description && <span className="tp-conn-desc">{c.description}</span>}
-              </div>
-              <span className={`tp-status ${c.configured ? "ok" : "warn"}`}>{c.configured ? "configured" : "needs setup"}</span>
-            </div>
-          ))}
         </section>
       </div>
     </div>
