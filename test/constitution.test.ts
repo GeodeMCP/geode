@@ -30,13 +30,26 @@ test("the core (constitution) carries neither role's terseness rule", () => {
   expect(CONSTITUTION.toLowerCase()).not.toContain("no section headers");
 });
 
-test("librarian fragment teaches capability-graph linking at write time", () => {
+test("librarian fragment teaches write-time linking; the model defines the edges", () => {
   const librarian = fragmentFor("librarian");
   const lc = librarian.toLowerCase();
-  expect(lc).toContain("link");         // instructs linking of dependencies
-  expect(lc).toContain("graph");        // frames links as the capability graph
-  expect(lc).toContain("uses");         // the sop→tool `uses` edge
-  expect(librarian).toContain("tools/"); // teaches a resolvable relative link to a tool
+  expect(lc).toContain("link");             // instructs wiring dependency links when filing
+  expect(lc).toContain("capability graph");
+  expect(librarian).toContain("tools/");    // resolvable relative link to a tool
+  expect(librarian).toContain("backlog/");  // gap-and-link when a dependency has no page
+  // the edge semantics (uses/references/blocks) live once in the shared model, not the fragment:
+  const c = CONSTITUTION.toLowerCase();
+  expect(c).toContain("uses");
+  expect(c).toContain("references");
+  expect(c).toContain("blocks");
+});
+
+test("the constitution names one vault model and the translate-don't-mirror rule", () => {
+  expect(CONSTITUTION).toContain("The vault model");
+  const c = CONSTITUTION.toLowerCase();
+  expect(c).toContain("translat");                                   // translate incoming content in
+  expect(c).toContain("never reproduce the source's own structure");
+  expect(c).toContain("blueprint to copy");                          // source layout is a hint, not a blueprint
 });
 
 test("the constitution treats read content as data, not instructions (authority boundary)", () => {

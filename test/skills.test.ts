@@ -39,3 +39,13 @@ test("the shipped onboard-tool SOP exists and is substantive", () => {
 test("the skills footer points the agent at the onboard-workspace skill", () => {
   expect(buildSkillsFooter("/vault")).toContain("onboard-workspace.md");
 });
+
+test("onboard-workspace teaches translation into the vault model, not mirroring the source, and drops the stale index/log hand-maintenance", () => {
+  const body = readFileSync(join(kernelSkillsDir(), "onboard-workspace.md"), "utf8");
+  const lc = body.toLowerCase();
+  expect(lc).toContain("the vault model");     // references the one canonical model
+  expect(lc).toContain("translate");           // translate the content in
+  expect(lc).toContain("don't mirror the source");
+  expect(body).not.toContain("Keep `index.md` current"); // stale pre-graph hand-maintenance is gone
+  expect(body).not.toContain("append to `log.md`");
+});
