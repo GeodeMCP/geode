@@ -47,9 +47,9 @@ test("librarian fragment teaches write-time linking; the model defines the edges
 test("the constitution names one vault model and the translate-don't-mirror rule", () => {
   expect(CONSTITUTION).toContain("The vault model");
   const c = CONSTITUTION.toLowerCase();
-  expect(c).toContain("translat");                                   // translate incoming content in
-  expect(c).toContain("never reproduce the source's own structure");
-  expect(c).toContain("blueprint to copy");                          // source layout is a hint, not a blueprint
+  expect(c).toContain("translat");                                     // translate incoming content in
+  expect(c).toContain("a source folder never becomes a vault folder"); // flat anti-mirror prohibition
+  expect(c).toContain("mirrored instead of translating");              // the plan-vs-source self-check
 });
 
 test("the constitution treats read content as data, not instructions (authority boundary)", () => {

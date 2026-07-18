@@ -19,6 +19,7 @@ test("buildOverlay injects the labeled kernel default when no vault override", (
   const o = buildOverlay(root);
   expect(o).toContain("Your vault's conventions (overlay)");
   expect(o).toContain("Canonical sources");
+  expect(o).toContain("not a structural template"); // folder map groups by meaning, not a mirror template
 });
 test("buildOverlay uses the vault override, stripping its frontmatter", () => {
   const root = mkdtempSync(join(tmpdir(), "geode-ov-"));
