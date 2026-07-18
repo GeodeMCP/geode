@@ -31,18 +31,18 @@ Prereqs: a model is reachable (e.g. `ollama serve` with a tool-capable model, or
 5. Call `query` with:
    `{ "instruction": "Create a file notes/hello.md containing one sentence about this vault, then summarize what you did." }`
    - Expect: progress notifications stream, a final text summary returns.
-   - Verify in `$GEODE_WORKSPACE`: `git log --oneline` shows a new `query run-…` commit;
-     `notes/hello.md` exists; `log.md` gained an `… | ok | <hash>` entry.
+   - Verify in `$GEODE_WORKSPACE`: `git log --oneline` shows a new `query run-…` commit
+     followed by a `graph: rebuild run-…` commit; `notes/hello.md` exists.
 6. Call `query` with an instruction that forces a failing bash command →
-   verify the workspace is clean (`git status` empty) and `log.md` gained an `| error` entry.
+   verify the workspace is clean (`git status` empty) and the run surfaces the error.
 
 ## `remember` (ingest; the compounding loop)
 
 7. Call `remember` with
    `{ "content": "Client X prefers invoices on the 1st, net-30 terms.", "source": "call 2026-06-17", "title": "Client X billing" }`.
    - Expect: progress streams, a summary of what was filed where, `isError` is false.
-   - Verify: a new `query run-… : …` commit + a `query run-… : log` commit; the content filed into a
-     page (e.g. under `clients/`); `index.md` updated; an `ok` entry in `log.md`.
+   - Verify: a new `query run-… : …` commit followed by a `graph: rebuild run-…` commit; the content
+     filed into a page (e.g. under `clients/`); `index.md` updated.
 
 ## `list_capabilities` (derived discovery)
 
