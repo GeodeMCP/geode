@@ -20,7 +20,7 @@ const VaultIcon = () => (
 );
 const SecretsIcon = () => (
   <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="5.6" cy="5.6" r="2.7" /><path d="M7.5 7.5 13 13M10.8 11.2l1.4-1.4M9 9.4l1.4-1.4" />
+    <rect x="3" y="7" width="10" height="7" rx="2" /><path d="M5.3 7V5.1a2.7 2.7 0 0 1 5.4 0V7" /><circle cx="8" cy="10" r="1" /><path d="M8 11v1.3" />
   </svg>
 );
 
@@ -43,17 +43,20 @@ export function TopBar({ view, onNav, hasTools, onLogout }: {
         <GemMark size={22} />
         <span className="name">Geode</span>
       </div>
-      <nav>{items.map((v) => <a key={v} className={v === view ? "active" : ""} onClick={() => onNav(v)} style={{ cursor: "pointer" }}>{NAV_ICON[v]}{v}</a>)}</nav>
-      <div className="tb-right">
-        <button className={`pill${view === "Connect" ? " active" : ""}`} onClick={() => onNav("Connect")} title="Connect a client"><ConnectIcon /> Connect</button>
-        <NeedsAttention onOpenSettings={() => onNav("Secrets")} />
-        <span className="acct">
-          <span className="avatar" onClick={() => setMenu((m) => !m)} title="Account" />
-          {menu && <>
-            <div onClick={() => setMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 9 }} />
-            <div className="menu"><button onClick={() => { setMenu(false); onLogout(); }}>Log out</button></div>
-          </>}
-        </span>
+      <div className="tb-end">
+        <nav>{items.map((v) => <a key={v} className={v === view ? "active" : ""} onClick={() => onNav(v)} style={{ cursor: "pointer" }}>{NAV_ICON[v]}{v}</a>)}</nav>
+        <span className="tb-divider" aria-hidden="true" />
+        <div className="tb-right">
+          <button className={`pill${view === "Connect" ? " active" : ""}`} onClick={() => onNav("Connect")} title="Connect a client"><ConnectIcon /> Connect</button>
+          <NeedsAttention onOpenSettings={() => onNav("Secrets")} />
+          <span className="acct">
+            <span className="avatar" onClick={() => setMenu((m) => !m)} title="Account" />
+            {menu && <>
+              <div onClick={() => setMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 9 }} />
+              <div className="menu"><button onClick={() => { setMenu(false); onLogout(); }}>Log out</button></div>
+            </>}
+          </span>
+        </div>
       </div>
     </div>
   );

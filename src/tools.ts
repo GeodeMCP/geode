@@ -6,7 +6,7 @@ import type { SecretStore } from "./secrets.js";
 /** How a tool's actions are executed server-side (the caller never sees the difference). */
 export type ToolType = "http" | "cli" | "mcp";
 /** A named credentialed instance of a tool; secret values live in the store, not here. */
-export interface ToolConnection { label: string; description?: string }
+export interface ToolConnection { label: string; title?: string; description?: string }
 /** One parameter of a tool action. */
 export interface ToolParam { name: string; required: boolean }
 /** HTTP request shape for an `http`-type action. */

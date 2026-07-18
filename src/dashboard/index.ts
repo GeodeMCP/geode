@@ -40,7 +40,7 @@ export function mountDashboard(app: Express, deps: DashboardDeps): void {
       // Consume AFTER a successful write → "single successful use" (a transient set() failure leaves the link usable for a retry).
     await deps.secrets.set(c.ref, value);
     consumed.add(c.nonce);
-    res.type("html").send(renderAuthResult({ ok: true, ref: c.ref, message: `${c.ref} was saved to the broker.` }));
+    res.type("html").send(renderAuthResult({ ok: true, ref: c.ref, message: "Encrypted and saved to the broker. You can close this tab — the agent can use it now." }));
   });
   app.use("/auth", authRouter);
 
