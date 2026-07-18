@@ -1,6 +1,5 @@
 import { loadConfig } from "./config.js";
 import { createWorkspace } from "./workspace.js";
-import { createEventLog } from "./eventLog.js";
 import { createRunManager } from "./runManager.js";
 import { claudeAgentEngine } from "./engine.js";
 import { resolveSandboxPolicy } from "./agentSandbox.js";
@@ -63,7 +62,6 @@ async function main() {
     workspace,
     engine: claudeAgentEngine,
     runManager: createRunManager({ maxRuntimeMs: config.maxRuntimeMs, queueLimit: config.queueLimit }),
-    eventLog: createEventLog(config.workspaceRoot),
     systemPrompt: CONSTITUTION,
     sandboxPolicy: resolveSandboxPolicy(process.env, config.workspaceRoot),
     model: config.model,

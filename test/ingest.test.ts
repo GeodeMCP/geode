@@ -28,7 +28,6 @@ function fakeDeps(captured: { instruction?: string }) {
       yield { type: "result", text: "filed it" };
     },
     runManager: createRunManager({ maxRuntimeMs: 1000, queueLimit: 4 }),
-    eventLog: { append: async () => {} },
     systemPrompt: "SYS",
   } as any;
 }

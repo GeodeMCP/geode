@@ -18,7 +18,7 @@ test("checkMcpAuth accepts the static bearer OR a valid OAuth token, rejects oth
 });
 
 test("buildMcpServer returns a fresh server instance per call (no shared transport reuse)", () => {
-  const deps = { workspace: { root: "/vault" }, engine: async function* () {}, runManager: { run: async (fn: any) => fn(new AbortController(), "run-1") }, eventLog: { append: async () => {} }, systemPrompt: "SYS" } as any;
+  const deps = { workspace: { root: "/vault" }, engine: async function* () {}, runManager: { run: async (fn: any) => fn(new AbortController(), "run-1") }, systemPrompt: "SYS" } as any;
   expect(buildMcpServer(deps)).not.toBe(buildMcpServer(deps));
 });
 

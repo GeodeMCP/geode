@@ -22,7 +22,6 @@ function deps(over: Partial<QueryDeps>): QueryDeps {
     workspace: fakeWorkspace() as any,
     engine: fakeEngine([{ type: "result", text: "done" }]) as any,
     runManager: createRunManager({ maxRuntimeMs: 1000, queueLimit: 4 }),
-    eventLog: { append: async () => {} } as any,
     systemPrompt: "SYS",
     sandboxPolicy: resolveSandboxPolicy({ GEODE_SANDBOX_DISABLE: "1" }, "/vault"),
     ...over,

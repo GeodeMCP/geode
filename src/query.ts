@@ -1,7 +1,6 @@
 import { existsSync, readdirSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import type { Engine, ProgressEvent, Metrics } from "./engine.js";
-import type { EventLog } from "./eventLog.js";
 import type { RunManager } from "./runManager.js";
 import type { Workspace } from "./workspace.js";
 import type { SecretStore } from "./secrets.js";
@@ -18,7 +17,6 @@ export interface QueryDeps {
   workspace: Workspace;
   engine: Engine;
   runManager: RunManager;
-  eventLog: EventLog;
   systemPrompt: string;
   // Required (not optional) so a run can never silently ship unconfined: to run the agent without a
   // sandbox you must pass a policy with enabled:false (GEODE_SANDBOX_DISABLE=1), not omit it.
@@ -118,10 +116,6 @@ export async function query(
       }
       const commit = await deps.workspace.commitAll(`query ${runId}: ${truncate(instruction, 60)}`);
       const filesTouched = commit ? await deps.workspace.changedFilesSince(before) : [];
-      await deps.eventLog.append({ runId, instruction, status: "ok", commit, summary: truncate(finalText) });
-      // Persist the event-log entry itself: it is written after the agent commit, so it would
-      // otherwise stay uncommitted and be wiped by the next run's clean/reset.
-      await deps.workspace.commitAll(`query ${runId}: log`);
       if (deps.secrets) {
         // Best-effort: the query itself already committed successfully above, so a rebuild
         // failure here (fs error, git race, etc.) must never surface as a query failure —
@@ -147,8 +141,6 @@ export async function query(
       // do NOT commit an error-log entry (commitAll would sweep up the accumulated draft). Just rethrow.
       if (!review) {
         await deps.workspace.resetToHead();
-        await deps.eventLog.append({ runId, instruction, status: "error", error: String(err) });
-        await deps.workspace.commitAll(`query ${runId}: log (error)`);
       }
       throw err;
     }
