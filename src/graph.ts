@@ -30,7 +30,7 @@ export interface GraphEdge { from: string; to: string; type: EdgeType }
 export interface VaultGraph { nodes: GraphNode[]; edges: GraphEdge[] }
 
 const SKIP_DIRS = new Set([".git", "node_modules", "artifacts", ".geode", "tools"]);
-const SKIP_FILES = new Set(["index.md", "log.md"]);
+const SKIP_FILES = new Set(["index.md", "log.md", "AGENTS.md"]);
 
 /** Collects vault-relative markdown paths (POSIX slashes), skipping generated/tool dirs. */
 async function walkMd(root: string, dir: string, out: string[]): Promise<void> {

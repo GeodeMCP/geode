@@ -33,6 +33,18 @@ test("buildNodes classifies tool, sop, gap with domain", async () => {
   expect(byId["backlog/mb-attach"]).toMatchObject({ type: "gap", kind: "tool", count: 1 });
 });
 
+test("buildNodes excludes the AGENTS.md schema file (meta, not a capability)", async () => {
+  const root = mkdtempSync(join(tmpdir(), "geode-graph-agents-"));
+  writeFileSync(join(root, "AGENTS.md"),
+    `---\ntype: schema\ntitle: Vault schema\ndescription: conventions\n---\n# Vault schema\n`);
+  mkdirSync(join(root, "notes"), { recursive: true });
+  writeFileSync(join(root, "notes/real.md"),
+    `---\ntype: reference\ntitle: Real\ndescription: r\n---\n`);
+  const ids = (await buildNodes(root, noSecrets)).map((n) => n.id);
+  expect(ids).toContain("notes/real");
+  expect(ids).not.toContain("AGENTS");
+});
+
 test("domain comes from frontmatter (first tag), never from the notes/ path", async () => {
   const root = mkdtempSync(join(tmpdir(), "geode-graph-dom-"));
   mkdirSync(join(root, "notes/administratie"), { recursive: true });
