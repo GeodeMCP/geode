@@ -1,5 +1,5 @@
 import { existsSync, realpathSync } from "node:fs";
-import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { parseManifest } from "./tools.js";
 
 /** Resolved OS-sandbox policy for the vault agent, derived once from env + the vault root. */
@@ -32,6 +32,10 @@ export type PermissionHandler = (toolName: string, input: Record<string, unknown
 // boundary. Must track the claude_code preset's host-process write tools: if the SDK adds a new
 // file-mutating tool, add it here or it inherits the allow-by-default posture (see spec follow-ups).
 const WRITE_TOOLS = new Set(["Edit", "Write", "MultiEdit", "NotebookEdit"]);
+
+// Derived artifacts the agent must never hand-edit — the kernel regenerates them from the
+// vault graph on every commit. Paths are vault-relative (POSIX separators).
+const GENERATED_FILES = new Set(["index.md", ".geode/graph.json"]);
 
 // Hosts the agent legitimately reaches while onboarding a tool (repo clone / package fetch).
 const DEFAULT_ONBOARDING_DOMAINS = [
@@ -144,6 +148,11 @@ export function buildPermissionHandler(writeRoots: string[]): PermissionHandler 
       const path = input.file_path ?? input.notebook_path;
       if (typeof path !== "string" || !writeAllowed(path, roots)) {
         return deny(`writes are confined to the vault; ${typeof path === "string" ? path : "(no path)"} is outside it`);
+      }
+      const base = roots[0] ?? "";
+      const rel = relative(base, canonicalPath(isAbsolute(path) ? path : join(base, path))).replace(/\\/g, "/");
+      if (GENERATED_FILES.has(rel)) {
+        return deny(`${rel} is generated from the vault graph and rebuilt automatically — do not edit it by hand`);
       }
       // Full-file writes (only Write — Edit/MultiEdit don't hand us post-edit content) that land on a
       // tool manifest get validated against the same parser `loadTool` uses at run time, so a broken

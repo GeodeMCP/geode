@@ -85,6 +85,15 @@ describe("buildPermissionHandler", () => {
     expect((await handler("Write", {})).behavior).toBe("deny"); // no path → deny
     expect((await handler("Write", { file_path: 42 })).behavior).toBe("deny"); // non-string path → deny
   });
+  it("denies hand-edits to generated artifacts (index.md, .geode/graph.json)", async () => {
+    expect((await handler("Write", { file_path: "index.md" })).behavior).toBe("deny");
+    expect((await handler("Edit", { file_path: "/vault/index.md" })).behavior).toBe("deny");
+    expect((await handler("Write", { file_path: ".geode/graph.json" })).behavior).toBe("deny");
+    expect((await handler("MultiEdit", { file_path: "/vault/.geode/graph.json" })).behavior).toBe("deny");
+  });
+  it("still allows writes to ordinary vault files", async () => {
+    expect((await handler("Write", { file_path: "business/x.md" })).behavior).toBe("allow");
+  });
 });
 
 describe("buildPermissionHandler tool-manifest write validation", () => {
