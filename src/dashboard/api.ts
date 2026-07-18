@@ -22,6 +22,7 @@ import { installTool, uninstallTool } from "../installer.js";
 import { loadTool } from "../tools.js";
 import { deriveCapabilities } from "../capabilities.js";
 import type { Docker } from "../docker.js";
+import { regenerateArtifacts } from "../rebuild.js";
 
 /** Dependencies injected into the API router, covering auth, workspace, query execution, and storage. */
 export interface ApiDeps {
@@ -169,6 +170,8 @@ export function createApiRouter(deps: ApiDeps): Router {
     catch (e) { res.status(400).json({ error: e instanceof Error ? e.message : String(e) }); }
   });
   router.post("/commit", async (req, res) => {
+    try { await regenerateArtifacts(deps.workspace.root, deps.secrets); }
+    catch (e) { console.error("graph rebuild failed (non-fatal):", e instanceof Error ? e.message : String(e)); }
     const commit = await deps.workspace.commitAll(String(req.body?.message || "dashboard: commit changes"));
     res.json({ commit });
   });

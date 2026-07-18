@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, test } from "vitest";
 import express from "express";
 import type { Server } from "node:http";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createApiRouter } from "../../src/dashboard/api.js";
@@ -39,7 +39,7 @@ async function boot() {
     },
     runRemember: async (_args, onProgress) => { onProgress({ type: "text", text: "filing" }); return { runId: "r2", text: "filed", commit: null, filesTouched: [] }; },
     linkKey: KEY,
-    secrets: { list: async () => [], delete: async () => {}, set: async () => {} } as any,
+    secrets: { get: async () => null, list: async () => [], delete: async () => {}, set: async () => {} } as any,
     artifacts: {} as any,
     transcripts: createTranscriptStore(join(root, ".transcripts")),
     artifactsDir: root,
@@ -156,6 +156,19 @@ test("commit then discard operate on the working tree", async () => {
   expect((await c.json()).commit).toBeTruthy();
   const s = await (await fetch(`${url}/api/status`, { headers: { cookie } })).json();
   expect(s.modified).toEqual([]); expect(s.created).toEqual([]);
+});
+
+test("POST /commit regenerates index.md + graph.json into the same commit", async () => {
+  const cookie = await login();
+  writeFileSync(join(root, "hello.md"), "---\ntype: note\ntitle: Hello Note\ndescription: hi\n---\nbody\n");
+  const res = await fetch(`${url}/api/commit`, {
+    method: "POST",
+    headers: { cookie, "content-type": "application/json" },
+    body: JSON.stringify({ message: "add hello" }),
+  });
+  expect(res.status).toBe(200);
+  expect(readFileSync(join(root, "index.md"), "utf8")).toContain("Hello Note");
+  expect(existsSync(join(root, ".geode/graph.json"))).toBe(true);
 });
 
 test("POST /api/file writes a knowledge file (uncommitted); rejects traversal", async () => {
