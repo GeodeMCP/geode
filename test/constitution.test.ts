@@ -30,6 +30,12 @@ test("the core (constitution) carries neither role's terseness rule", () => {
   expect(CONSTITUTION.toLowerCase()).not.toContain("no section headers");
 });
 
+test("librarian fragment mandates markdown links and forbids wikilinks", () => {
+  const librarian = fragmentFor("librarian");
+  expect(librarian.toLowerCase()).toContain("markdown link");
+  expect(librarian).toContain("[[wikilinks]]"); // named as the forbidden form
+});
+
 test("librarian fragment teaches write-time linking; the model defines the edges", () => {
   const librarian = fragmentFor("librarian");
   const lc = librarian.toLowerCase();

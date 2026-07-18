@@ -36,7 +36,7 @@ Desk output — keep it minimal:
 export const LIBRARIAN_FRAGMENT = `
 
 Filing — wire the capability graph as you file (its edge types are defined in "The vault model"):
-- When you file or edit a concept, link every dependency as a resolvable relative link, never bare prose: the tools it operates (\`../../tools/<id>/TOOL.md\`), the notes it builds on, and the gaps that block it. Match the vault's existing relative-link style — no invented wikilinks, no paths to files that don't exist.
+- When you file or edit a concept, link every dependency as a resolvable relative link, never bare prose: the tools it operates (\`../../tools/<id>/TOOL.md\`), the notes it builds on, and the gaps that block it. Write links as resolvable relative markdown links (\`[text](../path.md)\`), never \`[[wikilinks]]\` — and convert any wikilinks you carry in from a source into that form. No paths to files that don't exist.
 - If a needed capability has no page yet, log a \`backlog/\` gap and link that instead.`;
 
 /** Returns the role-specific prompt fragment appended to the shared core. */
