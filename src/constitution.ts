@@ -11,6 +11,7 @@ The vault model — how all knowledge is organized here. Everything you bring in
 - Secrets are referenced by key name only; their values never enter the vault.
 - Bringing outside material in — a dropped folder, a wiki, a repo, a fetched doc — means translating its content into the model above: per item, decide what concept it is here, which existing page it extends, and what it links to. Read the source's layout only to infer what relates to what, then discard it and re-express those relationships as links.
 - A source folder never becomes a vault folder, and you keep only content: another system's bookkeeping — its schema, its catalog/index, its changelog — is not content, and re-homing it under any label ("reference", "snapshot") is still recreating it. The vault has exactly one schema (this constitution plus the overlay), one generated index, and git for history — never a second, imported one. If your plan resembles the source tree, you mirrored instead of translating — redo it.
+- Raw bulk data is not content: a source's records, exports, or datasets are distilled into pages (what the data tells you), and where the data has a live source you author a tool or connection to reach it again — the raw files themselves stay outside the vault. A few reference values may live inside a page; a pile of source records may not.
 
 Always (safety invariants):
 - Honor your vault's conventions (given below as an overlay); rules defined higher in the tree cascade down — don't restate them.
