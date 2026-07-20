@@ -50,4 +50,8 @@ describe("cli egress uses approved hosts, not the manifest", () => {
     expect(computeCliNetwork(["registry.npmjs.org", "evil.com"], ["registry.npmjs.org"]))
       .toEqual({ network: "bridge", allow: ["registry.npmjs.org"] });
   });
+  it("lowercases a mixed-case declared host in the returned allowlist", () => {
+    expect(computeCliNetwork(["Registry.NPMJS.org"], ["registry.npmjs.org"]))
+      .toEqual({ network: "bridge", allow: ["registry.npmjs.org"] });
+  });
 });

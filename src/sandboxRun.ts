@@ -14,7 +14,7 @@ import { readApproval } from "./approvals.js";
 /** Decides the container network mode + egress allowlist from a tool's declared hosts and its approved set: only approved hosts may be reached; none approved → no network. */
 export function computeCliNetwork(declaredNetwork: string[] | undefined, approved: string[]): { network: "none" | "bridge"; allow: string[] } {
   const declared = Array.isArray(declaredNetwork) ? declaredNetwork : [];
-  const allow = declared.filter((h) => approved.includes(h.toLowerCase()));
+  const allow = declared.filter((h) => approved.includes(h.toLowerCase())).map((h) => h.toLowerCase());
   return allow.length ? { network: "bridge", allow } : { network: "none", allow: [] };
 }
 
