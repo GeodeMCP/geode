@@ -567,7 +567,7 @@ git commit -m "feat(security): AGENTS.md is not agent-writable (prevents persist
 
 **Files:**
 - Modify: `src/dashboard/api.ts` (add routes near the tools routes at `:188-211`; the install route at `:194-201`)
-- Test: no new backend test file required beyond a route smoke check; covered end-to-end by the UI tasks. (Optional: extend an existing `test/dashboard*.test.ts` if one exists — check with `ls test | grep dashboard`.)
+- Test: `test/dashboard/hosts.test.ts` — a real route test using the existing boot harness in `test/dashboard/api-ops.test.ts` (it stands up an Express app via `createApiRouter` with stub docker/secrets and a seeded `tools/demo/TOOL.md`). Copy that file's `boot()` setup verbatim as the starting point.
 
 **Interfaces:**
 - Consumes: `readApproval`, `approveHost`, `revokeHost` (Task 2); `hostStatus` (Task 1); `loadTool` (already imported in `api.ts`).
@@ -578,27 +578,32 @@ git commit -m "feat(security): AGENTS.md is not agent-writable (prevents persist
   - `GET /api/hosts/pending` → `{ tool: string; host: string }[]` (aggregate across all tools, for `NeedsAttention`)
   - **Behavior change:** `POST /api/tools/:id/install` no longer passes `manifest.permissions` as approved — installing builds the image but grants **no** hosts (closes hole G). Pass `{}`.
 
-- [ ] **Step 1: Write the failing test** (a route-level test using the exported router; mirror the setup any existing `test/dashboard*.test.ts` uses. If none exists, use supertest-style via the app. Minimal shape:)
+- [ ] **Step 1: Write the failing test** — a real route test. Copy the `boot()` harness from `test/dashboard/api-ops.test.ts` (Express app + `createApiRouter` with `toolsDir: root`, stub docker, a seeded `tools/demo/TOOL.md` whose action URL is `https://h/p`). Then assert the three host routes end-to-end:
 
 ```ts
-// test/hostRoutes.test.ts
-import { describe, it, expect } from "vitest";
-import { hostStatus } from "../src/hostPolicy.js";
-import type { ToolManifest } from "../src/tools.js";
-// Route wiring is verified by the UI tests (Tasks 8–10) hitting a live kernel.
-// This test pins the contract the routes must return.
-it("hostStatus is the shape the GET /hosts route returns", () => {
-  const m = { id: "t", name: "t", type: "http", description: "", actions: {
-    a: { http: { method: "GET", url: "https://api.moneybird.nl/x" } },
-  } } as ToolManifest;
-  expect(hostStatus(m, [])).toEqual({ approved: [], pending: ["api.moneybird.nl"] });
+// test/dashboard/hosts.test.ts — after copying boot() from api-ops.test.ts
+test("GET /hosts reports the declared host as pending, approve moves it, revoke removes it", async () => {
+  // the seeded demo tool's action url is https://h/p → declared host "h"
+  let r = await fetch(`${url}/api/tools/demo/hosts`);
+  expect(await r.json()).toEqual({ approved: [], pending: ["h"] });
+
+  r = await fetch(`${url}/api/tools/demo/hosts/approve`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ host: "h" }) });
+  expect(await r.json()).toEqual({ approved: ["h"], pending: [] });
+
+  r = await fetch(`${url}/api/hosts/pending`);
+  expect(await r.json()).toEqual([]); // nothing pending once approved
+
+  r = await fetch(`${url}/api/tools/demo/hosts/h`, { method: "DELETE" });
+  expect(await r.json()).toEqual({ approved: [], pending: ["h"] });
 });
 ```
 
-- [ ] **Step 2: Run it (passes on Task 1 code) — this task's real verification is manual + UI**
+(The api-ops harness mounts the router without the session guard, so these calls need no cookie — match how api-ops.test.ts already calls `/api/tools/...`. `toolsDir` is a fresh tmp dir, so `hosts.json` starts absent.)
 
-Run: `npx vitest run test/hostRoutes.test.ts`
-Expected: PASS (it pins the contract). The route wiring itself is verified in Step 4 by curl against a running kernel.
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `npx vitest run test/dashboard/hosts.test.ts`
+Expected: FAIL — routes 404 (not yet added).
 
 - [ ] **Step 3: Write the implementation**
 
@@ -667,10 +672,15 @@ curl -s -X POST localhost:8787/api/tools/<id>/hosts/approve -H 'content-type: ap
 # {"approved":["api.moneybird.nl"],"pending":[]}
 ```
 
-- [ ] **Step 5: Typecheck + commit** (commit together with Task 7 if needed for a green build)
+- [ ] **Step 5: Run the route test to verify it passes**
+
+Run: `npx vitest run test/dashboard/hosts.test.ts`
+Expected: PASS.
+
+- [ ] **Step 6: Typecheck + commit** (Task 7's `ToolView.hosts` must land for `/hosts/pending` to typecheck — if doing Task 6 before Task 7, add the `ToolView.hosts` field in `ops.ts` as part of this commit, or sequence Task 7 first)
 
 ```bash
-git add src/dashboard/api.ts test/hostRoutes.test.ts
+git add src/dashboard/api.ts test/dashboard/hosts.test.ts
 git commit -m "feat(hosts): host list/approve/revoke routes; install no longer auto-approves hosts"
 ```
 
