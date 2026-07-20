@@ -226,12 +226,16 @@ export function createApiRouter(deps: ApiDeps): Router {
     if (!SAFE_NAME.test(req.params.id)) { res.status(404).json({ error: "unknown tool" }); return; }
     const host = String(req.body?.host ?? "").trim().toLowerCase();
     if (!host) { res.status(400).json({ error: "host required" }); return; }
+    try { await loadTool(deps.workspace.root, req.params.id); } catch { res.status(404).json({ error: "unknown tool" }); return; }
     try { await approveHost(deps.toolsDir, req.params.id, host); res.json(await hostsOf(req.params.id)); }
     catch (e) { res.status(400).json({ error: e instanceof Error ? e.message : String(e) }); }
   });
   router.delete("/tools/:id/hosts/:host", async (req, res) => {
     if (!SAFE_NAME.test(req.params.id)) { res.status(404).json({ error: "unknown tool" }); return; }
-    try { await revokeHost(deps.toolsDir, req.params.id, decodeURIComponent(req.params.host)); res.json(await hostsOf(req.params.id)); }
+    try { await loadTool(deps.workspace.root, req.params.id); } catch { res.status(404).json({ error: "unknown tool" }); return; }
+    // Express router already URL-decodes route params once; do not decode again here (double-decoding
+    // would corrupt a host containing a literal `%`, e.g. "test%2ecom").
+    try { await revokeHost(deps.toolsDir, req.params.id, req.params.host); res.json(await hostsOf(req.params.id)); }
     catch (e) { res.status(400).json({ error: e instanceof Error ? e.message : String(e) }); }
   });
   router.get("/hosts/pending", async (_req, res) => {

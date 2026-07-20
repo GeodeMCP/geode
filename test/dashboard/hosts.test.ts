@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, test } from "vitest";
 import express from "express";
 import type { Server } from "node:http";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createApiRouter } from "../../src/dashboard/api.js";
@@ -64,4 +64,20 @@ test("GET /hosts reports the declared host as pending, approve moves it, revoke 
 
   r = await fetch(`${url}/api/tools/demo/hosts/h`, { method: "DELETE", headers: { cookie } });
   expect(await r.json()).toEqual({ approved: [], pending: ["h"] });
+});
+
+test("approve on an unknown tool id 404s and writes no hosts.json", async () => {
+  const cookie = await login();
+  const r = await fetch(`${url}/api/tools/nope/hosts/approve`, { method: "POST", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ host: "h" }) });
+  expect(r.status).toBe(404);
+  expect(await r.json()).toEqual({ error: "unknown tool" });
+  expect(existsSync(join(root, "nope", "hosts.json"))).toBe(false);
+});
+
+test("revoke on an unknown tool id 404s and writes no hosts.json", async () => {
+  const cookie = await login();
+  const r = await fetch(`${url}/api/tools/nope/hosts/h`, { method: "DELETE", headers: { cookie } });
+  expect(r.status).toBe(404);
+  expect(await r.json()).toEqual({ error: "unknown tool" });
+  expect(existsSync(join(root, "nope", "hosts.json"))).toBe(false);
 });
