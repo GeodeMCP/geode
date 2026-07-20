@@ -40,6 +40,8 @@ export function ToolPanel({ id }: { id: string }) {
     catch (e) { setInstallError(e instanceof Error ? e.message : String(e)); }
     finally { setBusy(false); }
   };
+  const approve = async (host: string) => { try { await api.approveHost(id, host); await load(); } catch { /* surfaced on reload */ } };
+  const revoke = async (host: string) => { try { await api.revokeHost(id, host); await load(); } catch { /* surfaced on reload */ } };
 
   if (loadError) return (
     <div className="tp">
@@ -120,6 +122,26 @@ export function ToolPanel({ id }: { id: string }) {
           {tool.connections.length > 0 && tool.requires.length > 0 && (
             <p className="tp-hint" style={{ marginTop: 4 }}>Use the Set secret button to open a one-time entry link. Full list on the Secrets page.</p>
           )}
+        </section>
+
+        <section className="tp-section">
+          <div className="na-glabel">Hosts <span className="na-count">{tool.hosts.approved.length + tool.hosts.pending.length}</span></div>
+          {tool.hosts.approved.length === 0 && tool.hosts.pending.length === 0 && <p className="tp-hint">This tool declares no external hosts.</p>}
+          {tool.hosts.pending.map((h) => (
+            <div key={h} className="tp-conn">
+              <div className="tp-conn-main"><b>{h}</b></div>
+              <span className="tp-status warn">pending</span>
+              <button className="btn sm" onClick={() => approve(h)}>Approve</button>
+            </div>
+          ))}
+          {tool.hosts.approved.map((h) => (
+            <div key={h} className="tp-conn">
+              <div className="tp-conn-main"><b>{h}</b></div>
+              <span className="tp-status ok">approved</span>
+              <button className="ghost sm" onClick={() => revoke(h)}>Revoke</button>
+            </div>
+          ))}
+          {tool.hosts.pending.length > 0 && <p className="tp-hint" style={{ marginTop: 4 }}>A tool can only reach approved hosts. Approve one to allow this tool to call it.</p>}
         </section>
 
         <section className="tp-section">
