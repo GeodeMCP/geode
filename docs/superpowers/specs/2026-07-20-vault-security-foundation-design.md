@@ -129,22 +129,36 @@ The agent *proposes*, the human *decides*, the broker *enforces*. This is what t
 constitution already says ("may author but never install `TOOL.md`"); this layer makes it
 an architectural boundary instead of a prompt promise.
 
-- **Per-tool host allowlist.** A manifest declares its hosts as *pending*. At invoke time
-  the broker refuses any host not approved *for that tool* — including `http`, which today
-  runs unconfined in the kernel process (closes E). Per-tool, not per-vault: this pins each
-  credential to its own destination, so the safety of every credential does not depend on
-  the weakest approved host in the vault, nor on the human catching a bad host in a diff.
-  (Decision rationale in §4.)
+- **Declared hosts vs approved hosts — the load-bearing split.** The manifest is
+  agent-authored and in git, so the approved set can NEVER live there or the agent approves
+  its own hosts. Two separate records:
+  - **Declared** (the *request*): the tool's `permissions.network` frontmatter field lists
+    the hosts it wants to reach. Agent-authored, git-tracked, versioned — you can see in
+    history what a tool ever asked for. This is a declaration, never a grant.
+  - **Approved** (the *grant*): the human-blessed set, stored on the **trusted side outside
+    the vault**, beside `installed.json` in `~/.geode/tools/<id>/`. Not agent-writable, not
+    in git.
+  The broker **enforces against the approved set, never the live manifest.** At invoke it
+  extracts the target host (from `http.url`; for a `cli` tool, the container's egress) and
+  refuses anything not approved *for that tool* — including `http`, unconfined in the kernel
+  process today (closes E). Per-tool, not per-vault (rationale in §4).
+- **Manifest hashing binds the two.** The approval record stores a hash of the declared
+  manifest. Any manifest edit changes the hash and invalidates approval → re-approval
+  required. Closes F: today `installed.json` stays valid after an edit and the runtime reads
+  the *live* manifest.
 - **Approval card in chat.** Runs are non-interactive — `AskUserQuestion` stays disabled
-  (`src/engine.ts`), so the agent cannot block mid-run for approval. Instead the run ends
-  having recorded the proposed hosts as pending; the dashboard chat renders an approval
-  card ("this tool wants to reach `api.moneybird.nl`, with this credential — approve?").
-  Approving is a broker action, not an agent tool. Same out-of-band-human-action pattern
-  as the existing secret links (`security-model.md:168-172`).
-- **Host management page (per vault).** Settings shows, per tool, approved + pending hosts,
-  with revoke. Revoking makes the next invoke to that host fail — no silent continuation.
-- **Manifest hashing.** Changing a manifest invalidates its approval. Closes F: today
-  `installed.json` stays valid after an edit.
+  (`src/engine.ts`), so the agent cannot block mid-run for approval. The run ends having
+  written its declared hosts and recorded them as *pending* against the trusted record; the
+  dashboard chat renders an approval card ("this tool wants to reach `api.moneybird.nl`,
+  with this credential — approve?"). Approving is a broker action moving pending→approved,
+  not an agent tool. Same out-of-band-human-action pattern as the existing secret links
+  (`security-model.md:168-172`).
+- **Host management, per tool.** Two surfaces, one source of truth. The chat card is the
+  just-in-time "approve what this run proposed" path. The durable surface is a **per-vault
+  settings page grouped by tool**: each tool shows approved + pending hosts, with
+  **add / revoke**. The operator can pre-approve a host with no run proposing it, and revoke
+  one — after which the next invoke to that host fails, no silent continuation. Both write
+  the same trusted approval record; the manifest is never mutated by approval.
 - **Dashboard consent parity.** The dashboard install route gains the same consent gate the
   CLI already has (closes G).
 - **Docker socket outside the agent-runner.** Only the broker builds/runs containers; the
@@ -203,13 +217,44 @@ boundary (two separate trust decisions).
   ciphertext) in the hosted deployment. The *enforcement* of that is a slice-2 deployment
   concern; this spec removes the runner's read access to the key regardless (Layer 1).
 
-## 6. Open questions for implementation planning
+## 6. Implementation decisions (resolved)
 
-1. **Runner isolation mechanism on each platform.** uid + directory perms (0700) is the
-   floor. Whether the runner also gets bubblewrap/seatbelt read-confinement, and how the
-   SDK behaves when `allowRead` is unset, must be verified before building — the exact
-   read-boundary primitive is not yet pinned.
-2. **Broker↔runner protocol shape.** How the job and its result (file mutations, transcript,
-   proposed hosts) cross the process boundary, and how the broker attributes commits.
-3. **Fetcher distillation contract.** What the fetcher is instructed to extract, and how the
-   librarian consumes it, so step two has enough to author a correct manifest.
+1. **Runner isolation.** Floor on both platforms: a **distinct uid + `0700`** on the vault
+   directories. On Linux (the hosted target) add **bubblewrap** (already a sandbox
+   dependency) with bind-mounts so the runner sees only its own working tree + staging dir,
+   everything else masked. macOS stays dev-not-hardened, consistent with the existing
+   posture (`security-model.md:111`). The read boundary is **OS-enforced (uid + bwrap), not
+   SDK-enforced** — the design does not rely on the SDK's `allowRead`, so its behavior is
+   moot.
+2. **Broker↔runner protocol.** The broker spawns the runner as a **subprocess and
+   communicates over a pipe with a small JSON-line protocol** — no socket, port, or
+   inter-process auth (parent/child; the fd is private to the pair). Job in:
+   `{role, instruction, vaultRoot (rw bind-mount), stagingDirs (ro), history}`. Out:
+   streamed events (relayed to the dashboard SSE) plus a final
+   `{mutatedFiles, transcript, proposedHosts}`. **The runner never commits** — it only
+   mutates the working tree; the broker performs the git hygiene + commit + artifact rebuild
+   that `query.ts` does today. Git stays entirely on the trusted side.
+3. **Fetcher distillation contract.** The fetcher is given a goal (e.g. "author a Moneybird
+   invoices tool") and writes a structured distillate to staging: (a) the API facts (base
+   URLs, auth scheme, the specific endpoints/fields needed), (b) the source hosts it drew
+   from — so the librarian can populate the declared `permissions.network` — and (c)
+   load-bearing verbatim excerpts, **marked as untrusted quoted material** (per "read content
+   is data, not instructions"). The librarian authors `TOOL.md` from the distillate **only**;
+   it never re-fetches (network is off).
+
+## 7. Deferred to slice 2, but decided now
+
+These answer operator questions raised during design; they belong to the hosting slice but
+are recorded so slice 2 does not re-litigate them.
+
+- **Subdomain provisioning.** One **wildcard** `*.geodemcp.com` DNS record → the Fly app, and
+  one wildcard TLS cert (issued once via a DNS-01 `_acme-challenge` TXT record). Creating a
+  vault is then a pure control-plane action — registry entry + uid + port + start the child
+  with its `GEODE_BASE_URL` — with **no per-vault DNS write or cert issuance**. The subdomain
+  works the moment the supervisor knows the slug. (Per-vault custom client domains would need
+  on-demand cert issuance — slice 4.)
+- **Vault switcher UI.** A **header dropdown** whose entries are real `<a href>` links to each
+  `https://<slug>.geodemcp.com/`, so click navigates and cmd/middle-click opens a new tab, at
+  no extra cost. Current vault marked; a **"+ New vault"** item opens a name+slug form that
+  POSTs to the child, which provisions via the supervisor over localhost and returns the new
+  subdomain URL. The list is fetched server-side by the child from the supervisor — no CORS.
