@@ -1,13 +1,20 @@
-import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { Chat } from "./Chat";
 import { api } from "../api";
 
-vi.mock("../api", () => ({ api: { history: () => Promise.resolve([]), clearHistory: () => Promise.resolve(), upload: vi.fn(), attachments: () => Promise.resolve({ files: [] }), clearAttachments: () => Promise.resolve({ ok: true }) } }));
+vi.mock("../api", () => ({
+  api: {
+    history: () => Promise.resolve([]), clearHistory: () => Promise.resolve(), upload: vi.fn(),
+    attachments: () => Promise.resolve({ files: [] }), clearAttachments: () => Promise.resolve({ ok: true }),
+    pendingHosts: vi.fn(() => Promise.resolve([])),
+    approveHost: vi.fn(() => Promise.resolve({ approved: [], pending: [] })),
+  },
+}));
 
 // jsdom doesn't implement scrollIntoView; Chat's auto-scroll effect calls it on every render.
 Element.prototype.scrollIntoView = vi.fn();
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
 describe("Chat composer", () => {
   it("stages a selected file as a removable chip", async () => {
@@ -31,5 +38,43 @@ describe("Chat composer", () => {
 
     expect(await screen.findByText(/Upload failed: boom/)).toBeTruthy();
     expect(onSend).not.toHaveBeenCalled();
+  });
+});
+
+describe("Chat host approval card", () => {
+  const sendAMessage = () => {
+    const textInput = screen.getByPlaceholderText("Talk to your vault…");
+    fireEvent.change(textInput, { target: { value: "hello" } });
+    fireEvent.keyDown(textInput, { key: "Enter" });
+  };
+
+  it("renders a pending host as an approval card after a run completes, and approving it calls the API and removes the card", async () => {
+    vi.mocked(api.pendingHosts).mockResolvedValue([{ tool: "moneybird", host: "api.moneybird.nl" }]);
+    const onSend = vi.fn().mockResolvedValue(undefined);
+    render(<Chat onSend={onSend} running={false} dirty={false} onCommit={vi.fn()} onDiscard={vi.fn()} />);
+
+    sendAMessage();
+
+    const approveBtn = await screen.findByText("Approve host");
+    expect(screen.getByText("moneybird")).toBeTruthy();
+    expect(screen.getByText("api.moneybird.nl")).toBeTruthy();
+
+    fireEvent.click(approveBtn);
+
+    await waitFor(() => expect(api.approveHost).toHaveBeenCalledWith("moneybird", "api.moneybird.nl"));
+    await waitFor(() => expect(screen.queryByText("Approve host")).toBeNull());
+  });
+
+  it("dismissing an approval card removes it without calling the API", async () => {
+    vi.mocked(api.pendingHosts).mockResolvedValue([{ tool: "github", host: "api.github.com" }]);
+    const onSend = vi.fn().mockResolvedValue(undefined);
+    render(<Chat onSend={onSend} running={false} dirty={false} onCommit={vi.fn()} onDiscard={vi.fn()} />);
+
+    sendAMessage();
+
+    fireEvent.click(await screen.findByText("Dismiss"));
+
+    await waitFor(() => expect(screen.queryByText("Approve host")).toBeNull());
+    expect(api.approveHost).not.toHaveBeenCalled();
   });
 });
