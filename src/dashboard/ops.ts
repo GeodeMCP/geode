@@ -3,6 +3,8 @@ import { join, relative, sep } from "node:path";
 import { type SecretStore } from "../secrets.js";
 import { listToolIds, loadTool, connectionConfigured, type ToolManifest, type ToolAction } from "../tools.js";
 import { readInstallState } from "../installer.js";
+import { readApproval } from "../approvals.js";
+import { hostStatus } from "../hostPolicy.js";
 
 /** Flattened dashboard view of a tool with per-connection configured status. */
 export interface ToolView {
@@ -14,6 +16,8 @@ export interface ToolView {
   installed: boolean;
   /** The permissions declared in the manifest (cli tools only). */
   permissions: { network?: unknown; filesystem?: string[] } | undefined;
+  /** Declared external hosts split into approved (human-blessed) and pending (awaiting approval). */
+  hosts: { approved: string[]; pending: string[] };
 }
 
 /** Matches `${params.X}` references (mirrors resolveTemplate's params branch). */
@@ -39,7 +43,9 @@ async function toView(m: ToolManifest, toolsDir: string, secrets: Pick<SecretSto
   const connections = [];
   for (const c of m.connections ?? []) connections.push({ label: c.label, title: c.title, description: c.description, configured: await connectionConfigured(secrets, m.id, c.label, m.requires ?? []) });
   const installState = m.type === "cli" ? await readInstallState(toolsDir, m.id) : null;
-  return { id: m.id, name: m.name, type: m.type, description: m.description, actions: Object.entries(m.actions).map(([name, a]) => ({ name, description: a.description, params: actionParams(a) })), connections, requires: m.requires ?? [], installed: installState !== null, permissions: m.permissions };
+  const { approvedHosts } = await readApproval(toolsDir, m.id);
+  const hosts = hostStatus(m, approvedHosts);
+  return { id: m.id, name: m.name, type: m.type, description: m.description, actions: Object.entries(m.actions).map(([name, a]) => ({ name, description: a.description, params: actionParams(a) })), connections, requires: m.requires ?? [], installed: installState !== null, permissions: m.permissions, hosts };
 }
 
 /** Reads all tools under <root>/tools and returns their views with connection status. */
