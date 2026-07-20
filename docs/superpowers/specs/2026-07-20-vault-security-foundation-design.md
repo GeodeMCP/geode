@@ -153,12 +153,19 @@ an architectural boundary instead of a prompt promise.
   with this credential — approve?"). Approving is a broker action moving pending→approved,
   not an agent tool. Same out-of-band-human-action pattern as the existing secret links
   (`security-model.md:168-172`).
-- **Host management, per tool.** Two surfaces, one source of truth. The chat card is the
-  just-in-time "approve what this run proposed" path. The durable surface is a **per-vault
-  settings page grouped by tool**: each tool shows approved + pending hosts, with
-  **add / revoke**. The operator can pre-approve a host with no run proposing it, and revoke
-  one — after which the next invoke to that host fails, no silent continuation. Both write
-  the same trusted approval record; the manifest is never mutated by approval.
+- **Host management — three existing surfaces, no new navigation.** Each maps to an
+  existing component (grounding UI consistency, see §8):
+  - **Manage → `ToolPanel`** (`web/src/components/ToolPanel.tsx`), the live per-tool panel
+    that already carries "install & trust" and "connections". Hosts become a sibling section
+    there: approved + pending, with **add / revoke**. Source of truth. The operator can
+    pre-approve a host with no run proposing it; revoking makes the next invoke to that host
+    fail, no silent continuation.
+  - **Discover globally → `NeedsAttention`** (`web/src/components/NeedsAttention.tsx`), the
+    bell + drawer that already aggregates uncommitted changes, unconfigured connections, and
+    backlog gaps with a count badge. A **pending host approval becomes a new attention
+    category** — findable without knowing which tool; each item links into that tool's panel.
+  - **Approve just-in-time → the chat card** in `Chat` (`web/src/components/Chat.tsx`).
+  All three write the same trusted approval record; the manifest is never mutated by approval.
 - **Dashboard consent parity.** The dashboard install route gains the same consent gate the
   CLI already has (closes G).
 - **Docker socket outside the agent-runner.** Only the broker builds/runs containers; the
@@ -258,3 +265,29 @@ are recorded so slice 2 does not re-litigate them.
   no extra cost. Current vault marked; a **"+ New vault"** item opens a name+slug form that
   POSTs to the child, which provisions via the supervisor over localhost and returns the new
   subdomain URL. The list is fetched server-side by the child from the supervisor — no CORS.
+  Extends `web/src/components/TopBar.tsx`, sibling to its existing account menu.
+
+## 8. UI consistency & verification (how new components stay on-style)
+
+Visual consistency is enforced structurally, not by taste. Three rules bind every UI change
+in this spec (host section, `NeedsAttention` category, chat card; and the slice-2 switcher):
+
+1. **Reuse tokens, never invent values.** The canonical source is
+   `docs/design/geodemcp-visual-style.md` (token set declared "non-negotiable") implemented
+   as CSS custom properties in `web/src/app.css` (`--bg`, `--surface`, `--green`, `--blue`,
+   `--border`, `--muted`, `--faint`, `--ease`). Components style via the existing semantic
+   class vocabulary (`ghost sm`, `board`, `cat`, `eyebrow`, `lede`), not inline values. Any
+   off-token value is by definition out of style.
+2. **Model each new component on an existing precedent.** Host management → `Secrets.tsx`
+   (the grouped `board → cat → conn` management pattern with ghost buttons and search).
+   Switcher → `TopBar.tsx`'s account menu. The genuinely-new element is the **chat approval
+   card**; it has no precedent, so it is **mocked first** (via the frontend-design skill, into
+   `docs/design/mockups/`) and **approved by the operator before it is built** — not guessed.
+3. **Verify against the running dashboard, not just the tests.** "Done" for any UI piece
+   means it has been viewed in the live dashboard (browser screenshot against the running
+   kernel) and sits beside the existing UI without reading as pasted-in — in addition to the
+   per-component `*.test.tsx` that every component already carries.
+
+The implementation plan turns these into explicit steps with a review checkpoint per
+component: identify precedent → reuse tokens/classes → (if new) mock and get sign-off →
+verify in the running UI.
