@@ -1,5 +1,7 @@
 import type { SecretStore } from "./secrets.js";
 import { loadTool, resolveTemplate, resolveTemplateOptional, resolveConnection, loadConnBundle } from "./tools.js";
+import { targetHost } from "./hostPolicy.js";
+import { readApproval } from "./approvals.js";
 
 /** Arguments to call a single tool action by name, optionally selecting a connection. */
 export interface InvokeArgs { tool: string; action: string; params?: Record<string, unknown>; connection?: string; workspace?: string }
@@ -34,6 +36,13 @@ export async function invoke(
   if (!http) throw new Error(`action "${args.action}" has no http definition`);
   const ctx = { params, conn };
   const url = resolveTemplate(http.url, ctx);
+  if (deps.toolsDir) {
+    const host = targetHost(url);
+    const { approvedHosts } = await readApproval(deps.toolsDir, args.tool);
+    if (!host || !approvedHosts.includes(host)) {
+      throw new Error(`host not approved for tool "${args.tool}": ${host ?? url} — approve it in the dashboard before this action can run`);
+    }
+  }
   // Query params and non-auth headers are optional-friendly: if a value references a param the caller
   // omitted, drop that entry instead of throwing (url and body stay strict — they must resolve).
   const headers: Record<string, string> = {};
