@@ -6,10 +6,15 @@ export interface ApprovalRecord { approvedHosts: string[]; updatedAt: string }
 
 const recPath = (toolsDir: string, id: string) => join(toolsDir, id, "hosts.json");
 
-/** Reads a tool's approved-hosts record, or an empty record when none exists. */
+/** Reads a tool's approved-hosts record, or an empty record when none exists or the file is malformed. */
 export async function readApproval(toolsDir: string, id: string): Promise<ApprovalRecord> {
-  try { return JSON.parse(await readFile(recPath(toolsDir, id), "utf8")) as ApprovalRecord; }
-  catch { return { approvedHosts: [], updatedAt: "" }; }
+  try {
+    const parsed: unknown = JSON.parse(await readFile(recPath(toolsDir, id), "utf8"));
+    if (parsed && typeof parsed === "object" && Array.isArray((parsed as ApprovalRecord).approvedHosts)) {
+      return parsed as ApprovalRecord;
+    }
+    return { approvedHosts: [], updatedAt: "" };
+  } catch { return { approvedHosts: [], updatedAt: "" }; }
 }
 
 /** Persists a mutated record. */

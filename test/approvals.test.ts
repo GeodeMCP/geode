@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { readApproval, approveHost, revokeHost } from "../src/approvals.js";
@@ -28,5 +28,11 @@ describe("approvals store", () => {
     const rec = await revokeHost(dir, "moneybird", "api.moneybird.nl");
     expect(rec.approvedHosts).toEqual([]);
     await rm(dir, { recursive: true, force: true });
+  });
+
+  it("treats a malformed record (approvedHosts not an array) as empty instead of fail-open", async () => {
+    await mkdir(join(dir, "moneybird"), { recursive: true });
+    await writeFile(join(dir, "moneybird", "hosts.json"), JSON.stringify({ approvedHosts: "evil.com" }));
+    expect(await readApproval(dir, "moneybird")).toEqual({ approvedHosts: [], updatedAt: "" });
   });
 });
