@@ -37,7 +37,7 @@ The guarantee is **architectural, not cryptographic**, resting on three facts:
 
 - **Response bodies are returned verbatim.** `src/invoke.ts:51-55` returns the upstream body untouched and `src/server.ts:110` serializes the whole result into MCP text content. If an upstream API echoes a key, or a `cli` binary prints its own config, it flows straight back to the caller. **There is no redaction layer anywhere in the codebase.**
 - **`resolveTemplate` will interpolate `${conn.X}` into any templated field**, including `http.url` and `http.query`. A manifest that puts a credential in a query string puts it in upstream access logs. Nothing in `parseManifest` forbids it.
-- **The vault agent authors tool manifests.** The permission handler validates manifest *syntax* on write, never *destination*. A prompt-injected agent that writes a manifest pointing `http.url` at an attacker host, with the owner's key in a header, is a credential-exfiltration path the broker does not close. **This is the sharpest unmitigated edge in the design.**
+- **The vault agent authors tool manifests.** The permission handler validates manifest *syntax* on write, never *destination*. A prompt-injected agent that writes a manifest pointing `http.url` at an attacker host, with the owner's key in a header, used to be a credential-exfiltration path the broker did not close — **the former sharpest unmitigated edge in the design.** It is now mitigated for declared egress: the `http`, `cli`, and `mcp` executors all refuse to dispatch to a host the owner hasn't approved. See [Host egress approval](#host-egress-approval) — and its residuals, since this alone does not make the vault safe to hold real client secrets against a compromised agent.
 
 ## The three invoke executors
 
@@ -71,6 +71,23 @@ Secrets are injected **only into transport headers**, with `params` deliberately
 
 Timeout bounds `initialize` and each `callTool`, but the preceding TCP/TLS handshake is only OS/undici-bounded (documented at `src/mcpProxy.ts:23-24`).
 
+## Host egress approval
+
+Every host a manifest declares — `http` action URLs, `cli` `permissions.network` entries, `mcp` `transport.url` — starts **pending** and is refused until a human explicitly approves it. Approval is enforced against a trusted record, never the live manifest.
+
+**Declared vs. approved — two separate records.** `declaredHosts` (`src/hostPolicy.ts:17-23`) reads every host the current manifest asks for: live, agent-writable, in git — a request, not a grant. The **approved** set lives outside the vault, on the trusted side, at `~/.geode/tools/<id>/hosts.json` (`src/approvals.ts`), written only by `approveHost`/`revokeHost` and never by the agent. `hostStatus` (`src/hostPolicy.ts:26-30`) partitions declared hosts into approved/pending for the dashboard (ToolPanel), the NeedsAttention drawer, and a post-run chat approval card.
+
+**Enforcement points, all pre-dispatch:**
+- `http` — `src/invoke.ts:78-82` checks the resolved URL's host against the approved set before the first request. `fetchWithApprovedRedirects` (`src/invoke.ts:23-42`) then re-validates the host of **every** redirect hop with `redirect: "manual"`, up to `MAX_REDIRECTS = 5` (`src/invoke.ts:11`), so an approved host's 3xx cannot smuggle credentialed headers to an unapproved one.
+- `cli` — `computeCliNetwork` (`src/sandboxRun.ts:15-19`) intersects the manifest's declared `permissions.network` array with the approved set; only that intersection reaches the container's proxy allowlist (`src/sandboxRun.ts:36-42`), and an empty intersection forces `--network none`.
+- `mcp` — `src/invoke.ts:58-65` checks `transport.url`'s host against the approved set before handing off to `runMcpTool`.
+
+Tool install no longer grants any of this: the dashboard install route always passes `{}` as approved permissions (`src/dashboard/api.ts:201`, self-documented — "Installing builds the image but grants NO hosts"), so an install no longer implies network access. Every declared host still needs its own explicit approval afterward.
+
+**Residuals — not closed by this slice, deferred to 1B:**
+- The `cli` container still runs `--network bridge`; the allowlist reaches it only as `HTTP_PROXY`/`HTTPS_PROXY` env vars (`src/sandboxRun.ts:42`), a convention a well-behaved client honours. A tool that opens a raw socket bypasses it outright — the allowlist is advisory, not kernel-enforced.
+- This closes hole E from the security-foundation design spec (`docs/superpowers/specs/2026-07-20-vault-security-foundation-design.md:64`) for declared egress, but holes A–C are untouched: the agent still has Bash and can read `secrets.enc` directly (A), the encryption key still sits beside the ciphertext (B), and WebFetch/WebSearch egress from the agent is still open on every platform (C). **The vault is not yet safe to hold real client secrets against a compromised agent — that remains slice 1B.**
+
 ## Agent confinement
 
 Two layers, and they are **not independently toggleable**.
@@ -79,7 +96,7 @@ Two layers, and they are **not independently toggleable**.
 
 `permissionMode: "default"` plus a programmatic `canUseTool` handler — **never `bypassPermissions`** while the sandbox is on. The rationale (`src/engine.ts:180-184`) is that the OS sandbox derives its file/network limits from the permission rules, so bypassing permissions would leave the sandbox inert.
 
-`buildPermissionHandler` denies: `Bash` with `dangerouslyDisableSandbox`, `AskUserQuestion`, writes outside the vault, writes to generated files (`index.md`, `.geode/graph.json`), and invalid `TOOL.md` content (run through `parseManifest`, `Write` only — `Edit`/`MultiEdit` don't expose post-edit content).
+`buildPermissionHandler` denies: `Bash` with `dangerouslyDisableSandbox`, `AskUserQuestion`, writes outside the vault, writes to generated files (`index.md`, `.geode/graph.json`, and now `AGENTS.md` — `src/agentSandbox.ts:38`), and invalid `TOOL.md` content (run through `parseManifest`, `Write` only — `Edit`/`MultiEdit` don't expose post-edit content). `AGENTS.md` joining `GENERATED_FILES` closes hole D from the design spec (an agent-writable, every-run-loaded file is a persistent prompt-injection target); the denial reason distinguishes it from the rebuild-on-commit files (`src/agentSandbox.ts:154-157`) — owner edits still go through the dashboard file API, never the agent.
 
 `canonicalPath` realpaths the longest existing ancestor and re-appends the rest, so a not-yet-created file still resolves symlinks. This exists specifically for macOS `/tmp`→`/private/tmp`; without it, legitimate in-vault writes were falsely rejected.
 
@@ -116,17 +133,21 @@ The sandbox design doc adds a hard constraint: **D12 attachments (untrusted inpu
 
 These three were verified directly against the source, not inferred.
 
-### 1. Approved permissions are never enforced at run time
+### 1. Approved permissions are never enforced at run time — closed for hosts, still open for everything else
 
-`installer.ts:27` records the owner-approved `permissions` into `installed.json`. But `sandboxRun.ts:19` only checks that the file **exists**, and the actual network mode is read from the **live manifest** (`m.permissions?.network`, `sandboxRun.ts:28`).
+`installer.ts:27` still records the owner-approved `permissions` into `installed.json`, and `sandboxRun.ts:27` still only checks that the file **exists** — neither changed. What changed: the `cli` executor no longer trusts the live manifest's `permissions.network` as the actual allowlist. `computeCliNetwork` (`src/sandboxRun.ts:15-19`) intersects it against the separate, trusted approved-hosts record (`src/approvals.ts`) instead, so an agent widening `TOOL.md`'s declared hosts after approval gains nothing — the new host is **pending**, not approved, and is filtered out of the container's proxy allowlist on the next invoke. See [Host egress approval](#host-egress-approval).
 
-Since `TOOL.md` is agent-writable, an agent can widen a tool from `network: none` to `network: any` after approval and it takes effect on the next invoke with no re-consent. **The TOFU record is written but never checked.**
+**The TOFU record in `installed.json` is still written but never checked; the *host* dimension is instead enforced by a separate record the agent cannot write.** `permissions.filesystem` and `runtime` remain fully unenforced regardless (see "Also unenforced" below).
 
-### 2. The dashboard install route has no consent step
+### 2. The dashboard install route has no consent step — no longer self-approves hosts
 
-The CLI path (`src/toolCli.ts:31-47`) prints every requested permission and requires a literal `y`. The dashboard route passes `manifest.permissions ?? {}` straight through as `approvedPermissions` (`src/dashboard/api.ts:198`) — **the manifest approves itself.** No confirmation, no diff, no prompt. It is session-gated so it isn't remote-anonymous, but the meaningful consent gate exists only in the CLI.
+The CLI path (`src/toolCli.ts:31-47`) prints every requested permission and requires a literal `y`. The dashboard route used to pass `manifest.permissions ?? {}` straight through as `approvedPermissions` — the manifest approved itself. It no longer does: it now always passes `{}` (`src/dashboard/api.ts:201`, self-documented — "Installing builds the image but grants NO hosts — egress is approved separately, per host, via /hosts/approve"). **This closes the self-approval concern for hosts** — installing from the dashboard grants no network access at all; every declared host still needs an explicit `/hosts/approve` afterward, gated by the separate host-approval UI (ToolPanel / NeedsAttention / chat card), not by the install click.
+
+It remains true that the install click itself has no confirmation/diff step over the *other* declared permissions (`filesystem`, `runtime`) — moot in practice today since, per "Also unenforced" below, nothing reads them at run time regardless of provenance.
 
 ### 3. The container egress allowlist is very likely broken
+
+**Update:** the allowlist source changed — it's now the intersection of the manifest's declared hosts and the trusted approved-hosts record (`computeCliNetwork`, `src/sandboxRun.ts:15-19`), not the raw manifest array alone. Which hosts *can* end up on the allowlist is tighter; the mechanism enforcing that allowlist inside the container is unchanged, and the residual below is exactly the slice-1B item named in [Host egress approval](#host-egress-approval).
 
 For `permissions.network: string[]`, the container gets `--network bridge` plus `HTTP_PROXY`/`HTTPS_PROXY` pointing at a host-side proxy. Two problems:
 

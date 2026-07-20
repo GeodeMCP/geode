@@ -40,8 +40,16 @@ export function ToolPanel({ id }: { id: string }) {
     catch (e) { setInstallError(e instanceof Error ? e.message : String(e)); }
     finally { setBusy(false); }
   };
-  const approve = async (host: string) => { try { await api.approveHost(id, host); await load(); } catch { /* surfaced on reload */ } };
-  const revoke = async (host: string) => { try { await api.revokeHost(id, host); await load(); } catch { /* surfaced on reload */ } };
+  const approve = async (host: string) => {
+    setInstallError("");
+    try { await api.approveHost(id, host); await load(); }
+    catch (e) { setInstallError(e instanceof Error ? e.message : String(e)); }
+  };
+  const revoke = async (host: string) => {
+    setInstallError("");
+    try { await api.revokeHost(id, host); await load(); }
+    catch (e) { setInstallError(e instanceof Error ? e.message : String(e)); }
+  };
 
   if (loadError) return (
     <div className="tp">
@@ -68,6 +76,10 @@ export function ToolPanel({ id }: { id: string }) {
 
   const isCli = tool.type === "cli";
   const perms = tool.permissions;
+  // install/uninstall errors already render in the trust card or the installed-header trailer;
+  // only fall back to the hosts section when neither of those is on screen, so a shared error
+  // never renders twice.
+  const installErrorShownElsewhere = isCli && (tool.installed || confirmInstall);
   return (
     <div className="tp">
       <header className="tp-head">
@@ -126,6 +138,7 @@ export function ToolPanel({ id }: { id: string }) {
 
         <section className="tp-section">
           <div className="na-glabel">Hosts <span className="na-count">{tool.hosts.approved.length + tool.hosts.pending.length}</span></div>
+          {installError && !installErrorShownElsewhere && <pre className="tp-code err">{installError}</pre>}
           {tool.hosts.approved.length === 0 && tool.hosts.pending.length === 0 && <p className="tp-hint">This tool declares no external hosts.</p>}
           {tool.hosts.pending.map((h) => (
             <div key={h} className="tp-conn">

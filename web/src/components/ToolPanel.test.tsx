@@ -82,6 +82,15 @@ it("shows pending hosts with an Approve button and approves them", async () => {
   await waitFor(() => expect(api.approveHost).toHaveBeenCalledWith("demo", "api.moneybird.nl"));
 });
 
+it("shows an approve-host error in a contained error block instead of silently reloading", async () => {
+  (api.tool as any).mockResolvedValue({ ...TOOL, hosts: { approved: [], pending: ["api.moneybird.nl"] } });
+  (api.approveHost as any).mockRejectedValue(new Error("host approval failed: disk full"));
+  const { container } = render(<ToolPanel id="demo" />);
+  fireEvent.click(await screen.findByText("Approve"));
+  expect(await screen.findByText(/host approval failed/)).toBeTruthy();
+  expect(container.querySelector(".tp-code.err")).toBeTruthy();
+});
+
 it("keeps the requested permissions legible in the confirm card", async () => {
   (api.tool as any).mockResolvedValue({ ...TOOL, permissions: { network: "any" } });
   const { container } = render(<ToolPanel id="cb" />);
