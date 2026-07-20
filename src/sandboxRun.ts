@@ -9,6 +9,14 @@ import { imageTag, runArgs } from "./docker.js";
 import { readInstallState } from "./installer.js";
 import type { InvokeResult } from "./invoke.js";
 import { startEgressProxy } from "./egressProxy.js";
+import { readApproval } from "./approvals.js";
+
+/** Decides the container network mode + egress allowlist from a tool's declared hosts and its approved set: only approved hosts may be reached; none approved → no network. */
+export function computeCliNetwork(declaredNetwork: string[] | undefined, approved: string[]): { network: "none" | "bridge"; allow: string[] } {
+  const declared = Array.isArray(declaredNetwork) ? declaredNetwork : [];
+  const allow = declared.filter((h) => approved.includes(h.toLowerCase())).map((h) => h.toLowerCase());
+  return allow.length ? { network: "bridge", allow } : { network: "none", allow: [] };
+}
 
 /** Runs one action of an installed cli tool in a fresh sandboxed container; returns exit-code + parsed stdout. */
 export async function runCliTool(
@@ -25,12 +33,11 @@ export async function runCliTool(
   const ctx = { params, conn };
   const argv = [...binTokens(m.bin), ...action.command.map((t) => resolveTemplate(t, ctx))];
   const env = m.materialize?.env ? Object.fromEntries(Object.entries(m.materialize.env).map(([k, v]) => [k, resolveTemplate(v, ctx)])) : conn;
-  const networkSpec = m.permissions?.network;
-  const isAllowlist = Array.isArray(networkSpec);
-  const network = !networkSpec || networkSpec === "none" ? "none" : "bridge";
+  const approved = (await readApproval(deps.toolsDir, toolId)).approvedHosts;
+  const { network, allow } = computeCliNetwork(Array.isArray(m.permissions?.network) ? m.permissions.network as string[] : undefined, approved);
   const dir = await mkdtemp(join(tmpdir(), "geode-env-"));
   const envFile = join(dir, "env");
-  const proxy = isAllowlist ? await startEgressProxy(networkSpec as string[]) : null;
+  const proxy = allow.length ? await startEgressProxy(allow) : null;
   try {
     const proxyEnv = proxy ? { HTTP_PROXY: proxy.url, HTTPS_PROXY: proxy.url } : {};
     const envEntries = { ...env, ...proxyEnv };

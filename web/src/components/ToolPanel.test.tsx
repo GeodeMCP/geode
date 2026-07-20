@@ -7,13 +7,15 @@ function deferred<T>() { let resolve!: (v: T) => void; const promise = new Promi
 
 vi.mock("../api", () => ({ api: {
   tool: vi.fn(), installTool: vi.fn(), uninstallTool: vi.fn(), testAction: vi.fn(),
+  approveHost: vi.fn(), revokeHost: vi.fn(),
 } }));
 
 afterEach(cleanup);
 
 const TOOL = { id: "cb", name: "CloakBrowser", type: "cli", description: "d",
   actions: [{ name: "fetch" }], connections: [{ label: "default", configured: false }],
-  requires: [], installed: false, permissions: { network: "any" } };
+  requires: [], installed: false, permissions: { network: "any" },
+  hosts: { approved: [], pending: [] } };
 
 it("renders actions + connections + not-installed", async () => {
   (api.tool as any).mockResolvedValue(TOOL);
@@ -67,6 +69,25 @@ it("shows an install error in a contained error block", async () => {
   fireEvent.click(await screen.findByText("Install & trust"));
   fireEvent.click(screen.getByText("Confirm install"));
   expect(await screen.findByText(/docker build failed/)).toBeTruthy();
+  expect(container.querySelector(".tp-code.err")).toBeTruthy();
+});
+
+it("shows pending hosts with an Approve button and approves them", async () => {
+  (api.tool as any).mockResolvedValueOnce({ ...TOOL, hosts: { approved: [], pending: ["api.moneybird.nl"] } })
+    .mockResolvedValueOnce({ ...TOOL, hosts: { approved: ["api.moneybird.nl"], pending: [] } });
+  (api.approveHost as any).mockResolvedValue({ approved: ["api.moneybird.nl"], pending: [] });
+  render(<ToolPanel id="demo" />);
+  expect(await screen.findByText("api.moneybird.nl")).toBeTruthy();
+  fireEvent.click(screen.getByText("Approve"));
+  await waitFor(() => expect(api.approveHost).toHaveBeenCalledWith("demo", "api.moneybird.nl"));
+});
+
+it("shows an approve-host error in a contained error block instead of silently reloading", async () => {
+  (api.tool as any).mockResolvedValue({ ...TOOL, hosts: { approved: [], pending: ["api.moneybird.nl"] } });
+  (api.approveHost as any).mockRejectedValue(new Error("host approval failed: disk full"));
+  const { container } = render(<ToolPanel id="demo" />);
+  fireEvent.click(await screen.findByText("Approve"));
+  expect(await screen.findByText(/host approval failed/)).toBeTruthy();
   expect(container.querySelector(".tp-code.err")).toBeTruthy();
 });
 

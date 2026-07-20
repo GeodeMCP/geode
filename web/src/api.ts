@@ -1,7 +1,7 @@
 /** Represents a node in the vault file tree, either a file or a directory. */
 export interface TreeNode { name: string; path: string; type: "file" | "dir"; children?: TreeNode[] }
 /** Describes a tool: its actions and per-connection configured status. */
-export interface ToolView { id: string; name: string; type: string; description: string; actions: { name: string; description?: string; params: string[] }[]; connections: { label: string; title?: string; description?: string; configured: boolean }[]; requires: string[]; installed: boolean; permissions: { network?: unknown; filesystem?: string[] } | undefined }
+export interface ToolView { id: string; name: string; type: string; description: string; actions: { name: string; description?: string; params: string[] }[]; connections: { label: string; title?: string; description?: string; configured: boolean }[]; requires: string[]; installed: boolean; permissions: { network?: unknown; filesystem?: string[] } | undefined; hosts: { approved: string[]; pending: string[] } }
 /** A single Server-Sent Event with an event type name and parsed data payload. */
 export interface SseEvent { event: string; data: any }
 /** Documents a single MCP tool with its name, description, and parameter schema. */
@@ -66,6 +66,14 @@ export const api = {
   installTool: (id: string) => json<unknown>(`/api/tools/${encodeURIComponent(id)}/install`, { method: "POST" }),
   uninstallTool: (id: string) => json<{ ok: true }>(`/api/tools/${encodeURIComponent(id)}/uninstall`, { method: "POST" }),
   testAction: (id: string, action: string, params: Record<string, unknown>) => json<{ status: number; body: unknown }>(`/api/tools/${encodeURIComponent(id)}/test`, { method: "POST", body: JSON.stringify({ action, params }) }),
+  /** Fetches a tool's declared hosts split into approved and pending. */
+  toolHosts: (id: string) => json<{ approved: string[]; pending: string[] }>(`/api/tools/${encodeURIComponent(id)}/hosts`),
+  /** Approves a host for a tool, returning the updated approved/pending split. */
+  approveHost: (id: string, host: string) => json<{ approved: string[]; pending: string[] }>(`/api/tools/${encodeURIComponent(id)}/hosts/approve`, { method: "POST", body: JSON.stringify({ host }) }),
+  /** Revokes a previously-approved host for a tool, returning the updated approved/pending split. */
+  revokeHost: (id: string, host: string) => json<{ approved: string[]; pending: string[] }>(`/api/tools/${encodeURIComponent(id)}/hosts/${encodeURIComponent(host)}`, { method: "DELETE" }),
+  /** Lists all tools with at least one pending (unapproved) declared host. */
+  pendingHosts: () => json<{ tool: string; host: string }[]>("/api/hosts/pending"),
   secrets: () => json<{ ref: string; requiredBy: string[] }[]>("/api/secrets"),
   secretLink: (ref: string) => json<{ url: string }>(`/api/secrets/${encodeURIComponent(ref)}/link`, { method: "POST" }),
   deleteSecret: (ref: string) => json<{ ok: true }>(`/api/secrets/${encodeURIComponent(ref)}`, { method: "DELETE" }),

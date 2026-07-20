@@ -8,6 +8,7 @@ vi.mock("../api", () => ({
     status: vi.fn().mockResolvedValue({ modified: [], created: [] }),
     tools: vi.fn().mockResolvedValue([]),
     gaps: vi.fn().mockResolvedValue({ gaps: [] }),
+    pendingHosts: vi.fn().mockResolvedValue([]),
   },
 }));
 
