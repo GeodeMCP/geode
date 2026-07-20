@@ -1,5 +1,7 @@
 .superpowers/
 .worktrees/
+.claude/
+.DS_Store
 node_modules/
 .env
 .env.local
