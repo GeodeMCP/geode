@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { invoke } from "../src/invoke.js";
 import { approveHost } from "../src/approvals.js";
+import { computeCliNetwork } from "../src/sandboxRun.js";
 
 const store = { get: async () => "tok" };
 
@@ -38,5 +39,15 @@ describe("http host enforcement", () => {
     const fetchFn = (async () => new Response("{}", { status: 200 })) as unknown as typeof fetch;
     const r = await invoke({ root, toolsDir, secrets: store, fetchFn }, { tool: "demo", action: "ping" });
     expect(r.status).toBe(200);
+  });
+});
+
+describe("cli egress uses approved hosts, not the manifest", () => {
+  it("returns network:none and no proxy list when nothing is approved", () => {
+    expect(computeCliNetwork(["registry.npmjs.org"], [])).toEqual({ network: "none", allow: [] });
+  });
+  it("restricts the proxy allowlist to approved hosts", () => {
+    expect(computeCliNetwork(["registry.npmjs.org", "evil.com"], ["registry.npmjs.org"]))
+      .toEqual({ network: "bridge", allow: ["registry.npmjs.org"] });
   });
 });
