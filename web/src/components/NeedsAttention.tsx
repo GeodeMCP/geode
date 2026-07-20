@@ -22,17 +22,20 @@ export function NeedsAttention({ onOpenSettings }: { onOpenSettings: () => void 
   const [status, setStatus] = useState<{ modified: string[]; created: string[] }>({ modified: [], created: [] });
   const [setup, setSetup] = useState<SetupItem[]>([]);
   const [gaps, setGaps] = useState<GapItem[]>([]);
+  const [pendingHostList, setPendingHostList] = useState<{ tool: string; host: string }[]>([]);
   const [msg, setMsg] = useState("");
 
   const refresh = useCallback(async () => {
-    const [s, tools, g] = await Promise.all([
+    const [s, tools, g, ph] = await Promise.all([
       api.status().catch(() => ({ modified: [], created: [] })),
       api.tools().catch(() => []),
       api.gaps().catch(() => ({ gaps: [] })),
+      api.pendingHosts().catch(() => []),
     ]);
     setStatus(s);
     setSetup(pendingSetup(tools));
     setGaps(g.gaps);
+    setPendingHostList(ph);
   }, []);
   useEffect(() => { refresh(); }, [refresh]); // initial load, so the badge is right without opening
   useEffect(() => { if (open) refresh(); }, [open, refresh]); // and fresh each time it's opened
@@ -44,7 +47,7 @@ export function NeedsAttention({ onOpenSettings }: { onOpenSettings: () => void 
   }, [open]);
 
   const pendingFiles = status.modified.length + status.created.length;
-  const total = pendingFiles + setup.length + gaps.length;
+  const total = pendingFiles + setup.length + gaps.length + pendingHostList.length;
 
   const commit = async () => { await api.commit(); await refresh(); };
   const discard = async () => { await api.discard(); await refresh(); };
@@ -112,6 +115,19 @@ export function NeedsAttention({ onOpenSettings }: { onOpenSettings: () => void 
                     <div className="na-actions">
                       {it.refs.map((r) => <button key={r} className="ghost sm" onClick={() => openLink(r)}>Set {r.split("__").pop()}</button>)}
                       <button className="btn sm" onClick={() => test(it.tool, it.connection)}>Test</button>
+                    </div>
+                  </div>
+                ))}
+              </section>
+            )}
+            {pendingHostList.length > 0 && (
+              <section className="na-group">
+                <div className="na-glabel">Hosts awaiting approval <span className="na-count">{pendingHostList.length}</span></div>
+                {pendingHostList.map((p) => (
+                  <div key={`${p.tool}:${p.host}`} className="na-card">
+                    <span className="na-card-title"><b>{p.host}</b> · {p.tool}</span>
+                    <div className="na-actions">
+                      <button className="btn sm" onClick={onOpenSettings}>Review</button>
                     </div>
                   </div>
                 ))}

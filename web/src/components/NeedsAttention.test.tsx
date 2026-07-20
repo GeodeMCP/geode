@@ -13,6 +13,7 @@ vi.mock("../api", () => ({
     secretLink: vi.fn(),
     tool: vi.fn(),
     testAction: vi.fn(),
+    pendingHosts: vi.fn().mockResolvedValue([]),
   },
 }));
 
@@ -55,4 +56,13 @@ it("Esc closes the drawer", async () => {
   await screen.findByText("Needs attention");
   fireEvent.keyDown(window, { key: "Escape" });
   expect(screen.queryByText("Needs attention")).toBeNull();
+});
+
+it("includes pending host approvals in the badge count and lists them in the drawer", async () => {
+  vi.mocked(api.pendingHosts).mockResolvedValue([{ tool: "moneybird", host: "api.moneybird.nl" }]);
+  render(<NeedsAttention onOpenSettings={() => {}} />);
+  expect(await screen.findByText("5")).toBeTruthy(); // 4 baseline + 1 pending host
+  fireEvent.click(screen.getByRole("button", { name: /needs attention/i }));
+  expect(await screen.findByText(/Hosts awaiting approval/)).toBeTruthy();
+  expect(screen.getByText("api.moneybird.nl")).toBeTruthy();
 });
