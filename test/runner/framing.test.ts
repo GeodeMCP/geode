@@ -14,4 +14,13 @@ describe("framing", () => {
     const decode = createLineDecoder();
     expect(decode("")).toEqual([]);
   });
+  it("skips a blank line between two complete messages", () => {
+    const decode = createLineDecoder();
+    expect(decode('{"a":1}\n\n{"b":2}\n')).toEqual([{ a: 1 }, { b: 2 }]);
+  });
+  it("buffers a chunk with no newline until one arrives", () => {
+    const decode = createLineDecoder();
+    expect(decode('{"a":1}')).toEqual([]);
+    expect(decode('\n')).toEqual([{ a: 1 }]);
+  });
 });
