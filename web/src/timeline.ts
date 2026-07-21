@@ -12,7 +12,8 @@ export type Item =
   | { kind: "todos"; items: { content: string; status: string }[]; ts: number }
   | { kind: "notice"; noticeKind: "compact" | "memory" | "retry"; text: string; ts: number }
   | { kind: "agent"; text: string; ts: number; animate?: boolean; meta?: Metrics }
-  | { kind: "error"; text: string; ts: number };
+  | { kind: "error"; text: string; ts: number }
+  | { kind: "approval"; tool: string; host: string; ts: number };
 
 /** Appends or updates a timeline item in response to a single in-flight SSE progress event. */
 export function applyProgress(items: Item[], ev: any, ts: number): Item[] {

@@ -35,7 +35,7 @@ const WRITE_TOOLS = new Set(["Edit", "Write", "MultiEdit", "NotebookEdit"]);
 
 // Derived artifacts the agent must never hand-edit — the kernel regenerates them from the
 // vault graph on every commit. Paths are vault-relative (POSIX separators).
-const GENERATED_FILES = new Set(["index.md", ".geode/graph.json"]);
+const GENERATED_FILES = new Set(["index.md", ".geode/graph.json", "AGENTS.md"]);
 
 // Hosts the agent legitimately reaches while onboarding a tool (repo clone / package fetch).
 const DEFAULT_ONBOARDING_DOMAINS = [
@@ -152,7 +152,10 @@ export function buildPermissionHandler(writeRoots: string[]): PermissionHandler 
       const base = roots[0] ?? "";
       const rel = relative(base, canonicalPath(isAbsolute(path) ? path : join(base, path))).replace(/\\/g, "/");
       if (GENERATED_FILES.has(rel)) {
-        return deny(`${rel} is generated from the vault graph and rebuilt automatically — do not edit it by hand`);
+        const reason = rel === "AGENTS.md"
+          ? `${rel} is the owner-controlled prompt overlay and is edited only via the dashboard, never by the agent`
+          : `${rel} is generated from the vault graph and rebuilt automatically — do not edit it by hand`;
+        return deny(reason);
       }
       // Full-file writes (only Write — Edit/MultiEdit don't hand us post-edit content) that land on a
       // tool manifest get validated against the same parser `loadTool` uses at run time, so a broken

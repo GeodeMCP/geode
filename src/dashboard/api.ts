@@ -20,6 +20,8 @@ import { mintSecretLink } from "./secretLinks.js";
 import { TOOL_CATALOG } from "../toolCatalog.js";
 import { installTool, uninstallTool } from "../installer.js";
 import { loadTool } from "../tools.js";
+import { readApproval, approveHost, revokeHost } from "../approvals.js";
+import { hostStatus } from "../hostPolicy.js";
 import { deriveCapabilities } from "../capabilities.js";
 import type { Docker } from "../docker.js";
 import { regenerateArtifacts } from "../rebuild.js";
@@ -194,8 +196,9 @@ export function createApiRouter(deps: ApiDeps): Router {
   router.post("/tools/:id/install", async (req, res) => {
     if (!SAFE_NAME.test(req.params.id)) { res.status(404).json({ error: "unknown tool" }); return; }
     try {
-      const manifest = await loadTool(deps.workspace.root, req.params.id);
-      const state = await installTool({ root: deps.workspace.root, toolsDir: deps.toolsDir, docker: deps.docker }, req.params.id, manifest.permissions ?? {});
+      await loadTool(deps.workspace.root, req.params.id);
+      // Installing builds the image but grants NO hosts — egress is approved separately, per host, via /hosts/approve.
+      const state = await installTool({ root: deps.workspace.root, toolsDir: deps.toolsDir, docker: deps.docker }, req.params.id, {});
       res.json(state);
     } catch (e) { res.status(400).json({ error: e instanceof Error ? e.message : String(e) }); }
   });
@@ -208,6 +211,39 @@ export function createApiRouter(deps: ApiDeps): Router {
     if (!SAFE_NAME.test(req.params.id)) { res.status(404).json({ error: "unknown tool" }); return; }
     try { res.json(await deps.invoke({ tool: req.params.id, action: String(req.body?.action ?? ""), connection: req.body?.connection, params: req.body?.params ?? {} })); }
     catch (e) { res.status(400).json({ error: e instanceof Error ? e.message : String(e) }); }
+  });
+
+  const hostsOf = async (id: string) => {
+    const manifest = await loadTool(deps.workspace.root, id);
+    const { approvedHosts } = await readApproval(deps.toolsDir, id);
+    return hostStatus(manifest, approvedHosts);
+  };
+  router.get("/tools/:id/hosts", async (req, res) => {
+    if (!SAFE_NAME.test(req.params.id)) { res.status(404).json({ error: "unknown tool" }); return; }
+    try { res.json(await hostsOf(req.params.id)); } catch { res.status(404).json({ error: "unknown tool" }); }
+  });
+  router.post("/tools/:id/hosts/approve", async (req, res) => {
+    if (!SAFE_NAME.test(req.params.id)) { res.status(404).json({ error: "unknown tool" }); return; }
+    const host = String(req.body?.host ?? "").trim().toLowerCase();
+    if (!host) { res.status(400).json({ error: "host required" }); return; }
+    try { await loadTool(deps.workspace.root, req.params.id); } catch { res.status(404).json({ error: "unknown tool" }); return; }
+    try { await approveHost(deps.toolsDir, req.params.id, host); res.json(await hostsOf(req.params.id)); }
+    catch (e) { res.status(400).json({ error: e instanceof Error ? e.message : String(e) }); }
+  });
+  router.delete("/tools/:id/hosts/:host", async (req, res) => {
+    if (!SAFE_NAME.test(req.params.id)) { res.status(404).json({ error: "unknown tool" }); return; }
+    try { await loadTool(deps.workspace.root, req.params.id); } catch { res.status(404).json({ error: "unknown tool" }); return; }
+    // Express router already URL-decodes route params once; do not decode again here (double-decoding
+    // would corrupt a host containing a literal `%`, e.g. "test%2ecom").
+    try { await revokeHost(deps.toolsDir, req.params.id, req.params.host); res.json(await hostsOf(req.params.id)); }
+    catch (e) { res.status(400).json({ error: e instanceof Error ? e.message : String(e) }); }
+  });
+  router.get("/hosts/pending", async (_req, res) => {
+    const out: { tool: string; host: string }[] = [];
+    for (const t of await listTools(deps.workspace.root, deps.toolsDir, deps.secrets)) {
+      for (const host of t.hosts.pending) out.push({ tool: t.id, host });
+    }
+    res.json(out);
   });
 
   router.get("/secrets", async (_req, res) => { res.json(await listSecrets(deps.workspace.root, deps.secrets)); });

@@ -247,6 +247,23 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard, autoRun }: {
       else if (e.event === "error") setMsgs((m) => [...m, { kind: "error", text: e.data.message, ts: Date.now() }]);
     }, attachments.length ? attachments : undefined);
     refreshFolder();
+    // Surface any hosts the run left pending, as an approval card per host not already shown.
+    const pending = await api.pendingHosts().catch(() => []);
+    if (pending.length) {
+      setMsgs((m) => {
+        const additions = pending
+          .filter((p) => !m.some((it) => it.kind === "approval" && it.tool === p.tool && it.host === p.host))
+          .map((p) => ({ kind: "approval" as const, tool: p.tool, host: p.host, ts: Date.now() }));
+        return additions.length ? [...m, ...additions] : m;
+      });
+    }
+  };
+  const approveHost = async (tool: string, host: string) => {
+    await api.approveHost(tool, host);
+    setMsgs((m) => m.filter((it) => !(it.kind === "approval" && it.tool === tool && it.host === host)));
+  };
+  const dismissApproval = (tool: string, host: string) => {
+    setMsgs((m) => m.filter((it) => !(it.kind === "approval" && it.tool === tool && it.host === host)));
   };
   // Fire a programmatic run (e.g. the tree's /delete) once the chat is idle; runs during a
   // live run wait for it to finish. Last-wins if several are queued while a run is in flight.
@@ -301,6 +318,17 @@ export function Chat({ onSend, running, dirty, onCommit, onDiscard, autoRun }: {
               <div key={i} className="err-banner">
                 <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16h.01" /></svg>
                 <div><b>Run failed.</b> {m.text}</div>
+              </div>
+            );
+            case "approval": return (
+              <div key={i} className="approval">
+                <div className="ap-eyebrow"><span className="pdot" />Approval needed</div>
+                <div className="ap-title"><b>{m.tool}</b> wants to reach <span className="host">{m.host}</span></div>
+                <div className="ap-desc">This tool can only call hosts you approve. Approving lets it reach this host with its stored credential — nothing else.</div>
+                <div className="ap-actions">
+                  <button className="ghost sm" onClick={() => dismissApproval(m.tool, m.host)}>Dismiss</button>
+                  <button className="btn sm" onClick={() => approveHost(m.tool, m.host)}>Approve host</button>
+                </div>
               </div>
             );
           }

@@ -127,6 +127,15 @@
   .card{align-self:flex-start;max-width:94%;border-radius:13px;padding:12px 14px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.45);font-size:14px;display:flex;gap:11px;align-items:center;}
   .card .ic{color:var(--emerald-300);}
   .card .fn{color:var(--emerald-300);font-weight:500;font-family:"Geist Mono",monospace;font-size:13px;}
+  /* host approval card — amber left rule reads as "needs your call" without breaking the stream */
+  .approval{align-self:stretch;background:var(--surface-2);border:1px solid var(--border);border-left:2px solid var(--amber);border-radius:11px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;}
+  .ap-eyebrow{display:flex;align-items:center;gap:7px;font-family:"Instrument Sans",sans-serif;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.13em;color:var(--amber);}
+  .ap-eyebrow .pdot{width:6px;height:6px;border-radius:999px;background:var(--amber);}
+  .ap-title{font-size:13.5px;color:var(--neutral-200);line-height:1.45;}
+  .ap-title b{font-weight:600;color:var(--text);}
+  .ap-title .host{font-family:"Geist Mono",monospace;font-size:12.5px;color:var(--emerald-300);}
+  .ap-desc{font-size:12.5px;color:var(--muted);line-height:1.5;}
+  .ap-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:1px;}
   .ctrl{padding:16px 20px;border-top:1px solid var(--border);}
   .staged{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
   .staged .chip button{background:none;border:none;color:inherit;cursor:pointer;font-size:13px;line-height:1;padding:0;margin-left:2px;}
