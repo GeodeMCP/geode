@@ -88,6 +88,12 @@ Tool install no longer grants any of this: the dashboard install route always pa
 - The `cli` container still runs `--network bridge`; the allowlist reaches it only as `HTTP_PROXY`/`HTTPS_PROXY` env vars (`src/sandboxRun.ts:42`), a convention a well-behaved client honours. A tool that opens a raw socket bypasses it outright — the allowlist is advisory, not kernel-enforced.
 - This closes hole E from the security-foundation design spec (`docs/superpowers/specs/2026-07-20-vault-security-foundation-design.md:64`) for declared egress, but holes A–C are untouched: the agent still has Bash and can read `secrets.enc` directly (A), the encryption key still sits beside the ciphertext (B), and WebFetch/WebSearch egress from the agent is still open on every platform (C). **The vault is not yet safe to hold real client secrets against a compromised agent — that remains slice 1B.**
 
+## Process boundary (runner subprocess)
+
+Since slice 1B-1, the agent SDK run no longer executes in the kernel's own process. `deps.engine` is `createSubprocessEngine` (`src/subprocessEngine.ts`), which spawns `src/runner/main.ts` (tsx-loaded, the same loader the kernel's own entrypoint uses) and talks to it over a JSON-line stdio pipe; the runner is what actually calls `claudeAgentEngine`. The broker (this process) retains git, secrets, and `invoke` — none of that crosses the pipe.
+
+**This is same-uid: a process boundary, not yet a trust boundary.** The runner shares the broker's uid/gid and, for now, its full environment (`spawnOptions.env: process.env` in `src/index.ts` is an explicit placeholder, not a scrubbed allowlist). A compromised agent run cannot be assumed isolated from the broker's secrets or the vault working tree beyond what Layer 1/Layer 2 below already provide. Slice 1B-1b adds the actual privilege boundary: a dedicated low-privilege `geode-runner` uid/gid, a shared-group `2770` working tree so the broker can still reconcile runner writes, and a scrubbed child env carrying only what the SDK needs — closing the "runner can read the broker's own secrets dir" gap this phase leaves open.
+
 ## Agent confinement
 
 Two layers, and they are **not independently toggleable**.

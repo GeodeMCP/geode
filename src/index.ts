@@ -26,7 +26,10 @@ import { createOAuth } from "./oauth/tokens.js";
 import { createOAuthRouter } from "./oauth/router.js";
 import { createRateLimiter } from "./dashboard/rateLimit.js";
 
-const runnerEntry = join(dirname(fileURLToPath(import.meta.url)), "runner", "main.ts");
+// pkgRoot is the src/ dir — Node walks up from a spawned child's cwd to find node_modules,
+// so pinning cwd here lets tsx resolve regardless of the kernel's own process.cwd() at spawn time.
+const pkgRoot = dirname(fileURLToPath(import.meta.url));
+const runnerEntry = join(pkgRoot, "runner", "main.ts");
 
 /** Bootstraps the full GeodeMCP server: loads config, initialises all stores, and starts the MCP and HTTP listeners. */
 async function main() {
@@ -68,7 +71,9 @@ async function main() {
     engine: createSubprocessEngine({
       runnerCommand: process.execPath,
       runnerArgs: ["--import", "tsx", runnerEntry],
-      spawnOptions: { env: process.env },
+      // cwd pins tsx-loader resolution (the "--import tsx" bare specifier resolves relative to cwd at spawn
+      // time) to the package root, independent of the kernel's own process.cwd() when launched.
+      spawnOptions: { cwd: pkgRoot, env: process.env },
     }),
     runManager: createRunManager({ maxRuntimeMs: config.maxRuntimeMs, queueLimit: config.queueLimit }),
     systemPrompt: CONSTITUTION,

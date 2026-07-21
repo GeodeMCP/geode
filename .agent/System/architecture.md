@@ -16,7 +16,7 @@ Everything actionable funnels through `invoke`: the caller calls it, a process r
 
 ## Process shape
 
-Single Node process, ESM, TypeScript run via `tsx`. `src/index.ts:30-115` is the only composition root.
+Single Node process (the broker), ESM, TypeScript run via `tsx`. `src/index.ts:30-115` is the only composition root. Since slice 1B-1, each agent run additionally spawns a short-lived **runner subprocess** (`src/runner/main.ts`) behind the `Engine` seam — see item 7 below and the [security model](security-model.md#process-boundary-runner-subprocess).
 
 Startup order:
 
@@ -37,7 +37,7 @@ Both MCP and dashboard runs funnel into `query()` (`src/query.ts:84`). The whole
 4. **User message assembly** — `historyNote + attachmentNote + retrievalNote + instruction` (`src/query.ts:117`).
 5. **System prompt assembly** — `composeSystemPrompt` = `CONSTITUTION` + role fragment + overlay + skills footer.
 6. **Sandbox settings** — `buildSandboxSettings(policy, attachmentDirs)`; attachment dirs become read-only grants.
-7. **Engine** — `claudeAgentEngine` dynamically imports the Claude Agent SDK's `query` and streams messages through `mapMessage`, with `stripEvent` removing the vault-absolute path prefix (handling the macOS `/private` symlink).
+7. **Engine** — since slice 1B-1, `deps.engine` is `createSubprocessEngine` (`src/subprocessEngine.ts`), which spawns a **runner subprocess** (`src/runner/main.ts`, tsx-loaded the same way the kernel itself runs) and streams job options in / events out over a JSON-line stdio pipe. The runner is what actually invokes `claudeAgentEngine`, which dynamically imports the Claude Agent SDK's `query` and streams messages through `mapMessage`, with `stripEvent` removing the vault-absolute path prefix (handling the macOS `/private` symlink). This phase is **same-uid** — a process boundary, not yet a privilege boundary (the uid/gid drop is slice 1B-1b). See [Security model](security-model.md#process-boundary-runner-subprocess).
 8. **Fork on commit mode** — review mode returns with `commit: null` and a dirty tree; auto-commit mode commits the run, then regenerates artifacts and commits *that* separately.
 9. **Failure** — non-review mode does `resetToHead()` (hard reset + `clean -fd`) then rethrows. Review mode leaves partial edits for inspection.
 
