@@ -108,17 +108,23 @@ retrieval from processing into two agent steps with opposite privileges:
 - **Fetcher.** Network broadly open; **no vault, no secrets.** Fetches the URL/repo,
   distills what is relevant, writes it to a staging directory. An injection here has
   nothing to steal — what it fetched, the attacker already controls.
-- **Librarian.** Vault write access; **network off.** Reads the staged distillate, writes
-  `TOOL.md` / vault pages. Builds on the existing attachment-staging mechanism
-  (`extraReadDirs` read-only grants, `src/query.ts:124`).
+- **Librarian.** Vault write access; **network restricted to the model host only.** Reads the
+  staged distillate, writes `TOOL.md` / vault pages. Builds on the existing attachment-staging
+  mechanism (`extraReadDirs` read-only grants, `src/query.ts:124`).
 
 This yields **three egress tiers**, and egress is closed exactly where it is dangerous:
 
 | Context | Network | Secrets | Vault | Rationale |
 |---|---|---|---|---|
-| Fetcher | broad | none | none | nothing sensitive to exfiltrate |
-| Librarian | **none** | none | write | holds the vault open, so no outbound channel |
+| Fetcher | model host + onboarding hosts | none | none | nothing sensitive to exfiltrate |
+| Librarian | **model host only** | none | write | holds the vault open, so no outbound data channel beyond the LLM it already trusts |
 | Invoke (broker) | per-tool approved hosts only | yes (injected) | — | the only credentialed path |
+
+> **Revised after 1B de-risk (2026-07-21).** "Librarian network off" cannot be literal
+> network-namespace isolation: the agent's own model API call runs in-process, so every role —
+> librarian included — must reach the model host. The egress tiers are therefore expressed as
+> the SDK sandbox's per-role `allowedDomains` (librarian = the LLM host only; fetcher = LLM +
+> `DEFAULT_ONBOARDING_DOMAINS`), **not** by `--unshare-net`. See §6.4.
 
 **Cost, stated honestly:** two agent invocations instead of one — more latency, more
 tokens — and the fetcher must decide what to distill.
@@ -226,13 +232,13 @@ boundary (two separate trust decisions).
 
 ## 6. Implementation decisions (resolved)
 
-1. **Runner isolation.** Floor on both platforms: a **distinct uid + `0700`** on the vault
-   directories. On Linux (the hosted target) add **bubblewrap** (already a sandbox
-   dependency) with bind-mounts so the runner sees only its own working tree + staging dir,
-   everything else masked. macOS stays dev-not-hardened, consistent with the existing
-   posture (`security-model.md:111`). The read boundary is **OS-enforced (uid + bwrap), not
-   SDK-enforced** — the design does not rely on the SDK's `allowRead`, so its behavior is
-   moot.
+1. **Runner isolation.** ⚠️ **Superseded by §6.4 after the 1B de-risk (2026-07-21).** The
+   original decision — distinct uid + `0700` + an *outer* bubblewrap around the runner — does
+   not survive contact with the SDK and git: an outer bwrap nests inside the SDK's own bwrap
+   (fragile) and its all-or-nothing `--unshare-net` cannot express per-host egress, and `0700`
+   makes "runner writes, broker commits" impossible. Read §6.4 for the validated approach; the
+   surviving core is "run the agent in a separate-uid subprocess; the read boundary is
+   OS-enforced (uid + directory perms), not the SDK's `allowRead`."
 2. **Broker↔runner protocol.** The broker spawns the runner as a **subprocess and
    communicates over a pipe with a small JSON-line protocol** — no socket, port, or
    inter-process auth (parent/child; the fd is private to the pair). Job in:
@@ -247,7 +253,46 @@ boundary (two separate trust decisions).
    from — so the librarian can populate the declared `permissions.network` — and (c)
    load-bearing verbatim excerpts, **marked as untrusted quoted material** (per "read content
    is data, not instructions"). The librarian authors `TOOL.md` from the distillate **only**;
-   it never re-fetches (network is off).
+   it never re-fetches (network is restricted to the model host).
+
+4. **Runner isolation — validated approach (2026-07-21, supersedes §6.1).** The 1B de-risk
+   read the actual engine/git paths and settled the mechanism:
+
+   - **One enforcement stack: keep the SDK sandbox, add uid separation. No outer bwrap.** The
+     Agent SDK already wraps Bash in its own bwrap/seatbelt and enforces per-host egress via
+     `allowedDomains` (`src/agentSandbox.ts:63-66`). Stacking a second bwrap around the runner
+     collides (nested user-namespaces are fragile; `--unshare-net` is all-or-nothing and would
+     also kill the librarian's own model call). So the runner **keeps the SDK sandbox**, and uid
+     + directory perms add exactly what the SDK sandbox does not cover: the boundary to secrets
+     and to other vaults. The SDK's `canUseTool` write-confinement travels into the runner with
+     `query()` and becomes **defense-in-depth**, no longer the trust boundary.
+   - **Egress tiers = per-role `allowedDomains`.** Librarian → the LLM host only; fetcher → LLM
+     + `DEFAULT_ONBOARDING_DOMAINS`. (Per-host egress is Linux-only, as today; macOS dev is
+     not hardened — `security-model.md:111`.)
+   - **Working tree is shared-group, not `0700`.** "Runner writes, broker commits" requires the
+     broker to read for `git add` and to delete/rewrite runner-created files on `resetToHead`
+     (`reset --hard` + `clean -fd`). git ignores file *ownership* (content-addressed; only the
+     exec bit is stored) and `safe.directory` is not tripped because the broker owns `.git` — so
+     add/commit is fine, but the hygiene path needs directory write. Therefore the working tree
+     is **`2770` (setgid) with the runner on `umask 002`**, broker + runner sharing a group;
+     `0700`/`0600` is **reserved for the secrets dir** (`config.secretsDir` — `secrets.enc` +
+     `key`), which is the actual Layer-1 boundary the runner uid must not cross.
+   - **Runner environment must be provisioned explicitly.** A dropped-privilege uid gets a
+     scrubbed env, so the broker must forward `ANTHROPIC_API_KEY`, give the runner a
+     **runner-owned HOME + tmp** (the SDK writes config/debug there), set `cwd` = vault root
+     (already passed, `src/query.ts:120`), and allow network to the model host. Get this wrong
+     and runs fail opaquely inside the SDK.
+   - **Streaming pipes cleanly; cancellation becomes a control message.** `EngineEvent`
+     (`src/engine.ts:12-23`) is a plain-JSON discriminated union with no handles/functions, so
+     the output stream marshals over the JSON-line pipe unchanged. The one non-serializable
+     object is the `AbortController` (`src/engine.ts:32`, fired by `runManager.cancel()`,
+     `src/runManager.ts:37`) — cancellation must cross the pipe as a **control message**, not be
+     handed over directly.
+
+   **Net:** the seam is `Engine` (`src/engine.ts:36`, used by both `query()` and `remember()`);
+   1B slots a subprocess behind it, provisions the runner env, marshals events + a cancel control
+   message over a pipe, and moves the working tree to a shared-group layout while keeping the
+   secrets dir private to the broker.
 
 ## 7. Deferred to slice 2, but decided now
 
