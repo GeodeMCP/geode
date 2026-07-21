@@ -1,7 +1,7 @@
 import { loadConfig } from "./config.js";
 import { createWorkspace } from "./workspace.js";
 import { createRunManager } from "./runManager.js";
-import { claudeAgentEngine } from "./engine.js";
+import { createSubprocessEngine } from "./subprocessEngine.js";
 import { resolveSandboxPolicy } from "./agentSandbox.js";
 import { CONSTITUTION } from "./constitution.js";
 import { buildMcpServer, buildHttpApp } from "./server.js";
@@ -25,6 +25,8 @@ import { mountDashboard } from "./dashboard/index.js";
 import { createOAuth } from "./oauth/tokens.js";
 import { createOAuthRouter } from "./oauth/router.js";
 import { createRateLimiter } from "./dashboard/rateLimit.js";
+
+const runnerEntry = join(dirname(fileURLToPath(import.meta.url)), "runner", "main.ts");
 
 /** Bootstraps the full GeodeMCP server: loads config, initialises all stores, and starts the MCP and HTTP listeners. */
 async function main() {
@@ -60,7 +62,14 @@ async function main() {
 
   const queryDeps: QueryDeps = {
     workspace,
-    engine: claudeAgentEngine,
+    // Runs the agent SDK in a spawned runner subprocess (tsx-loaded, same as the kernel's own entrypoint) rather than
+    // in-process. Same-uid for now — spawnOptions.env passes through the broker's full env as a placeholder;
+    // 1B-1b scrubs/provisions a minimal per-runner env and adds the uid/gid privilege boundary.
+    engine: createSubprocessEngine({
+      runnerCommand: process.execPath,
+      runnerArgs: ["--import", "tsx", runnerEntry],
+      spawnOptions: { env: process.env },
+    }),
     runManager: createRunManager({ maxRuntimeMs: config.maxRuntimeMs, queueLimit: config.queueLimit }),
     systemPrompt: CONSTITUTION,
     sandboxPolicy: resolveSandboxPolicy(process.env, config.workspaceRoot),
