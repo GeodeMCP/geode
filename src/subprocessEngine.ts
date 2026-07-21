@@ -6,10 +6,12 @@ import type { JobMessage, RunnerOut } from "./runner/protocol.js";
 /** Builds an Engine that runs the real engine in a spawned runner subprocess, marshaling options in and events out. */
 export function createSubprocessEngine(config: { runnerCommand: string; runnerArgs: string[]; spawnOptions?: SpawnOptions }): Engine {
   return async function* (opts) {
+    // spawnOptions must not override stdio — stdin/stdout are required pipes (child.stdin!/child.stdout! below assume it).
     const child = spawn(config.runnerCommand, config.runnerArgs, { stdio: ["pipe", "pipe", "inherit"], ...config.spawnOptions });
     const { abortController, ...serializable } = opts;
     const onAbort = () => { try { child.stdin!.write(encodeLine({ kind: "cancel" })); } catch { /* child may be gone */ } };
     abortController.signal.addEventListener("abort", onAbort);
+    child.stdin?.on("error", () => { /* ignore EPIPE etc. — child may have exited */ });
 
     // Async queue: stdout decoder pushes RunnerOut; the generator pulls.
     const queue: RunnerOut[] = [];
@@ -21,7 +23,7 @@ export function createSubprocessEngine(config: { runnerCommand: string; runnerAr
     child.stdout!.setEncoding("utf8");
     child.stdout!.on("data", (c: string) => { for (const m of decode(c)) queue.push(m as RunnerOut); wake(); });
     child.on("error", (e) => { failure = e; ended = true; wake(); });
-    child.on("close", (code) => { if (code && code !== 0 && !failure) failure = new Error(`runner exited with code ${code}`); ended = true; wake(); });
+    child.on("close", (code, signal) => { if (!failure && (signal || (code && code !== 0))) failure = new Error(`runner exited (code ${code}, signal ${signal})`); ended = true; wake(); });
 
     const jobMsg: JobMessage = { kind: "job", ...serializable };
     child.stdin!.write(encodeLine(jobMsg));

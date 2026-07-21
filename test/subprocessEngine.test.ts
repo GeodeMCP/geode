@@ -9,7 +9,9 @@ beforeAll(() => {
   const dir = mkdtempSync(join(tmpdir(), "geode-fakerunner-"));
   fakeRunner = join(dir, "runner.mjs");
   // Reads one job line, emits two events + done. If the job's instruction is "hang",
-  // it emits one event then waits, and on receiving a cancel line, exits.
+  // it emits one event then waits, and on receiving a cancel line, exits. If the
+  // instruction is "crash", it emits one event then kills itself with SIGKILL
+  // before sending done, simulating a real crash/OOM.
   writeFileSync(fakeRunner, `
 let buf = "";
 process.stdin.setEncoding("utf8");
@@ -22,6 +24,7 @@ process.stdin.on("data", (c) => {
     if (m.kind === "cancel") { process.stdout.write(JSON.stringify({kind:"event",event:{type:"text",text:"cancelled"}})+"\\n"); process.stdout.write(JSON.stringify({kind:"done"})+"\\n"); process.exit(0); }
     if (m.kind === "job") {
       process.stdout.write(JSON.stringify({kind:"event",event:{type:"text",text:m.instruction}})+"\\n");
+      if (m.instruction === "crash") { process.kill(process.pid, "SIGKILL"); return; }
       if (m.instruction === "hang") return;
       process.stdout.write(JSON.stringify({kind:"event",event:{type:"result",text:"final"}})+"\\n");
       process.stdout.write(JSON.stringify({kind:"done"})+"\\n");
@@ -54,5 +57,13 @@ describe("subprocess engine adapter", () => {
     const rest = [];
     for (let n = await it.next(); !n.done; n = await it.next()) rest.push(n.value);
     expect(rest).toContainEqual({ type: "text", text: "cancelled" });
+  });
+
+  it("throws when the runner is killed by a signal before completion", async () => {
+    const engine = createSubprocessEngine({ runnerCommand: process.execPath, runnerArgs: [fakeRunner] });
+    const drain = async () => {
+      for await (const _ev of engine(runOpts("crash"))) { /* drain */ }
+    };
+    await expect(drain()).rejects.toThrow();
   });
 });
