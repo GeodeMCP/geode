@@ -20,12 +20,15 @@ export function buildIngestInstruction(content: string, source?: string, title?:
   return lines.join("\n");
 }
 
-/** Validates that content is non-empty, then runs a vault-ingest query via the engine. */
+/** Validates that content is non-empty, then runs a vault-ingest query via the engine. `opts.fetch`
+ * is plumbed through to `query()` for a caller that already has a source URL/repo to retrieve first
+ * (two-step fetch->process); `remember` itself never sets it — plain content ingestion stays a
+ * single librarian call. */
 export async function remember(
   deps: QueryDeps,
   args: RememberArgs,
   onProgress?: (event: ProgressEvent) => void,
-  opts?: { commit?: boolean },
+  opts?: { commit?: boolean; fetch?: boolean },
 ): Promise<QueryResult> {
   if (!args.content || !args.content.trim()) {
     throw new Error("remember: content is required and cannot be empty");
