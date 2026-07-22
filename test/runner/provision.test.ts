@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildRunnerEnv } from "../../src/runner/provision.js";
+import { buildRunnerEnv, resolveRunnerPrivilege } from "../../src/runner/provision.js";
 
 describe("buildRunnerEnv", () => {
   const source = {
@@ -24,5 +24,26 @@ describe("buildRunnerEnv", () => {
   it("omits ANTHROPIC_BASE_URL when the source lacks it", () => {
     const env = buildRunnerEnv({ ANTHROPIC_API_KEY: "k", PATH: "/b" } as NodeJS.ProcessEnv, { home: "/h", tmpdir: "/t" });
     expect("ANTHROPIC_BASE_URL" in env).toBe(false);
+  });
+});
+
+describe("resolveRunnerPrivilege", () => {
+  it("drops to the configured uid/gid when root", () => {
+    expect(resolveRunnerPrivilege({ runnerUid: 1001, runnerGid: 1002 }, () => 0))
+      .toEqual({ uid: 1001, gid: 1002, mode: "dropped" });
+  });
+  it("falls back to same-uid when not root", () => {
+    const r = resolveRunnerPrivilege({ runnerUid: 1001, runnerGid: 1002 }, () => 501);
+    expect(r.mode).toBe("same-uid");
+    expect(r.uid).toBeUndefined();
+    expect(r.reason).toMatch(/root/);
+  });
+  it("falls back to same-uid when no runner uid configured (even as root)", () => {
+    const r = resolveRunnerPrivilege({}, () => 0);
+    expect(r.mode).toBe("same-uid");
+    expect(r.reason).toMatch(/configured/);
+  });
+  it("treats undefined getuid (non-POSIX) as non-root", () => {
+    expect(resolveRunnerPrivilege({ runnerUid: 1001 }, () => undefined).mode).toBe("same-uid");
   });
 });

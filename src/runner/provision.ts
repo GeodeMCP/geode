@@ -9,3 +9,13 @@ export function buildRunnerEnv(source: NodeJS.ProcessEnv, opts: { home: string; 
   if (source.ANTHROPIC_BASE_URL) env.ANTHROPIC_BASE_URL = source.ANTHROPIC_BASE_URL;
   return env;
 }
+
+/** Decides whether to drop the runner to a low-priv uid/gid: only when the broker is root AND a runner uid is configured; otherwise a same-uid fallback with a reason. */
+export function resolveRunnerPrivilege(
+  config: { runnerUid?: number; runnerGid?: number },
+  getuid: () => number | undefined,
+): { uid?: number; gid?: number; mode: "dropped" | "same-uid"; reason?: string } {
+  if (getuid() !== 0) return { mode: "same-uid", reason: "not running as root" };
+  if (config.runnerUid === undefined) return { mode: "same-uid", reason: "no runner uid configured (set GEODE_RUNNER_UID)" };
+  return { uid: config.runnerUid, gid: config.runnerGid, mode: "dropped" };
+}
