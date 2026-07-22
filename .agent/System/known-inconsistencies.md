@@ -22,9 +22,9 @@ The proxy binds `127.0.0.1` on the **host** (`egressProxy.ts:62`) and hands the 
 
 `network: none` and `network: any` behave as documented. `network: [allowlist]` does not.
 
-### 4. README and the sandbox design doc claim a WebFetch/WebSearch deny that no longer exists — **confirmed**
+### 4. README's WebFetch/WebSearch deny claim was stale; now true for the librarian, still imprecise as written — **confirmed**
 
-`README.md:27` and `docs/superpowers/specs/2026-07-01-agent-sandbox-design.md:157` say the handler denies `WebFetch`/`WebSearch`. `src/agentSandbox.ts:141-143` records that the deny was deliberately lifted (issue #27). Agent tool-level egress is open on every platform. The published docs overstate the security posture.
+`README.md:27` and `docs/superpowers/specs/2026-07-01-agent-sandbox-design.md:157` say the handler denies `WebFetch`/`WebSearch`. As of slice 1B-2 that's accurate again, but only for the **librarian** role: `buildSandboxSettings` sets `allowWebTools:false` when `role:"librarian"` (`src/agentSandbox.ts`), role threaded in from `src/query.ts`, and `canUseTool` denies both tools for it. The **desk** and **fetcher** roles still get `allowWebTools:true`. README's unconditional phrasing still overstates it — it should name the librarian specifically, not claim a blanket deny.
 
 ### 5. D12 attachments may not be gated to Linux as the spec requires — **unverified**
 
