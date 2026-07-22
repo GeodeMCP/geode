@@ -16,6 +16,9 @@ export interface Config {
   ownerEmail?: string;
   ownerPassword?: string;
   accountDir: string;
+  runnerUid?: number;
+  runnerGid?: number;
+  runnerHome: string;
 }
 
 /** Reads a required environment variable from the given env map, throwing if the key is absent or empty. */
@@ -41,5 +44,8 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     ownerEmail: env.GEODE_OWNER_EMAIL || undefined,
     ownerPassword: env.GEODE_OWNER_PASSWORD || undefined,
     accountDir: env.GEODE_ACCOUNT_DIR || join(homedir(), ".geode"),
+    runnerUid: env.GEODE_RUNNER_UID ? Number(env.GEODE_RUNNER_UID) : undefined,
+    runnerGid: env.GEODE_RUNNER_GID ? Number(env.GEODE_RUNNER_GID) : undefined,
+    runnerHome: env.GEODE_RUNNER_HOME || join(homedir(), ".geode", "runner-home"),
   };
 }

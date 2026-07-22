@@ -10,6 +10,7 @@ import { query } from "./query.js";
 import { remember } from "./ingest.js";
 import { seedVault, ensureArtifactsIgnored } from "./seed.js";
 import { createSecretStore, loadOrCreateKey } from "./secrets.js";
+import { provisionRunner } from "./runner/provision.js";
 import { regenerateArtifacts } from "./rebuild.js";
 import { createArtifactStore } from "./artifacts.js";
 import { createTranscriptStore } from "./transcripts.js";
@@ -19,6 +20,7 @@ import { invoke } from "./invoke.js";
 import { realDocker } from "./docker.js";
 import { realMcpConnector } from "./mcpProxy.js";
 import { dirname, join } from "node:path";
+import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { mountDashboard } from "./dashboard/index.js";
@@ -63,17 +65,25 @@ async function main() {
   const transcripts = createTranscriptStore(config.transcriptsDir);
   const attachments = createAttachmentStore({ dir: join(homedir(), ".geode", "uploads") });
 
+  const runnerSpawn = provisionRunner(config, {
+    pkgRoot,
+    getuid: () => process.getuid?.(),
+    log: (m) => console.warn(m),
+    ensureDir: (p) => mkdirSync(p, { recursive: true }),
+    source: process.env,
+  });
+
   const queryDeps: QueryDeps = {
     workspace,
     // Runs the agent SDK in a spawned runner subprocess (tsx-loaded, same as the kernel's own entrypoint) rather than
-    // in-process. Same-uid for now — spawnOptions.env passes through the broker's full env as a placeholder;
-    // 1B-1b scrubs/provisions a minimal per-runner env and adds the uid/gid privilege boundary.
+    // in-process. spawnOptions.env is scrubbed to an explicit allowlist (no GEODE_* secrets reach the runner), and
+    // the runner is dropped to a low-priv uid/gid when the broker runs as root (same-uid fallback on dev hosts).
     engine: createSubprocessEngine({
       runnerCommand: process.execPath,
       runnerArgs: ["--import", "tsx", runnerEntry],
       // cwd pins tsx-loader resolution (the "--import tsx" bare specifier resolves relative to cwd at spawn
       // time) to the package root, independent of the kernel's own process.cwd() when launched.
-      spawnOptions: { cwd: pkgRoot, env: process.env },
+      spawnOptions: runnerSpawn,
     }),
     runManager: createRunManager({ maxRuntimeMs: config.maxRuntimeMs, queueLimit: config.queueLimit }),
     systemPrompt: CONSTITUTION,
