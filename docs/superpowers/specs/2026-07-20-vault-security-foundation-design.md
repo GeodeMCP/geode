@@ -294,6 +294,40 @@ boundary (two separate trust decisions).
    message over a pipe, and moves the working tree to a shared-group layout while keeping the
    secrets dir private to the broker.
 
+5. **1B-1b provisioning specifics (2026-07-22 de-risk of the uid drop).** The seam is
+   `src/index.ts:71-77` — uid/gid + a scrubbed env ride through the existing `spawnOptions`;
+   `src/subprocessEngine.ts` needs no change. A boot-time `process.getuid?.() === 0` pre-flight
+   decides drop-vs-fallback (loud same-uid on macOS dev / non-root). Two findings are **co-equal
+   with the uid drop** — get either wrong and the boundary is illusory:
+
+   - **Env scrub is not secondary — it must land in the same change as the uid drop.** Today
+     `spawnOptions.env` is `process.env` (`src/index.ts:76`), which forwards `GEODE_SECRETS_KEY`
+     and the four signing keys (`GEODE_SIGN/OAUTH/SESSION/LINK_KEY`) plus `GEODE_AUTH_TOKEN`. In
+     the hosted mode §5 mandates (`GEODE_SECRETS_KEY` supplied via env so it never sits beside the
+     ciphertext), the broker's env literally holds the master AES key that decrypts `secrets.enc`
+     — passing it through hands the runner the key and voids the `0700` secrets dir entirely. The
+     runner env must be built from an **allowlist** — `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL`
+     (if set), `PATH`, a **runner-owned `HOME` + `TMPDIR`** (the SDK extracts + spawns a bundled
+     CLI that writes there), and nothing else — never a filtered `process.env`. A regression test
+     must assert the runner env contains no `GEODE_*`.
+   - **`~/.geode` is a mixed-trust parent.** `secretsDir` (`~/.geode/secrets`), `transcriptsDir`
+     (`~/.geode/transcripts`), `accountDir` (`~/.geode`), `tools` (`~/.geode/tools`), and the
+     attachment **staging** dir (`~/.geode/uploads`) all share one parent. The runner must READ
+     `uploads` (ro staging) yet be locked out of the siblings. Provisioning is therefore
+     **per-subdir**: `~/.geode` traversable (`0711`), `secrets`/`transcripts`/`tools`/account
+     `0700` broker-owned, `uploads` group-readable by the runner. A blanket `0700` on `~/.geode`
+     breaks attachment-driven runs (opaque SDK-side failures); a loose parent leaks secrets.
+
+   **Shared-group git holds** (git is 100% broker-side; `safe.directory` doesn't bite since the
+   broker owns `.git`; content-addressing ignores file ownership) — verify setgid + `umask 002`
+   propagate to **nested** dirs the agent creates mid-run, not just top-level files. **No CI /
+   Dockerfile exists** (`test:docker` runs host-side against the Docker daemon, not inside a
+   container). The adversarial check — runner uid gets `EACCES` on `secrets.enc` but can
+   write+broker-commit its vault — is **filesystem-deterministic and needs no API key**; it gets a
+   new dedicated harness (`scripts/verify-uid-boundary.ts` + a Linux Dockerfile provisioning the
+   shared group + runner user), run manually by a human (no automation to lean on yet). This is
+   distinct from `scripts/verify-sandbox.ts`, which is a live-API SDK-sandbox check.
+
 ## 7. Deferred to slice 2, but decided now
 
 These answer operator questions raised during design; they belong to the hosting slice but
