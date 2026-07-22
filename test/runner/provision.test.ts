@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildRunnerEnv, resolveRunnerPrivilege } from "../../src/runner/provision.js";
+import { buildRunnerEnv, resolveRunnerPrivilege, provisionRunner } from "../../src/runner/provision.js";
 
 describe("buildRunnerEnv", () => {
   const source = {
@@ -45,5 +45,31 @@ describe("resolveRunnerPrivilege", () => {
   });
   it("treats undefined getuid (non-POSIX) as non-root", () => {
     expect(resolveRunnerPrivilege({ runnerUid: 1001 }, () => undefined).mode).toBe("same-uid");
+  });
+});
+
+describe("provisionRunner", () => {
+  const cfg = { runnerHome: "/rh", runnerUid: 1001, runnerGid: 1002 } as any;
+  it("returns dropped uid + scrubbed env + ensures dirs + logs when root", () => {
+    const dirs: string[] = []; const logs: string[] = [];
+    const out = provisionRunner({ ...cfg }, {
+      pkgRoot: "/pkg", getuid: () => 0, log: (m) => logs.push(m), ensureDir: (p) => dirs.push(p),
+      source: { ANTHROPIC_API_KEY: "k", PATH: "/b", GEODE_SECRETS_KEY: "M" } as any,
+    });
+    expect(out.uid).toBe(1001);
+    expect(out.cwd).toBe("/pkg");
+    expect(out.env.HOME).toBe("/rh");
+    expect(Object.keys(out.env).some((k) => k.startsWith("GEODE_"))).toBe(false);
+    expect(dirs).toContain("/rh");
+    expect(logs.join(" ")).toMatch(/dropped to uid 1001/);
+  });
+  it("same-uid + loud warning when not root", () => {
+    const logs: string[] = [];
+    const out = provisionRunner({ ...cfg }, {
+      pkgRoot: "/pkg", getuid: () => 501, log: (m) => logs.push(m), ensureDir: () => {},
+      source: { ANTHROPIC_API_KEY: "k", PATH: "/b" } as any,
+    });
+    expect(out.uid).toBeUndefined();
+    expect(logs.join(" ")).toMatch(/SAME-UID/);
   });
 });

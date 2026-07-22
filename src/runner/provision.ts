@@ -1,3 +1,6 @@
+import { join } from "node:path";
+import type { Config } from "../config.js";
+
 /** Builds the runner subprocess env from an explicit allowlist — never a filtered process.env, so no GEODE_* secret can leak. */
 export function buildRunnerEnv(source: NodeJS.ProcessEnv, opts: { home: string; tmpdir: string }): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {
@@ -18,4 +21,19 @@ export function resolveRunnerPrivilege(
   if (getuid() !== 0) return { mode: "same-uid", reason: "not running as root" };
   if (config.runnerUid === undefined) return { mode: "same-uid", reason: "no runner uid configured (set GEODE_RUNNER_UID)" };
   return { uid: config.runnerUid, gid: config.runnerGid, mode: "dropped" };
+}
+
+/** Assembles the runner spawn options — scrubbed env + optional uid/gid drop — ensuring the runner HOME/TMPDIR exist and logging the trust-boundary mode loudly. */
+export function provisionRunner(
+  config: Config,
+  deps: { pkgRoot: string; getuid: () => number | undefined; log: (m: string) => void; ensureDir: (p: string) => void; source: NodeJS.ProcessEnv },
+): { cwd: string; env: NodeJS.ProcessEnv; uid?: number; gid?: number } {
+  const tmpdir = join(config.runnerHome, "tmp");
+  deps.ensureDir(config.runnerHome);
+  deps.ensureDir(tmpdir);
+  const env = buildRunnerEnv(deps.source, { home: config.runnerHome, tmpdir });
+  const priv = resolveRunnerPrivilege(config, deps.getuid);
+  if (priv.mode === "dropped") deps.log(`[runner] privilege: dropped to uid ${priv.uid} gid ${priv.gid ?? "(default)"}`);
+  else deps.log(`[runner] privilege: SAME-UID (${priv.reason}) — no trust boundary between broker and agent; dev only`);
+  return { cwd: deps.pkgRoot, env, uid: priv.uid, gid: priv.gid };
 }
