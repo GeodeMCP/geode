@@ -18,7 +18,7 @@ export interface SandboxSettings {
   autoAllowBashIfSandboxed: boolean;
   allowUnsandboxedCommands: boolean;
   filesystem: { allowWrite: string[]; allowRead?: string[] };
-  network: { allowedDomains: string[]; allowLocalBinding?: boolean };
+  network: { allowedDomains: string[]; allowLocalBinding?: boolean; allowWebTools?: boolean };
 }
 
 /** A single tool-call permission decision (mirrors the SDK's PermissionResult). `allow` echoes the tool input back as `updatedInput` — the SDK's runtime schema requires it. */
@@ -86,8 +86,8 @@ export function buildSandboxSettings(policy: SandboxPolicy | undefined, extraRea
       ? { allowWrite: policy.allowWrite, allowRead: extraReadDirs }
       : { allowWrite: policy.allowWrite },
     network: policy.allowLocalBinding
-      ? { allowedDomains: policy.allowedDomains, allowLocalBinding: true }
-      : { allowedDomains: policy.allowedDomains },
+      ? { allowedDomains: policy.allowedDomains, allowLocalBinding: true, allowWebTools: true }
+      : { allowedDomains: policy.allowedDomains, allowWebTools: true },
   };
 }
 
@@ -127,20 +127,21 @@ function manifestIdFromPath(path: string): string | null {
  * Builds the non-interactive permission handler that partners the OS sandbox. The sandbox bounds
  * Bash at the syscall level; this handler bounds the host-process tools the sandbox doesn't cover:
  * it refuses any Bash that opts out of the sandbox and confines file mutations to `writeRoots` (the
- * vault). Network egress via WebFetch/WebSearch is temporarily open (see issue #27). Everything else
- * (reads, search, sandboxed bash) is allowed. It never prompts — the vault agent runs without a
- * human to answer mid-run.
+ * vault). Network egress via WebFetch/WebSearch is gated by `allowWebTools` — false denies both
+ * (e.g. for a librarian role confined to the model host), true allows them (e.g. a fetcher role).
+ * Everything else (reads, search, sandboxed bash) is allowed. It never prompts — the vault agent
+ * runs without a human to answer mid-run.
  */
-export function buildPermissionHandler(writeRoots: string[]): PermissionHandler {
+export function buildPermissionHandler(writeRoots: string[], allowWebTools: boolean): PermissionHandler {
   const roots = writeRoots.map(canonicalPath);
   const deny = (message: string): ToolPermission => ({ behavior: "deny", message });
   return async (toolName, input) => {
     if (toolName === "Bash" && input.dangerouslyDisableSandbox === true) {
       return deny("running commands outside the sandbox is not permitted");
     }
-    // EGRESS TEMPORARILY OPEN: the WebFetch/WebSearch deny is lifted so the vault agent can read
-    // live API docs while authoring tools (otherwise it invents endpoints it can't verify).
-    // Restore behind a chat approval flow — see https://github.com/GeodeMCP/geode/issues/27.
+    if (!allowWebTools && (toolName === "WebFetch" || toolName === "WebSearch")) {
+      return deny(`${toolName} is disabled for this role (network is restricted to the model host)`);
+    }
     if (toolName === "AskUserQuestion") {
       return deny("interactive questions are disabled; state an assumption and proceed");
     }

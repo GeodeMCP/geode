@@ -56,7 +56,7 @@ describe("buildSandboxSettings", () => {
 });
 
 describe("buildPermissionHandler", () => {
-  const handler = buildPermissionHandler(["/vault"]);
+  const handler = buildPermissionHandler(["/vault"], true);
   it("temporarily allows WebFetch/WebSearch (egress deny lifted — see issue #27)", async () => {
     expect((await handler("WebFetch", { url: "https://cloud.productflow.com/api" })).behavior).toBe("allow");
     expect((await handler("WebSearch", { query: "productflow api" })).behavior).toBe("allow");
@@ -97,7 +97,7 @@ describe("buildPermissionHandler", () => {
 });
 
 describe("buildPermissionHandler tool-manifest write validation", () => {
-  const handler = buildPermissionHandler(["/vault"]);
+  const handler = buildPermissionHandler(["/vault"], true);
   const VALID_TOOL_MD = `---
 id: moneybird
 name: Moneybird
@@ -153,13 +153,26 @@ describe("buildPermissionHandler symlink resolution (real filesystem)", () => {
     const vault = mkdtempSync(join(tmpdir(), "geode-vault-"));
     const outside = mkdtempSync(join(tmpdir(), "geode-outside-"));
     symlinkSync(outside, join(vault, "escape")); // <vault>/escape -> /outside
-    const handler = buildPermissionHandler([vault]);
+    const handler = buildPermissionHandler([vault], true);
     // legit in-vault write — root canonicalization (e.g. macOS /var->/private/var) must not false-deny it
     expect((await handler("Write", { file_path: join(vault, "notes.md") })).behavior).toBe("allow");
     // write THROUGH an in-vault symlink whose target is outside the vault — must be denied
     expect((await handler("Write", { file_path: join(vault, "escape", "x.md") })).behavior).toBe("deny");
     rmSync(vault, { recursive: true, force: true });
     rmSync(outside, { recursive: true, force: true });
+  });
+});
+
+describe("allowWebTools gate", () => {
+  it("denies WebFetch/WebSearch when allowWebTools is false", async () => {
+    const h = buildPermissionHandler(["/v"], false);
+    expect((await h("WebFetch", { url: "https://x" })).behavior).toBe("deny");
+    expect((await h("WebSearch", { query: "x" })).behavior).toBe("deny");
+  });
+  it("allows WebFetch/WebSearch when allowWebTools is true", async () => {
+    const h = buildPermissionHandler(["/v"], true);
+    expect((await h("WebFetch", { url: "https://x" })).behavior).toBe("allow");
+    expect((await h("WebSearch", { query: "x" })).behavior).toBe("allow");
   });
 });
 
