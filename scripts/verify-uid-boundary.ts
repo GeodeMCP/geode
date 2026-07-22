@@ -165,10 +165,20 @@ check("runner can write a top-level vault file", first.vaultTop.ok === true, JSO
 check("runner can write a nested vault file", first.vaultNested.ok === true, JSON.stringify(first.vaultNested));
 
 const nestedFile = join(vaultDir, "nested", "sub", "from-runner-nested.txt");
+const nestedDir = join(vaultDir, "nested", "sub");
 check("nested vault file exists on disk", existsSync(nestedFile), nestedFile);
 if (existsSync(nestedFile)) {
   const st = statSync(nestedFile);
   check("nested vault file is owned by the runner uid", st.uid === RUNNER_UID, `uid=${st.uid}, expected ${RUNNER_UID}`);
+}
+if (existsSync(nestedDir)) {
+  // A successful group-owned write alone does NOT prove setgid: an ordinary POSIX write
+  // already inherits the process's own primary gid (which we set to RUNNER_GID on the
+  // probe), so this would pass even with a plain 0770 (non-setgid) parent. The setgid bit
+  // itself — which is what makes *broker*-created descendants and any group membership
+  // beyond the probe's own gid inherit the shared group — has to be checked directly.
+  const dirSt = statSync(nestedDir);
+  check("runner-created nested dir inherited the setgid bit from the 2770 parent", (dirSt.mode & 0o2000) !== 0, `mode=${(dirSt.mode & 0o7777).toString(8)}`);
 }
 
 // --- Broker reconciliation #1: commit the runner's writes ---

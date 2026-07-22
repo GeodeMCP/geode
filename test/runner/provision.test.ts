@@ -43,6 +43,12 @@ describe("resolveRunnerPrivilege", () => {
     expect(r.mode).toBe("same-uid");
     expect(r.reason).toMatch(/configured/);
   });
+  it("falls back to same-uid when uid is configured but gid is not (even as root) — a dropped uid without the shared gid would break the geode-rw write model", () => {
+    const r = resolveRunnerPrivilege({ runnerUid: 1001 }, () => 0);
+    expect(r.mode).toBe("same-uid");
+    expect(r.uid).toBeUndefined();
+    expect(r.reason).toMatch(/GID/);
+  });
   it("treats undefined getuid (non-POSIX) as non-root", () => {
     expect(resolveRunnerPrivilege({ runnerUid: 1001 }, () => undefined).mode).toBe("same-uid");
   });

@@ -30,7 +30,8 @@ The harness reproduces the model above from scratch in a temp dir (no live vault
 | `readFile(secrets.enc)` | fails with `EACCES` |
 | `readFile(<staged upload>)` | succeeds |
 | `write` a top-level file into the vault | succeeds |
-| `write` a **nested** file into the vault (proves setgid + `umask 002` propagate, not just top-level) | succeeds |
+| `write` a **nested** file into the vault (proves `umask 002` keeps it group-writable, not just top-level) | succeeds |
+| `stat` the runner-created nested dir | the **setgid bit is actually set** — inherited from the `2770` parent, not just "the write succeeded" (a plain `0770` parent would let the write succeed too, since the probe's own gid is already the shared group; only the bit check proves the parent is really setgid) |
 | Broker: `git add -A && git commit` the runner's writes | succeeds |
 | Broker: a second runner write, then `git reset --hard && git clean -fd` | the runner-owned nested dir is removed; the already-committed file survives |
 
@@ -55,6 +56,7 @@ PASS — runner can write a top-level vault file
 PASS — runner can write a nested vault file
 PASS — nested vault file exists on disk
 PASS — nested vault file is owned by the runner uid
+PASS — runner-created nested dir inherited the setgid bit from the 2770 parent
 PASS — broker can git add+commit the runner-written files
 PASS — second runner write (uncommitted) succeeded
 PASS — dirty nested file exists before reset/clean

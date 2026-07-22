@@ -13,13 +13,14 @@ export function buildRunnerEnv(source: NodeJS.ProcessEnv, opts: { home: string; 
   return env;
 }
 
-/** Decides whether to drop the runner to a low-priv uid/gid: only when the broker is root AND a runner uid is configured; otherwise a same-uid fallback with a reason. */
+/** Decides whether to drop the runner to a low-priv uid/gid: only when the broker is root AND both a runner uid and gid are configured; otherwise a same-uid fallback with a reason. A uid without a gid is refused rather than dropped — the runner would keep root's group and silently break the shared-group (geode-rw) write model. */
 export function resolveRunnerPrivilege(
   config: { runnerUid?: number; runnerGid?: number },
   getuid: () => number | undefined,
 ): { uid?: number; gid?: number; mode: "dropped" | "same-uid"; reason?: string } {
   if (getuid() !== 0) return { mode: "same-uid", reason: "not running as root" };
   if (config.runnerUid === undefined) return { mode: "same-uid", reason: "no runner uid configured (set GEODE_RUNNER_UID)" };
+  if (config.runnerGid === undefined) return { mode: "same-uid", reason: "GEODE_RUNNER_GID also required for the shared-group model (set it to the geode-rw gid)" };
   return { uid: config.runnerUid, gid: config.runnerGid, mode: "dropped" };
 }
 
