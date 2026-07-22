@@ -153,7 +153,7 @@ export async function query(
           systemPrompt: composeSystemPrompt(deps, "fetcher"),
           model: deps.model,
           abortController,
-          sandbox: buildSandboxSettings(deps.sandboxPolicy, [], { role: "fetcher" }),
+          sandbox: buildSandboxSettings(deps.sandboxPolicy, [], { role: "fetcher", writeRoot: stagingDir }),
         })) {
           if (ev.type !== "result") onProgress?.(ev);
         }

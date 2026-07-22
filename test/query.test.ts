@@ -261,20 +261,29 @@ test("opts.fetch: fetcher runs first against a staging cwd, then the librarian a
   let fetchSawStaging = false;
   let librarianSawStaging = false;
   let librarianCwd = "";
+  let fetcherSandbox: any;
+  let librarianSandbox: any;
   const fetcherEngine = async function* (opts: any) {
     order.push("fetcher");
     stagingPath = opts.cwd;
     fetchSawStaging = existsSync(opts.cwd);
+    fetcherSandbox = opts.sandbox;
     yield { type: "result", text: "fetched" } as EngineEvent;
   };
   const engine = async function* (opts: any) {
     order.push("librarian");
     librarianCwd = opts.cwd;
     librarianSawStaging = existsSync(stagingPath);
+    librarianSandbox = opts.sandbox;
     yield { type: "result", text: "filed" } as EngineEvent;
   };
   const ws = fakeWorkspace();
-  const d = deps({ workspace: ws as any, engine: engine as any, fetcherEngine: fetcherEngine as any });
+  const d = deps({
+    workspace: ws as any,
+    engine: engine as any,
+    fetcherEngine: fetcherEngine as any,
+    sandboxPolicy: resolveSandboxPolicy({}, "/vault"),
+  } as any);
   const res = await query(d, "onboard https://example.com/api", undefined, { fetch: true });
   expect(order).toEqual(["fetcher", "librarian"]);
   expect(fetchSawStaging).toBe(true);
@@ -283,6 +292,14 @@ test("opts.fetch: fetcher runs first against a staging cwd, then the librarian a
   expect(existsSync(stagingPath)).toBe(false);
   expect(res.commit).toBe("COMMIT1");
   expect(ws.calls.some((c) => c.startsWith("commit:query run-1:"))).toBe(true);
+  // Write-root confinement: the fetcher (broad egress, hostile external input) must be able to
+  // write ONLY its own staging dir — never the vault — while the librarian keeps its normal
+  // vault write root and gains read-only access to what the fetcher staged.
+  expect(fetcherSandbox.filesystem.allowWrite).toEqual([stagingPath]);
+  expect(fetcherSandbox.filesystem.allowWrite).not.toContain(d.workspace.root);
+  expect(fetcherSandbox.filesystem.allowRead ?? []).not.toContain(d.workspace.root);
+  expect(librarianSandbox.filesystem.allowWrite).toEqual([d.workspace.root]);
+  expect(librarianSandbox.filesystem.allowRead).toContain(stagingPath);
 });
 
 test("opts.fetch: without a fetcherEngine, falls back to deps.engine for the fetch step too", async () => {

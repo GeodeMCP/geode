@@ -66,6 +66,16 @@ describe("buildSandboxSettings", () => {
     expect(s.network.allowedDomains).toEqual(expect.arrayContaining(policy.onboardingDomains));
     expect(s.network.allowWebTools).toBe(true);
   });
+  it("writeRoot override: filesystem.allowWrite is the given root, not the vault (e.g. fetcher staging)", () => {
+    const policy = resolveSandboxPolicy({}, "/vault");
+    const s = buildSandboxSettings(policy, [], { role: "fetcher", writeRoot: "/staging" })!;
+    expect(s.filesystem.allowWrite).toEqual(["/staging"]);
+  });
+  it("no writeRoot: filesystem.allowWrite stays the vault (unchanged default)", () => {
+    const policy = resolveSandboxPolicy({}, "/vault");
+    const s = buildSandboxSettings(policy, [], { role: "librarian" })!;
+    expect(s.filesystem.allowWrite).toEqual(["/vault"]);
+  });
   it("desk role (and no opts, the default): allowedDomains is the LLM host only, allowWebTools is true", () => {
     const policy = resolveSandboxPolicy({}, "/vault");
     const withDeskRole = buildSandboxSettings(policy, [], { role: "desk" })!;

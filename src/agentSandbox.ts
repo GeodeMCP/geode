@@ -89,17 +89,21 @@ export function resolveSandboxPolicy(env: Record<string, string | undefined>, va
  * is confined to the model host and has WebFetch/WebSearch denied (`allowWebTools: false`); `fetcher`
  * additionally allows the onboarding hosts (repo clone / package fetch) and keeps web tools open;
  * `desk` and the default (no role given) match today's behavior — model host only, web tools open —
- * so existing desk Q&A that may WebSearch is not regressed.
+ * so existing desk Q&A that may WebSearch is not regressed. `opts.writeRoot` overrides the write
+ * scope from the policy's vault root to a single given directory (e.g. the fetcher's per-run
+ * staging dir) — without it, `filesystem.allowWrite` stays `policy.allowWrite` (the vault),
+ * unchanged from before this option existed.
  */
 export function buildSandboxSettings(
   policy: SandboxPolicy | undefined,
   extraReadDirs: string[] = [],
-  opts?: { role?: "fetcher" | "librarian" | "desk" },
+  opts?: { role?: "fetcher" | "librarian" | "desk"; writeRoot?: string },
 ): SandboxSettings | undefined {
   if (!policy || !policy.enabled) return undefined;
   const isFetcher = opts?.role === "fetcher";
   const allowedDomains = isFetcher ? [policy.llmHost, ...policy.onboardingDomains] : [policy.llmHost];
   const allowWebTools = opts?.role !== "librarian";
+  const allowWrite = opts?.writeRoot ? [opts.writeRoot] : policy.allowWrite;
   return {
     enabled: true,
     failIfUnavailable: policy.failIfUnavailable,
@@ -107,8 +111,8 @@ export function buildSandboxSettings(
     // The model must not opt a command out of the sandbox (Bash `dangerouslyDisableSandbox`).
     allowUnsandboxedCommands: false,
     filesystem: extraReadDirs.length
-      ? { allowWrite: policy.allowWrite, allowRead: extraReadDirs }
-      : { allowWrite: policy.allowWrite },
+      ? { allowWrite, allowRead: extraReadDirs }
+      : { allowWrite },
     network: policy.allowLocalBinding
       ? { allowedDomains, allowLocalBinding: true, allowWebTools }
       : { allowedDomains, allowWebTools },
