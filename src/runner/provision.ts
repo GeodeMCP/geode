@@ -24,16 +24,23 @@ export function resolveRunnerPrivilege(
   return { uid: config.runnerUid, gid: config.runnerGid, mode: "dropped" };
 }
 
-/** Assembles the runner spawn options — scrubbed env + optional uid/gid drop — ensuring the runner HOME/TMPDIR exist and logging the trust-boundary mode loudly. */
+/** Assembles the runner spawn options for the given role — scrubbed env + optional uid/gid drop —
+ * ensuring the role's HOME/TMPDIR exist and logging the trust-boundary mode loudly. "librarian" uses
+ * config.runnerUid/runnerGid/runnerHome (the desk/librarian engine); "fetcher" uses config.fetcherUid/
+ * fetcherGid/fetcherHome (the distinct-uid fetch engine) — same scrubbed env allowlist either way. */
 export function provisionRunner(
   config: Config,
   deps: { pkgRoot: string; getuid: () => number | undefined; log: (m: string) => void; ensureDir: (p: string) => void; source: NodeJS.ProcessEnv },
+  role: "librarian" | "fetcher",
 ): { cwd: string; env: NodeJS.ProcessEnv; uid?: number; gid?: number } {
-  const tmpdir = join(config.runnerHome, "tmp");
-  deps.ensureDir(config.runnerHome);
+  const picked = role === "fetcher"
+    ? { uid: config.fetcherUid, gid: config.fetcherGid, home: config.fetcherHome }
+    : { uid: config.runnerUid, gid: config.runnerGid, home: config.runnerHome };
+  const tmpdir = join(picked.home, "tmp");
+  deps.ensureDir(picked.home);
   deps.ensureDir(tmpdir);
-  const env = buildRunnerEnv(deps.source, { home: config.runnerHome, tmpdir });
-  const priv = resolveRunnerPrivilege(config, deps.getuid);
+  const env = buildRunnerEnv(deps.source, { home: picked.home, tmpdir });
+  const priv = resolveRunnerPrivilege({ runnerUid: picked.uid, runnerGid: picked.gid }, deps.getuid);
   if (priv.mode === "dropped") deps.log(`[runner] privilege: dropped to uid ${priv.uid} gid ${priv.gid ?? "(default)"}`);
   else deps.log(`[runner] privilege: SAME-UID (${priv.reason}) — no trust boundary between broker and agent; dev only`);
   return { cwd: deps.pkgRoot, env, uid: priv.uid, gid: priv.gid };

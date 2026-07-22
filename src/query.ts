@@ -16,6 +16,10 @@ import { selectSubgraph, renderScopedContext } from "./retrieval.js";
 export interface QueryDeps {
   workspace: Workspace;
   engine: Engine;
+  // The fetcher engine: same shape as `engine`, but spawned under the distinct fetcherUid (not the vault
+  // group). Optional — only the two-step fetch/process path uses it, so callers that never fetch need not
+  // provide it.
+  fetcherEngine?: Engine;
   runManager: RunManager;
   systemPrompt: string;
   // Required (not optional) so a run can never silently ship unconfined: to run the agent without a

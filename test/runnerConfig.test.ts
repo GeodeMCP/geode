@@ -27,4 +27,10 @@ describe("runner config", () => {
     expect(c.fetcherUid).toBeUndefined();
     expect(c.fetcherGid).toBeUndefined();
   });
+  it("defaults fetcherHome and allows overriding it", () => {
+    const c = loadConfig(base);
+    expect(c.fetcherHome).toBe(join(homedir(), ".geode", "fetcher-home"));
+    const c2 = loadConfig({ ...base, GEODE_FETCHER_HOME: "/custom/fetcher-home" });
+    expect(c2.fetcherHome).toBe("/custom/fetcher-home");
+  });
 });
