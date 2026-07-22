@@ -238,3 +238,103 @@ test("desk query with no matching nodes gets no retrieval note (empty match is b
   expect(engine.seen.instruction).toContain("xyzzy nonsense zzz");
   rmSync(root, { recursive: true, force: true });
 });
+
+test("role threading: a librarian run now gets model-host-only egress (WebFetch/WebSearch denied)", async () => {
+  let seen: any;
+  const engine = async function* (opts: any) { seen = opts.sandbox; yield { type: "result", text: "ok" } as EngineEvent; };
+  const d = deps({ engine: engine as any, sandboxPolicy: resolveSandboxPolicy({}, "/vault") } as any);
+  await query(d, "file this", undefined, { role: "librarian" });
+  expect(seen.network.allowWebTools).toBe(false);
+});
+
+test("role threading: a desk run keeps web tools enabled (unchanged default)", async () => {
+  let seen: any;
+  const engine = async function* (opts: any) { seen = opts.sandbox; yield { type: "result", text: "ok" } as EngineEvent; };
+  const d = deps({ engine: engine as any, sandboxPolicy: resolveSandboxPolicy({}, "/vault") } as any);
+  await query(d, "hi");
+  expect(seen.network.allowWebTools).toBe(true);
+});
+
+test("opts.fetch: fetcher runs first against a staging cwd, then the librarian against the vault; staging exists during, gone after", async () => {
+  const order: string[] = [];
+  let stagingPath = "";
+  let fetchSawStaging = false;
+  let librarianSawStaging = false;
+  let librarianCwd = "";
+  let fetcherSandbox: any;
+  let librarianSandbox: any;
+  const fetcherEngine = async function* (opts: any) {
+    order.push("fetcher");
+    stagingPath = opts.cwd;
+    fetchSawStaging = existsSync(opts.cwd);
+    fetcherSandbox = opts.sandbox;
+    yield { type: "result", text: "fetched" } as EngineEvent;
+  };
+  const engine = async function* (opts: any) {
+    order.push("librarian");
+    librarianCwd = opts.cwd;
+    librarianSawStaging = existsSync(stagingPath);
+    librarianSandbox = opts.sandbox;
+    yield { type: "result", text: "filed" } as EngineEvent;
+  };
+  const ws = fakeWorkspace();
+  const d = deps({
+    workspace: ws as any,
+    engine: engine as any,
+    fetcherEngine: fetcherEngine as any,
+    sandboxPolicy: resolveSandboxPolicy({}, "/vault"),
+  } as any);
+  const res = await query(d, "onboard https://example.com/api", undefined, { fetch: true });
+  expect(order).toEqual(["fetcher", "librarian"]);
+  expect(fetchSawStaging).toBe(true);
+  expect(librarianSawStaging).toBe(true);
+  expect(librarianCwd).toBe(d.workspace.root);
+  expect(existsSync(stagingPath)).toBe(false);
+  expect(res.commit).toBe("COMMIT1");
+  expect(ws.calls.some((c) => c.startsWith("commit:query run-1:"))).toBe(true);
+  // Write-root confinement: the fetcher (broad egress, hostile external input) must be able to
+  // write ONLY its own staging dir — never the vault — while the librarian keeps its normal
+  // vault write root and gains read-only access to what the fetcher staged.
+  expect(fetcherSandbox.filesystem.allowWrite).toEqual([stagingPath]);
+  expect(fetcherSandbox.filesystem.allowWrite).not.toContain(d.workspace.root);
+  expect(fetcherSandbox.filesystem.allowRead ?? []).not.toContain(d.workspace.root);
+  expect(librarianSandbox.filesystem.allowWrite).toEqual([d.workspace.root]);
+  expect(librarianSandbox.filesystem.allowRead).toContain(stagingPath);
+});
+
+test("opts.fetch: without a fetcherEngine, falls back to deps.engine for the fetch step too", async () => {
+  const cwds: string[] = [];
+  const engine = async function* (opts: any) { cwds.push(opts.cwd); yield { type: "result", text: "x" } as EngineEvent; };
+  const d = deps({ engine: engine as any }); // no fetcherEngine provided
+  const res = await query(d, "onboard https://example.com/api", undefined, { fetch: true });
+  expect(cwds.length).toBe(2);
+  expect(cwds[0]).not.toBe(d.workspace.root); // fetch step used the staging cwd
+  expect(cwds[1]).toBe(d.workspace.root); // librarian step used the vault cwd
+  expect(res.commit).toBe("COMMIT1");
+});
+
+test("opts.fetch: abort during fetch skips the librarian call and cleans up staging", async () => {
+  let stagingPath = "";
+  let librarianCalled = false;
+  const fetcherEngine = async function* (opts: any) {
+    stagingPath = opts.cwd;
+    yield { type: "text", text: "fetching" } as EngineEvent;
+    opts.abortController.abort(new Error("run timeout"));
+  };
+  const engine = async function* () { librarianCalled = true; yield { type: "result", text: "x" } as EngineEvent; };
+  const ws = fakeWorkspace();
+  const d = deps({ workspace: ws as any, engine: engine as any, fetcherEngine: fetcherEngine as any });
+  await expect(query(d, "onboard https://example.com/api", undefined, { fetch: true })).rejects.toThrow();
+  expect(librarianCalled).toBe(false);
+  expect(existsSync(stagingPath)).toBe(false);
+  expect(ws.calls).toContain("reset");
+});
+
+test("opts.fetch falsy: only the librarian engine runs — fetcherEngine is never touched (zero regression)", async () => {
+  let fetcherCalled = false;
+  const fetcherEngine = async function* () { fetcherCalled = true; yield { type: "result", text: "x" } as EngineEvent; };
+  const d = deps({ fetcherEngine: fetcherEngine as any });
+  const res = await query(d, "do X");
+  expect(fetcherCalled).toBe(false);
+  expect(res.text).toBe("done");
+});

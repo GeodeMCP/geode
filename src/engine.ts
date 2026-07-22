@@ -186,7 +186,7 @@ export function buildQueryOptions(opts: EngineRunOptions): Record<string, unknow
       ...base,
       sandbox: opts.sandbox,
       permissionMode: "default",
-      canUseTool: buildPermissionHandler(opts.sandbox.filesystem.allowWrite),
+      canUseTool: buildPermissionHandler(opts.sandbox.filesystem.allowWrite, opts.sandbox.network.allowWebTools ?? true),
     };
   }
   // Sandbox OFF (GEODE_SANDBOX_DISABLE=1, dev only): run genuinely unconfined, loudly opted in.

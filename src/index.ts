@@ -65,13 +65,20 @@ async function main() {
   const transcripts = createTranscriptStore(config.transcriptsDir);
   const attachments = createAttachmentStore({ dir: join(homedir(), ".geode", "uploads") });
 
-  const runnerSpawn = provisionRunner(config, {
+  const librarianSpawn = provisionRunner(config, {
     pkgRoot,
     getuid: () => process.getuid?.(),
     log: (m) => console.warn(m),
     ensureDir: (p) => mkdirSync(p, { recursive: true }),
     source: process.env,
-  });
+  }, "librarian");
+  const fetcherSpawn = provisionRunner(config, {
+    pkgRoot,
+    getuid: () => process.getuid?.(),
+    log: (m) => console.warn(m),
+    ensureDir: (p) => mkdirSync(p, { recursive: true }),
+    source: process.env,
+  }, "fetcher");
 
   const queryDeps: QueryDeps = {
     workspace,
@@ -83,7 +90,14 @@ async function main() {
       runnerArgs: ["--import", "tsx", runnerEntry],
       // cwd pins tsx-loader resolution (the "--import tsx" bare specifier resolves relative to cwd at spawn
       // time) to the package root, independent of the kernel's own process.cwd() when launched.
-      spawnOptions: runnerSpawn,
+      spawnOptions: librarianSpawn,
+    }),
+    // The fetcher engine: same subprocess entrypoint, but spawned under the distinct fetcherUid/fetcherGid
+    // (never the vault group) so a compromised fetch cannot write into the vault.
+    fetcherEngine: createSubprocessEngine({
+      runnerCommand: process.execPath,
+      runnerArgs: ["--import", "tsx", runnerEntry],
+      spawnOptions: fetcherSpawn,
     }),
     runManager: createRunManager({ maxRuntimeMs: config.maxRuntimeMs, queueLimit: config.queueLimit }),
     systemPrompt: CONSTITUTION,

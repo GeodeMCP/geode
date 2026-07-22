@@ -1,4 +1,5 @@
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
+import { homedir } from "node:os";
 import { join, relative, sep } from "node:path";
 import type { Engine, ProgressEvent, Metrics } from "./engine.js";
 import type { RunManager } from "./runManager.js";
@@ -16,6 +17,10 @@ import { selectSubgraph, renderScopedContext } from "./retrieval.js";
 export interface QueryDeps {
   workspace: Workspace;
   engine: Engine;
+  // The fetcher engine: same shape as `engine`, but spawned under the distinct fetcherUid (not the vault
+  // group). Optional — only the two-step fetch/process path uses it, so callers that never fetch need not
+  // provide it.
+  fetcherEngine?: Engine;
   runManager: RunManager;
   systemPrompt: string;
   // Required (not optional) so a run can never silently ship unconfined: to run the agent without a
@@ -56,6 +61,12 @@ function listArtifacts(dir: string): string[] {
 
 const truncate = (s: string, n = 200): string => (s.length > n ? `${s.slice(0, n)}…` : s);
 
+/** Builds the fetch-phase instruction for the fetcher engine: retrieve source material for the
+ * original request and distill it into the staging directory (its cwd) — the librarian files it. */
+function buildFetchInstruction(instruction: string): string {
+  return `Fetch and distill the source material for this request. Write your distillate to the staging directory (your current working directory) — you never write to the vault and never file anything yourself; the librarian does that from what you leave here.\n\nRequest:\n${instruction}`;
+}
+
 /** Assembles the full system prompt for a run: shared core + role fragment + vault overlay + skills footer. */
 export function composeSystemPrompt(deps: Pick<QueryDeps, "systemPrompt" | "workspace">, role: AgentRole): string {
   return deps.systemPrompt + fragmentFor(role) + buildOverlay(deps.workspace.root) + buildSkillsFooter(deps.workspace.root);
@@ -85,7 +96,17 @@ export async function query(
   deps: QueryDeps,
   instruction: string,
   onProgress?: (event: ProgressEvent) => void,
-  opts?: { commit?: boolean; attachmentDirs?: string[]; attachmentFiles?: string[]; history?: string; role?: AgentRole },
+  opts?: {
+    commit?: boolean;
+    attachmentDirs?: string[];
+    attachmentFiles?: string[];
+    history?: string;
+    role?: AgentRole;
+    // Opt-in two-step fetch->process: run the fetcher first (broad egress, no vault) to distill
+    // external material to a per-run staging dir, then run the librarian (model-host-only egress)
+    // against the vault with that staging dir mounted read-only. Falsy = today's single engine call.
+    fetch?: boolean;
+  },
 ): Promise<QueryResult> {
   return deps.runManager.run(async (abortController, runId) => {
     const review = opts?.commit === false;
@@ -100,6 +121,7 @@ export async function query(
     const artifactsBefore = deps.artifactsDir ? new Set(listArtifacts(deps.artifactsDir)) : new Set<string>();
     let finalText = "";
     let metrics: Metrics | undefined;
+    let stagingDir: string | undefined;
     try {
       const attachmentNote = buildAttachmentNote(opts?.attachmentDirs, opts?.attachmentFiles);
       const historyNote = opts?.history ? `${opts.history}\n\n` : "";
@@ -115,13 +137,44 @@ export async function query(
         }
       }
       const engineInstruction = `${historyNote}${attachmentNote}${retrievalNote}${instruction}`;
+
+      // Two-step fetch->process (opt-in via opts.fetch): the fetcher retrieves and distills external
+      // material to a per-run staging dir OUTSIDE the vault (broad egress, no vault write access);
+      // the librarian below then reads that staging dir read-only and files it (model-host-only
+      // egress). Staging is created here by the broker — on a privileged host it must end up
+      // fetcher-writable, which deploy provisioning owns (a residual like 1B-1b's runnerHome).
+      if (opts?.fetch) {
+        stagingDir = join(homedir(), ".geode", "fetch-staging", runId);
+        mkdirSync(stagingDir, { recursive: true });
+        const fetcherEngine = deps.fetcherEngine ?? deps.engine;
+        for await (const ev of fetcherEngine({
+          instruction: buildFetchInstruction(instruction),
+          cwd: stagingDir,
+          systemPrompt: composeSystemPrompt(deps, "fetcher"),
+          model: deps.model,
+          abortController,
+          sandbox: buildSandboxSettings(deps.sandboxPolicy, [], { role: "fetcher", writeRoot: stagingDir }),
+        })) {
+          if (ev.type !== "result") onProgress?.(ev);
+        }
+        if (abortController.signal.aborted) {
+          // The run was aborted mid-fetch (e.g. the runManager timeout fired) — never hand a
+          // half-fetched staging dir to the librarian. Staging is cleaned up in `finally` below.
+          throw new Error("run aborted during fetch");
+        }
+      }
+
+      // When opts.fetch is set this call is always the librarian step of the two-step orchestration
+      // (filing what the fetcher staged), regardless of the desk/librarian `role` computed above.
+      const engineRole: AgentRole = opts?.fetch ? "librarian" : role;
+      const readDirs = opts?.fetch ? [stagingDir!, ...(opts?.attachmentDirs ?? [])] : opts?.attachmentDirs;
       for await (const ev of deps.engine({
         instruction: engineInstruction,
         cwd: deps.workspace.root,
-        systemPrompt: composeSystemPrompt(deps, role),
+        systemPrompt: composeSystemPrompt(deps, engineRole),
         model: deps.model,
         abortController,
-        sandbox: buildSandboxSettings(deps.sandboxPolicy, opts?.attachmentDirs),
+        sandbox: buildSandboxSettings(deps.sandboxPolicy, readDirs, { role: engineRole }),
       })) {
         if (ev.type === "result") { finalText = ev.text; metrics = ev.metrics; }
         else onProgress?.(ev);
@@ -160,6 +213,10 @@ export async function query(
         await deps.workspace.resetToHead();
       }
       throw err;
+    } finally {
+      // Staging is never vault content — the fetcher wrote outside the vault, so nothing here
+      // needs to survive success, failure, or abort.
+      if (stagingDir) rmSync(stagingDir, { recursive: true, force: true });
     }
   });
 }

@@ -17,4 +17,20 @@ describe("runner config", () => {
     expect(c.runnerUid).toBeUndefined();
     expect(c.runnerGid).toBeUndefined();
   });
+  it("parses fetcher uid/gid as numbers", () => {
+    const c = loadConfig({ ...base, GEODE_FETCHER_UID: "2001", GEODE_FETCHER_GID: "2002" });
+    expect(c.fetcherUid).toBe(2001);
+    expect(c.fetcherGid).toBe(2002);
+  });
+  it("leaves fetcher uid/gid undefined when unset", () => {
+    const c = loadConfig(base);
+    expect(c.fetcherUid).toBeUndefined();
+    expect(c.fetcherGid).toBeUndefined();
+  });
+  it("defaults fetcherHome and allows overriding it", () => {
+    const c = loadConfig(base);
+    expect(c.fetcherHome).toBe(join(homedir(), ".geode", "fetcher-home"));
+    const c2 = loadConfig({ ...base, GEODE_FETCHER_HOME: "/custom/fetcher-home" });
+    expect(c2.fetcherHome).toBe("/custom/fetcher-home");
+  });
 });

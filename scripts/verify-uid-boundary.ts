@@ -8,13 +8,22 @@
  * 1B-1b: the runner→broker process boundary is a real trust boundary on a privileged
  * Linux host, not just in the SDK's own permission layer.
  *
+ * Also proves the Task 7 (slice 1B-2) counterpart: a `geode-fetcher` uid that is NOT a
+ * member of the shared `geode-rw` group is vault-blind — it gets EACCES reading a vault
+ * file AND `secrets.enc`, while it can still write its own fetcher-owned staging dir. This
+ * is the OS-level proof that the fetcher/librarian privilege split (broad-net fetcher, no
+ * vault vs. vault-writing librarian, no broad net) is a real trust boundary, not just the
+ * SDK's own permission layer.
+ *
  * Filesystem-deterministic — no API key, no LLM, no SDK. Must run as root (the broker),
  * which is why it targets a Docker container rather than a dev machine.
  *
- * Requires GEODE_RUNNER_UID and GEODE_RUNNER_GID (the low-privilege runner identity to
- * drop into — GEODE_RUNNER_GID must be the shared group, or the shared-group write model
- * this proves breaks). See .agent/SOP/verify-uid-boundary.md for the ownership model and
- * the `docker build` / `docker run` invocation.
+ * Requires GEODE_RUNNER_UID and GEODE_RUNNER_GID (the low-privilege runner/librarian
+ * identity to drop into — GEODE_RUNNER_GID must be the shared group, or the shared-group
+ * write model this proves breaks), and GEODE_FETCHER_UID and GEODE_FETCHER_GID (the
+ * distinct fetcher identity — deliberately NOT the shared group). See
+ * .agent/SOP/verify-uid-boundary.md for the ownership model and the `docker build` /
+ * `docker run` invocation.
  *
  * Run: `npx tsx scripts/verify-uid-boundary.ts` (as root, with both env vars set) or via
  * the provided Dockerfile: `docker build -t geode-uidcheck . && docker run --rm geode-uidcheck`.
@@ -52,6 +61,14 @@ interface ProbeReport {
   staging: ProbeOutcome;
   vaultTop: ProbeOutcome;
   vaultNested: ProbeOutcome;
+}
+
+/** All probe results reported by one fetcher-uid child-process invocation: vault read, secrets read, staging write, vault write. */
+interface FetcherProbeReport {
+  vaultRead: ProbeOutcome;
+  secrets: ProbeOutcome;
+  stagingWrite: ProbeOutcome;
+  vaultWrite: ProbeOutcome;
 }
 
 /** One recorded pass/fail assertion, printed in the final report. */
@@ -94,11 +111,45 @@ tryWrite("vaultNested", path.join(process.env.VAULT_DIR, process.env.NESTED_DIR,
 process.stdout.write(JSON.stringify(result));
 `;
 
+// Same self-reported JSON-on-stdout shape as PROBE_SOURCE, run under the fetcher uid/gid
+// instead: proves the fetcher is vault-blind (EACCES reading the vault and secrets.enc)
+// while it can still write its own fetcher-owned staging dir.
+const FETCHER_PROBE_SOURCE = `
+const fs = require("node:fs");
+const path = require("node:path");
+process.umask(0o002);
+const result = {};
+function tryRead(key, file) {
+  try {
+    const data = fs.readFileSync(file, "utf8");
+    result[key] = { ok: true, bytes: data.length };
+  } catch (err) {
+    result[key] = { ok: false, code: err && err.code ? err.code : String(err) };
+  }
+}
+function tryWrite(key, file) {
+  try {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, "written-by-fetcher");
+    result[key] = { ok: true };
+  } catch (err) {
+    result[key] = { ok: false, code: err && err.code ? err.code : String(err) };
+  }
+}
+tryRead("vaultRead", process.env.VAULT_READ_FILE);
+tryRead("secrets", process.env.SECRETS_FILE);
+tryWrite("stagingWrite", process.env.STAGING_WRITE_FILE);
+tryWrite("vaultWrite", path.join(process.env.VAULT_DIR, process.env.VAULT_WRITE_FILE));
+process.stdout.write(JSON.stringify(result));
+`;
+
 const RUNNER_UID = requireEnvInt("GEODE_RUNNER_UID");
 const RUNNER_GID = requireEnvInt("GEODE_RUNNER_GID");
+const FETCHER_UID = requireEnvInt("GEODE_FETCHER_UID");
+const FETCHER_GID = requireEnvInt("GEODE_FETCHER_GID");
 
 if (typeof process.getuid !== "function" || process.getuid() !== 0) {
-  console.error("This harness must run as root (the broker) so it can drop the probe to RUNNER_UID/RUNNER_GID. Run it inside the provided Dockerfile.");
+  console.error("This harness must run as root (the broker) so it can drop probes to RUNNER_UID/RUNNER_GID and FETCHER_UID/FETCHER_GID. Run it inside the provided Dockerfile.");
   process.exit(1);
 }
 
@@ -108,6 +159,17 @@ function runProbe(env: Record<string, string>): ProbeReport {
   if (child.error) throw new Error(`could not spawn probe under uid ${RUNNER_UID}/gid ${RUNNER_GID}: ${child.error.message}`);
   try {
     return JSON.parse(child.stdout.trim()) as ProbeReport;
+  } catch {
+    throw new Error(`probe produced non-JSON output (exit ${child.status}): stdout=${JSON.stringify(child.stdout)} stderr=${JSON.stringify(child.stderr)}`);
+  }
+}
+
+/** Spawns the probe as the fetcher uid/gid with a minimal explicit env (never a copy of the broker's own env) and parses its JSON report. */
+function runFetcherProbe(env: Record<string, string>): FetcherProbeReport {
+  const child = spawnSync(process.execPath, ["-e", FETCHER_PROBE_SOURCE], { uid: FETCHER_UID, gid: FETCHER_GID, env, encoding: "utf8" });
+  if (child.error) throw new Error(`could not spawn probe under uid ${FETCHER_UID}/gid ${FETCHER_GID}: ${child.error.message}`);
+  try {
+    return JSON.parse(child.stdout.trim()) as FetcherProbeReport;
   } catch {
     throw new Error(`probe produced non-JSON output (exit ${child.status}): stdout=${JSON.stringify(child.stdout)} stderr=${JSON.stringify(child.stderr)}`);
   }
@@ -217,16 +279,39 @@ check("broker can git reset --hard + clean -fd the runner-owned nested dir", res
 check("dirty nested file removed after clean -fd", !existsSync(dirtyNestedFile), dirtyNestedFile);
 check("committed nested file survives reset (still present)", existsSync(nestedFile), nestedFile);
 
+// --- Fetcher provisioning: a distinct third principal, NOT a member of geode-rw ---
+
+const fetcherStagingDir = join(workDir, "fetcher-staging");
+mkdirSync(fetcherStagingDir);
+chownSync(fetcherStagingDir, FETCHER_UID, FETCHER_GID);
+chmodSync(fetcherStagingDir, 0o700); // fetcher-owned: its own distillate, not shared with geode-rw
+
+// --- Adversarial probe #3: the fetcher uid is vault-blind ---
+
+const fetcher = runFetcherProbe({
+  PATH: process.env.PATH ?? "",
+  VAULT_READ_FILE: join(vaultDir, "README.md"),
+  SECRETS_FILE: secretsFile,
+  VAULT_DIR: vaultDir,
+  STAGING_WRITE_FILE: join(fetcherStagingDir, "distillate.txt"),
+  VAULT_WRITE_FILE: "from-fetcher.txt",
+});
+
+check("fetcher denied read of a vault file with EACCES (not in geode-rw)", fetcher.vaultRead.ok === false && fetcher.vaultRead.code === "EACCES", JSON.stringify(fetcher.vaultRead));
+check("fetcher denied read of secrets.enc with EACCES", fetcher.secrets.ok === false && fetcher.secrets.code === "EACCES", JSON.stringify(fetcher.secrets));
+check("fetcher can write its own staging dir", fetcher.stagingWrite.ok === true, JSON.stringify(fetcher.stagingWrite));
+check("fetcher denied write to the vault with EACCES", fetcher.vaultWrite.ok === false && fetcher.vaultWrite.code === "EACCES", JSON.stringify(fetcher.vaultWrite));
+
 // --- Report ---
 
 console.log("\n=== uid-boundary verification ===");
-console.log(`runner uid=${RUNNER_UID} gid=${RUNNER_GID} | secretsDir=${secretsDir} | vaultDir=${vaultDir}`);
+console.log(`runner uid=${RUNNER_UID} gid=${RUNNER_GID} | fetcher uid=${FETCHER_UID} gid=${FETCHER_GID} | secretsDir=${secretsDir} | vaultDir=${vaultDir} | fetcherStagingDir=${fetcherStagingDir}`);
 let allPass = true;
 for (const c of checks) {
   console.log(`${c.pass ? "PASS" : "FAIL"} — ${c.name}${c.pass ? "" : ` (${c.detail})`}`);
   if (!c.pass) allPass = false;
 }
-console.log(allPass ? "\nUID BOUNDARY HOLDS — runner cannot read secrets.enc; broker can still commit and reconcile runner writes." : "\nUID BOUNDARY FAILED — see above.");
+console.log(allPass ? "\nUID BOUNDARY HOLDS — runner cannot read secrets.enc; broker can still commit and reconcile runner writes. FETCHER IS VAULT-BLIND — EACCES reading the vault and secrets.enc, but can write its own staging dir." : "\nUID BOUNDARY FAILED — see above.");
 
 rmSync(workDir, { recursive: true, force: true });
 process.exit(allPass ? 0 : 1);

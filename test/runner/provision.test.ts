@@ -55,26 +55,53 @@ describe("resolveRunnerPrivilege", () => {
 });
 
 describe("provisionRunner", () => {
-  const cfg = { runnerHome: "/rh", runnerUid: 1001, runnerGid: 1002 } as any;
-  it("returns dropped uid + scrubbed env + ensures dirs + logs when root", () => {
+  const cfg = {
+    runnerHome: "/rh", runnerUid: 1001, runnerGid: 1002,
+    fetcherHome: "/fh", fetcherUid: 2001, fetcherGid: 2002,
+  } as any;
+  it("returns dropped uid + scrubbed env + ensures dirs + logs when root (librarian)", () => {
     const dirs: string[] = []; const logs: string[] = [];
     const out = provisionRunner({ ...cfg }, {
       pkgRoot: "/pkg", getuid: () => 0, log: (m) => logs.push(m), ensureDir: (p) => dirs.push(p),
       source: { ANTHROPIC_API_KEY: "k", PATH: "/b", GEODE_SECRETS_KEY: "M" } as any,
-    });
+    }, "librarian");
     expect(out.uid).toBe(1001);
+    expect(out.gid).toBe(1002);
     expect(out.cwd).toBe("/pkg");
     expect(out.env.HOME).toBe("/rh");
     expect(Object.keys(out.env).some((k) => k.startsWith("GEODE_"))).toBe(false);
     expect(dirs).toContain("/rh");
     expect(logs.join(" ")).toMatch(/dropped to uid 1001/);
   });
-  it("same-uid + loud warning when not root", () => {
+  it("same-uid + loud warning when not root (librarian)", () => {
     const logs: string[] = [];
     const out = provisionRunner({ ...cfg }, {
       pkgRoot: "/pkg", getuid: () => 501, log: (m) => logs.push(m), ensureDir: () => {},
       source: { ANTHROPIC_API_KEY: "k", PATH: "/b" } as any,
-    });
+    }, "librarian");
+    expect(out.uid).toBeUndefined();
+    expect(logs.join(" ")).toMatch(/SAME-UID/);
+  });
+  it("returns dropped fetcherUid/fetcherGid + fetcherHome as HOME when root (fetcher)", () => {
+    const dirs: string[] = []; const logs: string[] = [];
+    const out = provisionRunner({ ...cfg }, {
+      pkgRoot: "/pkg", getuid: () => 0, log: (m) => logs.push(m), ensureDir: (p) => dirs.push(p),
+      source: { ANTHROPIC_API_KEY: "k", PATH: "/b", GEODE_SECRETS_KEY: "M" } as any,
+    }, "fetcher");
+    expect(out.uid).toBe(2001);
+    expect(out.gid).toBe(2002);
+    expect(out.cwd).toBe("/pkg");
+    expect(out.env.HOME).toBe("/fh");
+    expect(Object.keys(out.env).some((k) => k.startsWith("GEODE_"))).toBe(false);
+    expect(dirs).toContain("/fh");
+    expect(logs.join(" ")).toMatch(/dropped to uid 2001/);
+  });
+  it("same-uid + loud warning when not root (fetcher)", () => {
+    const logs: string[] = [];
+    const out = provisionRunner({ ...cfg }, {
+      pkgRoot: "/pkg", getuid: () => 501, log: (m) => logs.push(m), ensureDir: () => {},
+      source: { ANTHROPIC_API_KEY: "k", PATH: "/b" } as any,
+    }, "fetcher");
     expect(out.uid).toBeUndefined();
     expect(logs.join(" ")).toMatch(/SAME-UID/);
   });

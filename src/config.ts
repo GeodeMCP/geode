@@ -19,6 +19,9 @@ export interface Config {
   runnerUid?: number;
   runnerGid?: number;
   runnerHome: string;
+  fetcherUid?: number;
+  fetcherGid?: number;
+  fetcherHome: string;
 }
 
 /** Reads a required environment variable from the given env map, throwing if the key is absent or empty. */
@@ -47,5 +50,8 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     runnerUid: env.GEODE_RUNNER_UID ? Number(env.GEODE_RUNNER_UID) : undefined,
     runnerGid: env.GEODE_RUNNER_GID ? Number(env.GEODE_RUNNER_GID) : undefined,
     runnerHome: env.GEODE_RUNNER_HOME || join(homedir(), ".geode", "runner-home"),
+    fetcherUid: env.GEODE_FETCHER_UID ? Number(env.GEODE_FETCHER_UID) : undefined,
+    fetcherGid: env.GEODE_FETCHER_GID ? Number(env.GEODE_FETCHER_GID) : undefined,
+    fetcherHome: env.GEODE_FETCHER_HOME || join(homedir(), ".geode", "fetcher-home"),
   };
 }

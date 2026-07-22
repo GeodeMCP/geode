@@ -1,6 +1,6 @@
 # Security model
 
-The secret broker, the `invoke` executors, the two confinement systems, and OAuth. **This file distinguishes what is enforced from what is aspirational** — several published claims are currently stale. Derived from the code as of 2026-07-20.
+The secret broker, the `invoke` executors, the two confinement systems, and OAuth. **This file distinguishes what is enforced from what is aspirational** — several published claims are currently stale. Derived from the code as of 2026-07-22 (slice 1B-2).
 
 **Related docs:** [Architecture & runtime](architecture.md) · [Known inconsistencies](known-inconsistencies.md) · [Verify the sandbox](../SOP/verify-sandbox.md)
 
@@ -86,7 +86,7 @@ Tool install no longer grants any of this: the dashboard install route always pa
 
 **Residuals — not closed by this slice, deferred to 1B:**
 - The `cli` container still runs `--network bridge`; the allowlist reaches it only as `HTTP_PROXY`/`HTTPS_PROXY` env vars (`src/sandboxRun.ts:42`), a convention a well-behaved client honours. A tool that opens a raw socket bypasses it outright — the allowlist is advisory, not kernel-enforced.
-- This closes hole E from the security-foundation design spec (`docs/superpowers/specs/2026-07-20-vault-security-foundation-design.md:64`) for declared egress, but holes A–C are untouched: the agent still has Bash and can read `secrets.enc` directly (A), the encryption key still sits beside the ciphertext (B), and WebFetch/WebSearch egress from the agent is still open on every platform (C). **The vault is not yet safe to hold real client secrets against a compromised agent — that remains slice 1B.**
+- This closes hole E from the security-foundation design spec (`docs/superpowers/specs/2026-07-20-vault-security-foundation-design.md:64`) for declared egress. Of holes A–C, **A and B are still untouched**: the agent still has Bash and can read `secrets.enc` directly (A), and the encryption key still sits beside the ciphertext (B). **Hole C (agent egress) is closed as of slice 1B-2**, on a privileged host: the librarian role — the one that actually files into the vault — gets `allowedDomains=[llmHost]` with `allowWebTools:false` (`buildSandboxSettings` in `src/agentSandbox.ts`, role threaded in from `src/query.ts`), so `WebFetch`/`WebSearch` are hard-denied for it via `canUseTool`, enforced cross-platform (the Bash-egress half of the allowlist remains Linux-only, per the table below). The fetcher role keeps broad egress and web tools, but runs under a distinct, vault-blind `geode-fetcher` uid — proven by the Docker harness — so its wider reach cannot touch vault content or secrets. **The vault is not yet safe to hold real client secrets against a compromised agent — A and B remain open, deferred to later in slice 1B.**
 
 ## Process boundary (runner subprocess)
 
@@ -125,11 +125,12 @@ Implemented by the Claude Agent SDK, not by this repo — Geode only configures 
 | Planted `.claude/settings.json` | Ignored | Ignored | `settingSources: []` |
 | Bash `dangerouslyDisableSandbox` | Denied | Denied | `canUseTool` + `allowUnsandboxedCommands:false` |
 | Bash egress to non-allowlisted domain | **NOT blocked** | Blocked | OS sandbox proxy (needs `socat`) |
-| WebFetch / WebSearch egress | **NOT blocked** | **NOT blocked** | *deny lifted — see below* |
+| WebFetch / WebSearch egress — librarian role | Blocked | Blocked | `canUseTool` (`allowWebTools:false`) — cross-platform, not proxy-dependent |
+| WebFetch / WebSearch egress — desk / fetcher role | **NOT blocked** | **NOT blocked** | `allowWebTools:true`; fetcher's wider reach is offset by its vault-blind uid, not a tool-level deny |
 
-> ### Stale published claim
+> ### Stale published claim — now accurate for the librarian, still overstated as a blanket claim
 >
-> `README.md:27` and `docs/superpowers/specs/2026-07-01-agent-sandbox-design.md:157` both state that the handler denies `WebFetch`/`WebSearch`. **It does not.** `src/agentSandbox.ts:141-143` is an explicit comment recording that the deny was lifted so the agent can read live API docs while authoring tools, to be restored behind a chat approval flow (issue #27). `src/constitution.ts:18` now permits them as read-only. **Tool-level network egress from the agent is currently open on every platform, and the README is wrong.**
+> `README.md:27` and `docs/superpowers/specs/2026-07-01-agent-sandbox-design.md:157` both state that the handler denies `WebFetch`/`WebSearch`. As of slice 1B-2 that's true again, but **only for the librarian role**. `src/agentSandbox.ts:141-143`'s comment about the deny being lifted (issue #27) describes the pre-1B-2 state, not the current one: `buildSandboxSettings` now sets `allowWebTools:false` when `role:"librarian"` (`allowedDomains` also narrows to `[llmHost]`), and `buildPermissionHandler` denies `WebFetch`/`WebSearch` for that role via `canUseTool` — the role is threaded in from `src/query.ts`. The **desk** and **fetcher** roles still get `allowWebTools:true`, so README's unconditional phrasing overstates it; it should name the librarian specifically. `src/constitution.ts` no longer blanket-permits WebFetch/WebSearch to every role either — it now says fetching external material is the fetcher's job, routed through the fetch step. **Tool-level network egress from the agent is closed for the vault-filing (librarian) role and open for desk/fetcher; the README's blanket phrasing is still imprecise.**
 
 **Treat macOS as a development environment, not a hardened one.** Per-domain egress needs `socat` and is Linux/WSL-only. `scripts/verify-sandbox.ts:74-79` encodes this asymmetry directly by SKIPping the network check on darwin.
 

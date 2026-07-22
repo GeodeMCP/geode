@@ -125,6 +125,21 @@ This yields **three egress tiers**, and egress is closed exactly where it is dan
 > librarian included — must reach the model host. The egress tiers are therefore expressed as
 > the SDK sandbox's per-role `allowedDomains` (librarian = the LLM host only; fetcher = LLM +
 > `DEFAULT_ONBOARDING_DOMAINS`), **not** by `--unshare-net`. See §6.4.
+>
+> **Revised again after the 1B-2 de-risk (2026-07-22) — two premises in this table were not
+> enforceable as written; see §6.6 for the corrected design:**
+> 1. **"Librarian model-host-only" needs two controls, not one.** `allowedDomains` bounds only
+>    Bash-spawned egress (Linux). `WebFetch`/`WebSearch` are host-process tools governed solely
+>    by `canUseTool`, which today allows them for every role. So the librarian needs BOTH a
+>    per-role `allowedDomains=[llmHost]` AND a per-role `WebFetch`/`WebSearch` **deny** — the
+>    deny requires a new `allowWebTools` field on `SandboxSettings` (it crosses the pipe).
+> 2. **"Fetcher: nothing to exfiltrate" is false unless the fetcher cannot READ the vault.** The
+>    SDK sandbox permits broad reads (hole A), and Layer 1 gives the runner uid vault read (so
+>    the librarian can write). A fetcher on that same uid can read the whole vault — with broad
+>    egress and hostile input, exactly the exfil path this split exists to prevent. **The fetcher
+>    therefore runs under a distinct THIRD uid (`geode-fetcher`) NOT in the vault's group**, so a
+>    `2770` vault denies it ("other" = no access). This extends Layer 1's 2-principal uid model to
+>    3 and makes the runner spawn options per-role.
 
 **Cost, stated honestly:** two agent invocations instead of one — more latency, more
 tokens — and the fetcher must decide what to distill.
@@ -327,6 +342,48 @@ boundary (two separate trust decisions).
    new dedicated harness (`scripts/verify-uid-boundary.ts` + a Linux Dockerfile provisioning the
    shared group + runner user), run manually by a human (no automation to lean on yet). This is
    distinct from `scripts/verify-sandbox.ts`, which is a live-API SDK-sandbox check.
+
+6. **1B-2 (Layer 2) implementation specifics (2026-07-22 de-risk of the fetch/process split).**
+   The existing role system is two roles — `desk` and `librarian` (`src/constitution.ts`) — that
+   affect only the prompt fragment + whether retrieval runs; **role does not touch the sandbox
+   today.** Layer 2 adds a third role and makes the sandbox role-varying. The seams:
+
+   - **A `fetcher` role + fragment.** `AgentRole` gains `"fetcher"`; `fragmentFor` gains a
+     `FETCHER_FRAGMENT` (its contract is §6.3: fetch → distill to staging, mark quoted material
+     untrusted, never write the vault).
+   - **Per-role egress = two controls that must ship together (per the §2 revision):**
+     (a) split the policy's domain tiers so `buildSandboxSettings` assembles `allowedDomains =
+     [llmHost]` for the librarian vs `[llmHost, ...onboardingDomains, ...extra]` for the fetcher;
+     and (b) add **`allowWebTools?: boolean`** to `SandboxSettings` (so it crosses the pipe) and
+     have `buildPermissionHandler` deny `WebFetch`/`WebSearch` when false. Librarian =
+     `allowWebTools:false`; fetcher = `true`. Setting only (a) leaves the librarian's host-process
+     egress wide open. This is the one correction to §6.4's "no new pipe plumbing" — one new
+     serialized field.
+   - **Fetcher isolation = a distinct third uid.** Extends the 1B-1b provisioning: a
+     `geode-fetcher` user NOT in `geode-rw`, with its own `GEODE_FETCHER_UID`/`GID`. The vault is
+     `2770 geode-rw`, so the fetcher (other) cannot read or write it; secrets are `0700` broker;
+     the fetcher writes only its per-run staging dir. Because the fetcher and librarian now need
+     different uids, the runner spawn options become **per-role** (today `createSubprocessEngine`
+     is built once with fixed `spawnOptions` — Layer 2 parameterizes the spawn by role, or builds
+     two engines). Same-uid fallback on non-root dev, as everywhere. The Docker harness gains a
+     fetcher-cannot-read-vault assertion.
+   - **Two-step orchestration lives inside `query()`**, not the caller. Both engine calls run in
+     the **same `runManager.run` closure** so they stay serialized and share one commit lifecycle.
+     Because the fetcher writes OUTSIDE the vault, git (`commitAll`/`resetToHead`/`changedFilesSince`)
+     is untouched — it only ever sees the librarian's vault writes. The broker creates a per-run
+     staging dir before the fetcher call and `rm -rf`s it after the librarian call **on every path,
+     including error/abort**. The fetcher's output staging is the librarian's `extraReadDirs`
+     (read-only `allowRead`), reusing the attachment-staging primitive.
+   - **Trigger is explicit, not inferred.** A run opts into the two-step (a `fetch: true`-style
+     flag on the ingest/onboarding path, mirroring how `remember` already hardcodes
+     `role: "librarian"`), so plain desk Q&A and manual `remember` pay no fetcher tax. Do NOT
+     infer "needs a fetch" from the instruction text.
+   - **Cancellation spans two sequential subprocesses.** A cancel during the fetcher aborts it and
+     the closure must NOT then launch the librarian — an explicit post-fetch abort check.
+
+   **Residual (macOS dev / Linux-only):** per-host Bash egress is Linux-only, so on dev the
+   librarian's Bash can still reach anywhere; the real Layer-2 egress boundary is a privileged
+   Linux property, proven by the Docker harness — same posture as 1B-1b.
 
 ## 7. Deferred to slice 2, but decided now
 
