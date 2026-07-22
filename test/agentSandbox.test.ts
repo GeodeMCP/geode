@@ -53,11 +53,33 @@ describe("buildSandboxSettings", () => {
     const s = buildSandboxSettings(resolveSandboxPolicy({}, "/vault"), ["/tmp/att"])!;
     expect(s.filesystem.allowRead).toEqual(["/tmp/att"]);
   });
+  it("librarian role: allowedDomains is the LLM host only, allowWebTools is false", () => {
+    const policy = resolveSandboxPolicy({}, "/vault");
+    const s = buildSandboxSettings(policy, [], { role: "librarian" })!;
+    expect(s.network.allowedDomains).toEqual([policy.llmHost]);
+    expect(s.network.allowWebTools).toBe(false);
+  });
+  it("fetcher role: allowedDomains includes the onboarding hosts, allowWebTools is true", () => {
+    const policy = resolveSandboxPolicy({}, "/vault");
+    const s = buildSandboxSettings(policy, [], { role: "fetcher" })!;
+    expect(s.network.allowedDomains).toContain(policy.llmHost);
+    expect(s.network.allowedDomains).toEqual(expect.arrayContaining(policy.onboardingDomains));
+    expect(s.network.allowWebTools).toBe(true);
+  });
+  it("desk role (and no opts, the default): allowedDomains is the LLM host only, allowWebTools is true", () => {
+    const policy = resolveSandboxPolicy({}, "/vault");
+    const withDeskRole = buildSandboxSettings(policy, [], { role: "desk" })!;
+    const withNoOpts = buildSandboxSettings(policy)!;
+    expect(withDeskRole.network.allowedDomains).toEqual([policy.llmHost]);
+    expect(withDeskRole.network.allowWebTools).toBe(true);
+    expect(withNoOpts.network.allowedDomains).toEqual([policy.llmHost]);
+    expect(withNoOpts.network.allowWebTools).toBe(true);
+  });
 });
 
 describe("buildPermissionHandler", () => {
   const handler = buildPermissionHandler(["/vault"], true);
-  it("temporarily allows WebFetch/WebSearch (egress deny lifted — see issue #27)", async () => {
+  it("allows WebFetch/WebSearch when allowWebTools is true (explicit gate pass)", async () => {
     expect((await handler("WebFetch", { url: "https://cloud.productflow.com/api" })).behavior).toBe("allow");
     expect((await handler("WebSearch", { query: "productflow api" })).behavior).toBe("allow");
   });

@@ -2,11 +2,18 @@ import { existsSync, realpathSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { parseManifest } from "./tools.js";
 
-/** Resolved OS-sandbox policy for the vault agent, derived once from env + the vault root. */
+/**
+ * Resolved OS-sandbox policy for the vault agent, derived once from env + the vault root.
+ * `llmHost` and `onboardingDomains` are kept separate so `buildSandboxSettings` can size a role's
+ * egress independently (e.g. the librarian gets `llmHost` only, the fetcher gets both); `allowedDomains`
+ * is their union, retained for back-compat with anything that still reads the policy's combined list.
+ */
 export interface SandboxPolicy {
   enabled: boolean;
   failIfUnavailable: boolean;
   allowWrite: string[];
+  llmHost: string;
+  onboardingDomains: string[];
   allowedDomains: string[];
   allowLocalBinding: boolean;
 }
@@ -63,19 +70,36 @@ export function resolveSandboxPolicy(env: Record<string, string | undefined>, va
   const base = env.ANTHROPIC_BASE_URL ? hostFromUrl(env.ANTHROPIC_BASE_URL) : null;
   const llmHost = base ?? DEFAULT_LLM_HOST;
   const extra = (env.GEODE_AGENT_ALLOWED_DOMAINS ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-  const allowedDomains = Array.from(new Set([llmHost, ...DEFAULT_ONBOARDING_DOMAINS, ...extra]));
+  const onboardingDomains = Array.from(new Set([...DEFAULT_ONBOARDING_DOMAINS, ...extra]));
+  const allowedDomains = Array.from(new Set([llmHost, ...onboardingDomains]));
   return {
     enabled: !disabled,
     failIfUnavailable: true,
     allowWrite: [vaultRoot],
+    llmHost,
+    onboardingDomains,
     allowedDomains,
     allowLocalBinding: isLoopback(llmHost),
   };
 }
 
-/** Builds the Agent SDK `sandbox` settings from the policy; undefined when disabled. `extraReadDirs` grants per-run read access (e.g. attachment staging). */
-export function buildSandboxSettings(policy: SandboxPolicy | undefined, extraReadDirs: string[] = []): SandboxSettings | undefined {
+/**
+ * Builds the Agent SDK `sandbox` settings from the policy; undefined when disabled. `extraReadDirs`
+ * grants per-run read access (e.g. attachment staging). `opts.role` sizes network egress: `librarian`
+ * is confined to the model host and has WebFetch/WebSearch denied (`allowWebTools: false`); `fetcher`
+ * additionally allows the onboarding hosts (repo clone / package fetch) and keeps web tools open;
+ * `desk` and the default (no role given) match today's behavior — model host only, web tools open —
+ * so existing desk Q&A that may WebSearch is not regressed.
+ */
+export function buildSandboxSettings(
+  policy: SandboxPolicy | undefined,
+  extraReadDirs: string[] = [],
+  opts?: { role?: "fetcher" | "librarian" | "desk" },
+): SandboxSettings | undefined {
   if (!policy || !policy.enabled) return undefined;
+  const isFetcher = opts?.role === "fetcher";
+  const allowedDomains = isFetcher ? [policy.llmHost, ...policy.onboardingDomains] : [policy.llmHost];
+  const allowWebTools = opts?.role !== "librarian";
   return {
     enabled: true,
     failIfUnavailable: policy.failIfUnavailable,
@@ -86,8 +110,8 @@ export function buildSandboxSettings(policy: SandboxPolicy | undefined, extraRea
       ? { allowWrite: policy.allowWrite, allowRead: extraReadDirs }
       : { allowWrite: policy.allowWrite },
     network: policy.allowLocalBinding
-      ? { allowedDomains: policy.allowedDomains, allowLocalBinding: true, allowWebTools: true }
-      : { allowedDomains: policy.allowedDomains, allowWebTools: true },
+      ? { allowedDomains, allowLocalBinding: true, allowWebTools }
+      : { allowedDomains, allowWebTools },
   };
 }
 
